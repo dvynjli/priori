@@ -9,22 +9,33 @@ class IntVar {
 };
 
 class VerifierPass : public ModulePass {
+    vector<Function*> threads;
+
     bool runOnModule (Module &M) {
         errs() << "LLVM pass is running\n";
         
-        ap_manager_t *ap_man = box_manager_alloc();                     //TODO: depend upon command line arg
+        ap_manager_t *man = initApManager();
+        fprintf(stderr, "Init Env\n");
         ap_environment_t *env = initEnvironment(M);
+        ap_environment_fdump(stdout, env);
+         //ap_var_t var = ap_environment_var_of_dim(env, 0);
+        fprintf(stderr, "creating top\n");
+        ap_abstract1_t top = ap_abstract1_top(man, env);
+        ap_abstract1_fdump(stderr, man,  &top);
+
+        initThreadDetails(M);
+        
     }
 
     ap_environment_t * initEnvironment(Module &M) {
         vector<string> intVars;
         for (auto it = M.global_begin(); it != M.global_end(); it++){
-            print_msg(2, "Global var: ", it->getName());
+            fprintf(stderr, "Global var: %s\n", it->getName());
             if (it->getType()->getElementType()->isIntegerTy()) {
                 intVars.push_back(it->getName());
             }
         }
-        print_debug_msg(2, "Total global var = ", to_string(intVars.size()).c_str());
+        fprintf(stderr, "DEBUG: Total global var = %d\n", intVars.size());
         ap_var_t intAp[intVars.size()];
         int i = 0;
         for (auto it = intVars.begin(); it != intVars.end(); it++, i++){
@@ -34,6 +45,40 @@ class VerifierPass : public ModulePass {
         
         //return nullptr;
         return ap_environment_alloc(intAp, intVars.size(), floatAp, 0);
+    }
+
+    ap_manager_t* initApManager()
+    {
+        //TODO: depend upon command line arg
+        return box_manager_alloc();
+    }
+
+    void initThreadDetails(Module &M) {
+        //find main function
+        Function *main;
+        for(auto funcItr = M.begin(); funcItr != M.end(); funcItr++) {
+            if (funcItr->getName() == "main"){
+                main = (Function*)funcItr;
+                break;    
+            }
+        }
+
+        threads.push_back(main);
+        for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
+        {
+            Function *func = (Function*)(*tIt);
+            for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
+            {
+                for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
+                {
+                    //Instruction *inst = (Instruction*)it;
+                    if (CallInst *callInst = dyn_cast<CallInst>(it)) {
+                        callInst.getFunctionCalled();
+                        
+                    }
+                }
+            }
+        }
     }
 
     public:

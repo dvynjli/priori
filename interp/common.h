@@ -15,25 +15,3 @@
 using namespace llvm;
 using namespace std;
 
-void print_msg(int count, ...){
-    va_list args;
-    va_start(args, count);
-    for (int i = 0; i < count; i++){
-        errs() << va_arg(args, char*);
-    }
-    va_end(args);
-    errs() << "\n";
-}
-
-void print_debug_msg(int count, ...){
-    if (DEBUG) {
-        va_list args;
-        va_start(args, count);
-        errs() << "DEBUG: ";
-        for (int i = 0; i < count; i++){
-            errs() << va_arg(args, char*);
-        }
-        va_end(args);
-        errs() << "\n";
-    }
-}

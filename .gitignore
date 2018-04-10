@@ -4,3 +4,4 @@ build/*
 *.ll
 *.out
 *.json
+*.pdf
