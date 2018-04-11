@@ -9,6 +9,10 @@ class IntVar {
 };
 
 class VerifierPass : public ModulePass {
+    /* TODO: Should I create threads as a set??
+        Vector- interferences of t1 with t1 will be explored in case more than one thread of same func are present
+        Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
+    */
     vector<Function*> threads;
 
     bool runOnModule (Module &M) {
@@ -55,26 +59,34 @@ class VerifierPass : public ModulePass {
 
     void initThreadDetails(Module &M) {
         //find main function
-        Function *main;
+        Function *mainF;
         for(auto funcItr = M.begin(); funcItr != M.end(); funcItr++) {
             if (funcItr->getName() == "main"){
-                main = (Function*)funcItr;
+                mainF = (Function*)funcItr;
                 break;    
             }
         }
 
-        threads.push_back(main);
-        for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
+        threads.push_back(mainF);
+        queue<Function*> funcQ;
+        funcQ.push(mainF);
+        // for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
+        while(!funcQ.empty())
         {
-            Function *func = (Function*)(*tIt);
+            Function *func = funcQ.front();
+            funcQ.pop();
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
                 {
-                    //Instruction *inst = (Instruction*)it;
-                    if (CallInst *callInst = dyn_cast<CallInst>(it)) {
-                        callInst.getFunctionCalled();
-                        
+                    if (CallInst *call = dyn_cast<CallInst>(it)) {
+                        if(!call->getCalledFunction()->getName().compare("pthread_create")) {
+                            if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
+                            {  
+                                threads.push_back(newThread);
+                                funcQ.push(newThread);
+                            }
+                        }
                     }
                 }
             }

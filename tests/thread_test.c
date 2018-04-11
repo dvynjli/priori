@@ -5,22 +5,24 @@
 int x, y;
 //pthread_mutex_t lock;
 
-void* fun1(void * arg){
-	//for (int i = 0; i < 3; i++){
-		//pthread_mutex_lock(&lock);
-	if (x < 10)
-		x++;
-		//pthread_mutex_unlock(&lock);
-	//}
-	return NULL;
-}
-
 void* fun2(void * arg){
 	//for (int i = 0; i < 3; i++){
 		//pthread_mutex_lock(&lock);
 	if (x < 10)
 		x++;
 	//assert(y == 0);
+		//pthread_mutex_unlock(&lock);
+	//}
+	return NULL;
+}
+
+void* fun1(void * arg){
+	//for (int i = 0; i < 3; i++){
+		//pthread_mutex_lock(&lock);
+	pthread_t t1;
+	pthread_create(&t1, NULL, fun2, NULL);
+	if (x < 10)
+		x++;
 		//pthread_mutex_unlock(&lock);
 	//}
 	return NULL;
@@ -33,7 +35,7 @@ int main () {
 	// 	return 1;
 	// }
 	pthread_create(&t1, NULL, fun1, NULL);
-	pthread_create(&t2, NULL, fun2, NULL);
+	pthread_create(&t2, NULL, fun1, NULL);
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
 	//pthread_mutex_destroy(&lock);
