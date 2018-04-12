@@ -1,3 +1,6 @@
+#ifndef __COMMON__
+#define __COMMON__
+
 #include <string>
 #include <iostream>
 #include <stdlib.h>
@@ -6,7 +9,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
-//#include "ap_abstract1.h"
+#include "ap_abstract1.h"
 #include "ap_manager.h"
 #include "box.h"
 #include "ap_global1.h"
@@ -19,3 +22,4 @@
 using namespace llvm;
 using namespace std;
 
+#endif
