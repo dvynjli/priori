@@ -3,7 +3,7 @@
 #include <assert.h>
 
 int x, y;
-//pthread_mutex_t lock;
+pthread_mutex_t lock;
 
 void* fun2(void * arg){
 	//for (int i = 0; i < 3; i++){

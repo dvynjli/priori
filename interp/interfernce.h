@@ -35,7 +35,7 @@ class ThreadNodeToEnv {
 };
 
 class Intrefernce {
-    //Interfernces from each thread. 
+    //Interfernces from each thread. For each thread set of pairs of 'store' statements and their associated environment
     Function *thread;
     ThreadNodeToEnv interfs;
 

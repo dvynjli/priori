@@ -35,9 +35,18 @@ class VerifierPass : public ModulePass {
         vector<string> intVars;
         for (auto it = M.global_begin(); it != M.global_end(); it++){
             fprintf(stderr, "Global var: %s\n", it->getName());
-            if (it->getType()->getElementType()->isIntegerTy()) {
+            fprintf(stderr, "%d\n", it->getValueType()->getTypeID());
+            if (it->getValueType()->isIntegerTy()) {
                 intVars.push_back(it->getName());
             }
+            if (it->getValueType()->isStructTy()){
+                fprintf(stderr, "Struct: %s of type", it->getName());
+                // if (auto st = dyn_cast<StructType>(it->getValueType())){
+                //     fprintf(stderr, "cast\n");
+                // }
+                fprintf(stderr, "%s\n", it->getValueType()->getStructName());
+            }
+
         }
         fprintf(stderr, "DEBUG: Total global var = %d\n", intVars.size());
         ap_var_t intAp[intVars.size()];
