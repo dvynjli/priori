@@ -4,22 +4,20 @@
 #include <string>
 #include <iostream>
 #include <stdlib.h>
-#include "llvm/Pass.h"
-#include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Instructions.h"
-#include "ap_abstract1.h"
-#include "ap_manager.h"
-#include "box.h"
-#include "ap_global1.h"
 
 #include <set>
 #include <queue>
+#include <vector>
 
 #define DEBUG 1
 
-using namespace llvm;
+enum operation { ADD, SUB, MUL, DIV, MOD,      // Arithemetic opertions
+                LAND, LOR, LNOT, XOR,           // Logical operations
+                BAND, BOR,                      // Bit-wise Operations
+                USUB,                           // Unary minus
+                ALOAD, ASTORE, CMPXCHG, RMW,    // Atomic Opreations
+                LOAD, STORE                     // Non-atomic load and store
+};
 using namespace std;
 
 #endif
