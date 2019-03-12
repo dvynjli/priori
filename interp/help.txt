@@ -1,0 +1,25 @@
+Q. Do we need variable in anv for all SSA variables?
+A. Yes. Otherwise we need to do computation on source program, which require making a c++ parser.
+
+Q. Load and AtomicLoad (and store) can be handled same way?
+A. From Apron point of view - yes, 
+    from Z3 - yes
+    from static analyzer - no (race detection)
+
+Q. How to handle interferences of a thread with itself if more than one instance of a thread is executing?
+A. ???
+
+
+Instructions that need Apron interface-
+    BinOp   +, -, *, /, %, &&, ||, rmw, 
+            &, | (can be added later)
+    UnaryOp !, -, load, store
+            ~ (can be added later)
+    CmpXchg
+    Function calls (can be added later)
+Instructions that need Z3 interface-
+    thread create, thread join, fences, lock,
+
+
+
+Race detection on non-atomics - if a non aomic load can read from more than one writes

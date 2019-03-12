@@ -1,6 +1,7 @@
 #include "common.h"
 #include "domain.h"
 #include "analyzer.h"
+#include "z3_handler.h"
 
 class IntVar {
     string name;
@@ -27,6 +28,10 @@ class VerifierPass : public ModulePass {
         program_state.init(domain_type, getGlobalIntVars(M));
         
         initThreadDetails(M);
+
+        analyzeProgram(M);
+
+        // unsat_core_example1();
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -52,16 +57,9 @@ class VerifierPass : public ModulePass {
         return intVars;
     }
 
-    //  call approprproate function for the inst passed
-    void checkInstruction(Instruction* inst){
-
-    }
-
     Function* getMainFunction(Module &M){
         Function *mainF;
-
-        // TODO: llvm should have a better way of finding main function
-        // couldn't find better way
+        
         for(auto funcItr = M.begin(); funcItr != M.end(); funcItr++) {
             if (funcItr->getName() == "main"){
                 mainF = (Function*)funcItr;
@@ -96,9 +94,15 @@ class VerifierPass : public ModulePass {
                                 threads.push_back(newThread);
                                 funcQ.push(newThread);
                             }
-                            // TODO: need to aadd dominates rules
+                            // TODO: need to add dominates rules
                         }
-                        //TODO: what should be done for non-pthread create function call
+                        else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
+                            // TODO: need to add dominates rules
+                        }
+                        else {
+                            cout << "unknown function call:\n";
+                            it->dump();
+                        }
                     }
                     /*
                     else
@@ -119,6 +123,25 @@ class VerifierPass : public ModulePass {
                 }
             }
         }
+    }
+
+    void analyzeProgram(Module &M) {
+        // call analyzThread, get interf, check fix point
+        // need to addRule, check feasible interfs
+
+    }
+
+    void analyzeThread(Function &F) {
+        //call analyze BB, do the merging of BB
+    }
+
+    void analyzeBasicBlock(BasicBlock &B) {
+        // check type in inst, and performTrasformations
+    }
+
+    //  call approprproate function for the inst passed
+    void checkInstruction(Instruction* inst){
+
     }
 
     public:

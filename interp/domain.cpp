@@ -19,7 +19,7 @@ void ProgramState::init(string domain_type, vector<string> intVars){
 ap_manager_t* ProgramState::initApManager(string domain_type)
 {
     //TODO: parameterize by command line arg
-    if (domain_type.compare("box"))
+    if (domain_type.compare("box") == 0)
         return box_manager_alloc();
     else {
         fprintf(stderr, "unkown domain %s\n", domain_type.c_str());
