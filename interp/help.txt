@@ -39,3 +39,5 @@ Possible Optimizations:
         checking feasiblity of interfernces with analysis of other thread
         analysis of all threads for 1 iteration
     
+export CPLUS_INCLUDE_PATH=/home/divyanjali/.opam/system/share/apron/include/
+export LIBRARY_PATH=/home/divyanjali/.opam/system/share/apron/lib/

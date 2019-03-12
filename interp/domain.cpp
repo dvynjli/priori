@@ -9,11 +9,11 @@ void Domain::init(string domainType, vector<string> intVars){
     // ap_var_t var = ap_environment_var_of_dim(env, 0);
     // fprintf(stderr, "var: %s\n", var);
     DEBUG && fprintf(stderr, "creating top\n");
-    ap_abstract1_t abs_val = ap_abstract1_top(man, env);
-    ap_abstract1_fdump(stderr, man,  &abs_val);
+    absValue = ap_abstract1_top(man, env);
+    ap_abstract1_fdump(stderr, man,  &absValue);
 
     DEBUG && fprintf(stderr, "performing transforms\n");
-    performTrasfer(man, env, abs_val);
+    performTrasfer(man, env, absValue);
 }
 
 ap_manager_t* Domain::initApManager(string domainType) {
@@ -40,23 +40,23 @@ ap_environment_t* Domain::initEnvironment(vector<string> intVars){
 }
 
 void Domain::joinDomain(Domain other) {
-    // ap_abstract1_join(man, true, env, other.env);
+    ap_abstract1_join(man, true, &absValue, &other.absValue);
 }
 
 void Domain::addVariable(string varName) {
 
 }
 
-void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val) {
+void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {
     /* assign x = 1 */
     fprintf(stderr, "Assigning x = 1\n");
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
     ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = ap_environment_var_of_dim(env, 0);
-    abs_val = ap_abstract1_assign_linexpr(man, true, &abs_val, var, &expr, NULL);
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     fprintf(stderr, "assigned linexpr to x\n");
-    ap_abstract1_fprint(stderr, man, &abs_val);
+    ap_abstract1_fprint(stderr, man, &absValue);
     // ap_linexpr1_clear(&expr);
 
     /* assign y = x + 10 */
@@ -64,9 +64,9 @@ void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstrac
     ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, "x", AP_CST_S_INT, 10, AP_END);
     ap_linexpr1_fprint(stderr, &expr);
     var = ap_environment_var_of_dim(env, 1);
-    abs_val = ap_abstract1_assign_linexpr(man, true, &abs_val, var, &expr, NULL);
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     fprintf(stderr, "assigned linexpr to x\n");
-    ap_abstract1_fprint(stderr, man, &abs_val);
+    ap_abstract1_fprint(stderr, man, &absValue);
     // ap_linexpr1_clear(&expr);
 
     /* assign x = x + y */
@@ -74,9 +74,9 @@ void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstrac
     ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, "x", AP_COEFF_S_INT, 1, "y", AP_CST_S_INT, 0, AP_END);
     ap_linexpr1_fprint(stderr, &expr);
     var = ap_environment_var_of_dim(env, 0);
-    abs_val = ap_abstract1_assign_linexpr(man, true, &abs_val, var, &expr, NULL);
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     fprintf(stderr, "assigned linexpr to x\n");
-    ap_abstract1_fprint(stderr, man, &abs_val);
+    ap_abstract1_fprint(stderr, man, &absValue);
     
     ap_linexpr1_clear(&expr);
 

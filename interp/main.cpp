@@ -66,7 +66,7 @@ class VerifierPass : public ModulePass {
         
         for(auto funcItr = M.begin(); funcItr != M.end(); funcItr++) {
             if (funcItr->getName() == "main"){
-                mainF = (Function*)funcItr;
+                mainF = &(*funcItr);
                 break;    
             }
         }
@@ -146,10 +146,10 @@ class VerifierPass : public ModulePass {
 
         map<Function*, map<Instruction*, Instruction*>> feasibleInterf;
         
+        map<Instruction*, Instruction*> *curFuncInterf;
         for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
             fprintf(stderr, "DEBUG: Analyzing thread %s\n", (*funcItr)->getName());
-            
-            map<Instruction*, Instruction*> *curFuncInterf;
+
             // find feasible interfernce for current function
             auto searchInterf = feasibleInterf.find(*funcItr);
             if (searchInterf != feasibleInterf.end()) {
@@ -165,7 +165,11 @@ class VerifierPass : public ModulePass {
             
             // TODO: Program state of each function might have different local varibales.
             
-            analyzeThread(*funcItr, curFuncInterf, initDomain);
+            map<Instruction*, Domain> newFuncInterf;
+            newFuncInterf = analyzeThread(*funcItr, curFuncInterf, initDomain);
+            // join newFuncInterf of all feasibleInterfs and replace old one
+
+            // curFuncInterf->clear();
         }
     }
 
@@ -173,17 +177,18 @@ class VerifierPass : public ModulePass {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
 
-        map <BasicBlock*, Domain> bbToDomain;
-       
+        map <Instruction*, Domain> curFuncDomain;
+        // Domain predDomain;
+
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
 
-            Domain curBBDomain = initDomain;
-            // initial domain of cur bb is join of all it's pred
+            Domain predDomain = initDomain;
+            // initial domain of pred of cur bb to join of all it's pred
             for (BasicBlock *Pred : predecessors(currentBB)){
-                auto searchPredBBDomain = bbToDomain.find(currentBB);
-                if (searchPredBBDomain != bbToDomain.end())
-                    curBBDomain.joinDomain(searchPredBBDomain->second);
+                auto searchPredBBDomain = curFuncDomain.find(Pred->getTerminator());
+                if (searchPredBBDomain != curFuncDomain.end())
+                    predDomain.joinDomain(searchPredBBDomain->second);
                 // TODO: if the domain is empty? It means pred bb has not been analyzed so far
                 // we can't analyze current BB
             }
@@ -191,12 +196,12 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            curBBDomain = analyzeBasicBlock(currentBB, curBBDomain);
-            bbToDomain[currentBB] = curBBDomain;
+            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain);
         }
+        return curFuncDomain;
     }
 
-    Domain analyzeBasicBlock(BasicBlock *B, Domain predDomain) {
+    Domain analyzeBasicBlock(BasicBlock *B, Domain curDomain, map <Instruction*, Domain> curFuncDomain) {
         // check type of inst, and performTrasformations
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
@@ -208,12 +213,12 @@ class VerifierPass : public ModulePass {
                     fprintf(stderr, "ERROR: new mem alloca");
                     exit(0);
                 }
-                predDomain.addVariable(searchName->second);
+                curDomain.addVariable(searchName->second);
             }
 
         }
         
-        return predDomain;
+        return curDomain;
     }
 
     //  call approprproate function for the inst passed
