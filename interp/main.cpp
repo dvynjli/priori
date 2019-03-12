@@ -2,6 +2,7 @@
 #include "domain.h"
 #include "analyzer.h"
 #include "z3_handler.h"
+#include "llvm/IR/CFG.h"
 
 class IntVar {
     string name;
@@ -18,18 +19,21 @@ class VerifierPass : public ModulePass {
         Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
     */
     vector<Function*> threads;
-    ProgramState program_state;
+    map<Function*, map<Instruction*, Domain>> programState;
+    map <string, Value*> nameToValue;
+    map <Value*, string> valueToName;
 
+    
     bool runOnModule (Module &M) {
         errs() << "LLVM pass is running\n";
-        program_state = ProgramState();
+        Domain initDomain = Domain();
         // TODO: get domain type based on comman line arguments
-        string domain_type = "box";
-        program_state.init(domain_type, getGlobalIntVars(M));
+        string domainType = "box";
+        initDomain.init(domainType, getGlobalIntVars(M));
         
         initThreadDetails(M);
 
-        analyzeProgram(M);
+        analyzeProgram(M, initDomain);
 
         // unsat_core_example1();
     }
@@ -79,6 +83,9 @@ class VerifierPass : public ModulePass {
         queue<Function*> funcQ;
         funcQ.push(mainF);
         // for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
+
+        int localVarCounter = 0;
+
         while(!funcQ.empty())
         {
             Function *func = funcQ.front();
@@ -104,6 +111,14 @@ class VerifierPass : public ModulePass {
                             it->dump();
                         }
                     }
+                    else if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(it)) {
+                        string varName = "var" + to_string(localVarCounter);
+                        localVarCounter++;
+                        fprintf(stderr, "DEBUG: found local var named %s\n", varName.c_str());
+                        nameToValue.emplace(varName, allocaInst);
+                        valueToName.emplace(allocaInst, varName);
+                        // domain.add_variable(varName);
+                    }
                     /*
                     else
                         checkInstruction(&(*it));
@@ -125,18 +140,80 @@ class VerifierPass : public ModulePass {
         }
     }
 
-    void analyzeProgram(Module &M) {
+    void analyzeProgram(Module &M, Domain initDomain) {
         // call analyzThread, get interf, check fix point
         // need to addRule, check feasible interfs
 
+        map<Function*, map<Instruction*, Instruction*>> feasibleInterf;
+        
+        for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
+            fprintf(stderr, "DEBUG: Analyzing thread %s\n", (*funcItr)->getName());
+            
+            map<Instruction*, Instruction*> *curFuncInterf;
+            // find feasible interfernce for current function
+            auto searchInterf = feasibleInterf.find(*funcItr);
+            if (searchInterf != feasibleInterf.end()) {
+                curFuncInterf = &(searchInterf->second);
+            }
+
+            // map<Instruction*, Domain> *cur_func_domain;
+            // // find domain of current function
+            // auto searchDomain = programState.find(*funcItr);
+            // if (programState.find(*funcItr) != programState.end()) {
+            //     cur_func_domain = &(searchDomain->second);
+            // }
+            
+            // TODO: Program state of each function might have different local varibales.
+            
+            analyzeThread(*funcItr, curFuncInterf, initDomain);
+        }
     }
 
-    void analyzeThread(Function &F) {
-        //call analyze BB, do the merging of BB
+    map<Instruction*, Domain> analyzeThread(Function *F, map<Instruction*, Instruction*> *interf, Domain initDomain) {
+        //call analyze BB, do the merging of BB depending upon term condition
+        //init for next BB with assume
+
+        map <BasicBlock*, Domain> bbToDomain;
+       
+        for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
+            BasicBlock *currentBB = &(*bbItr);
+
+            Domain curBBDomain = initDomain;
+            // initial domain of cur bb is join of all it's pred
+            for (BasicBlock *Pred : predecessors(currentBB)){
+                auto searchPredBBDomain = bbToDomain.find(currentBB);
+                if (searchPredBBDomain != bbToDomain.end())
+                    curBBDomain.joinDomain(searchPredBBDomain->second);
+                // TODO: if the domain is empty? It means pred bb has not been analyzed so far
+                // we can't analyze current BB
+            }
+            // if termination statement
+                // if coditional branching
+                // if unconditional branching
+
+            curBBDomain = analyzeBasicBlock(currentBB, curBBDomain);
+            bbToDomain[currentBB] = curBBDomain;
+        }
     }
 
-    void analyzeBasicBlock(BasicBlock &B) {
-        // check type in inst, and performTrasformations
+    Domain analyzeBasicBlock(BasicBlock *B, Domain predDomain) {
+        // check type of inst, and performTrasformations
+        
+        for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
+            Instruction *currentInst = &(*instItr);
+
+            if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
+                auto searchName = valueToName.find(currentInst);
+                if (searchName == valueToName.end()) {
+                    fprintf(stderr, "ERROR: new mem alloca");
+                    exit(0);
+                }
+                predDomain.addVariable(searchName->second);
+            }
+
+        }
+        
+        return predDomain;
     }
 
     //  call approprproate function for the inst passed

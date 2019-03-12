@@ -1,4 +1,4 @@
-Q. Do we need variable in anv for all SSA variables?
+Q. Do we need variable in env for all SSA variables?
 A. Yes. Otherwise we need to do computation on source program, which require making a c++ parser.
 
 Q. Load and AtomicLoad (and store) can be handled same way?
@@ -9,12 +9,15 @@ A. From Apron point of view - yes,
 Q. How to handle interferences of a thread with itself if more than one instance of a thread is executing?
 A. ???
 
+Q. Do we need to keep env of all instr in memory?
+A. 
+
 
 Instructions that need Apron interface-
     BinOp   +, -, *, /, %, &&, ||, rmw, 
             &, | (can be added later)
-    UnaryOp !, -, load, store
-            ~ (can be added later)
+    UnaryOp !, load, store
+            -, ~ (can be added later)
     CmpXchg
     Function calls (can be added later)
 Instructions that need Z3 interface-
@@ -23,3 +26,16 @@ Instructions that need Z3 interface-
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
+
+
+
+Possible Optimizations:
+    don't support thread creation from functions other than main()
+        reduced one pass over program
+    Reduce number of maps (if maps are taking too much time):
+        run a pass to give instr id to each intruction and store the environment of the intructions in this order or make a wrapper around Instructions
+
+    parallelization
+        checking feasiblity of interfernces with analysis of other thread
+        analysis of all threads for 1 iteration
+    

@@ -6,6 +6,8 @@ int x, y;
 
 void* fun2(void * arg){
 	x = y + 1;
+	int a = 10;
+	y = a+x;
 	return NULL;
 }
 
