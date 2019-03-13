@@ -6,8 +6,9 @@
 using namespace std;
 
 atomic<int> x, y;
-float a;
+atomic<float> a;
 int b;
+float c;
 
 void* fun2(void * arg){
 	// x.compare_exchange_strong(a, b, memory_order_relaxed);

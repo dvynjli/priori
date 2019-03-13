@@ -36,12 +36,25 @@ class VerifierPass : public ModulePass {
         for (auto it = M.global_begin(); it != M.global_end(); it++){
             // cerr << "Global var: " << it->getName() << endl;
             // fprintf(stderr, "Global var: %s of type: %d\n", it->getName(), it->getValueType()->getTypeID());
+            // it->getValueType()->print(errs());
             if (it->getValueType()->isIntegerTy()) {
                 string varName = it->getName();
                 intVars.push_back(varName);
                 Value * varInst = &(*it);
                 nameToValue.emplace(varName, varInst);
                 valueToName.emplace(varInst, varName);
+            }
+            else if (StructType* structTy = dyn_cast<StructType>(it->getValueType())) {
+                if  (!structTy->getName().compare("struct.std::atomic")) {
+                    string varName = it->getName();
+                    intVars.push_back(varName);
+                    Value * varInst = &(*it);
+                    nameToValue.emplace(varName, varInst);
+                    valueToName.emplace(varInst, varName);
+                }
+                else {
+                    fprintf(stderr, "WARNING: found global structure: %s. It will not be analyzed", structTy->getName());
+                }
             }
 
             // Needed for locks
