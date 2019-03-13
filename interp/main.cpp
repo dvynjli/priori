@@ -4,14 +4,6 @@
 #include "z3_handler.h"
 #include "llvm/IR/CFG.h"
 
-class IntVar {
-    string name;
-    int val;        //TODO: change to value in abstarct domain and init accordingly
-
-    public:
-        IntVar(string name, int val) : name(name), val(val) {}
-};
-
 class VerifierPass : public ModulePass {
 
     /* TODO: Should I create threads as a set or vector??
@@ -20,6 +12,7 @@ class VerifierPass : public ModulePass {
     */
     vector<Function*> threads;
     map<Function*, map<Instruction*, Domain>> programState;
+    map<Function*, Domain> funcInitDomain;
     map <string, Value*> nameToValue;
     map <Value*, string> valueToName;
 
@@ -31,9 +24,9 @@ class VerifierPass : public ModulePass {
         string domainType = "box";
         initDomain.init(domainType, getGlobalIntVars(M));
         
-        initThreadDetails(M);
+        initThreadDetails(M, initDomain);
 
-        analyzeProgram(M, initDomain);
+        analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -42,9 +35,13 @@ class VerifierPass : public ModulePass {
         vector<string> intVars;
         for (auto it = M.global_begin(); it != M.global_end(); it++){
             // cerr << "Global var: " << it->getName() << endl;
-            fprintf(stderr, "Global var: %s of type: %d\n", it->getName(), it->getValueType()->getTypeID());
+            // fprintf(stderr, "Global var: %s of type: %d\n", it->getName(), it->getValueType()->getTypeID());
             if (it->getValueType()->isIntegerTy()) {
-                intVars.push_back(it->getName());
+                string varName = it->getName();
+                intVars.push_back(varName);
+                Value * varInst = &(*it);
+                nameToValue.emplace(varName, varInst);
+                valueToName.emplace(varInst, varName);
             }
 
             // Needed for locks
@@ -73,7 +70,7 @@ class VerifierPass : public ModulePass {
         return mainF;
     }
 
-    void initThreadDetails(Module &M) {
+    void initThreadDetails(Module &M, Domain initDomain) {
         //find main function
         Function *mainF = getMainFunction(M);
 
@@ -84,12 +81,13 @@ class VerifierPass : public ModulePass {
         funcQ.push(mainF);
         // for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
 
-        int localVarCounter = 0;
+        int ssaVarCounter = 0;
 
         while(!funcQ.empty())
         {
             Function *func = funcQ.front();
             funcQ.pop();
+            Domain curFuncDomain = initDomain;
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
@@ -111,36 +109,28 @@ class VerifierPass : public ModulePass {
                             it->dump();
                         }
                     }
-                    else if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(it)) {
-                        string varName = "var" + to_string(localVarCounter);
-                        localVarCounter++;
-                        fprintf(stderr, "DEBUG: found local var named %s\n", varName.c_str());
-                        nameToValue.emplace(varName, allocaInst);
-                        valueToName.emplace(allocaInst, varName);
-                        // domain.add_variable(varName);
-                    }
-                    /*
-                    else
-                        checkInstruction(&(*it));
-                      if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(it)) {
-                        if (binOp->getOpcode() == Instruction::Add) {
-                            // fprintf(stderr, "Found add inst: ");
-                            // binOp->dump();
+                    else if (StoreInst *storeInst = dyn_cast<StoreInst>(it)) {
 
-                        }
-                        else{
-                            // fprintf(stderr, "Op found: %s\n", binOp->getOpcodeName());
-                        }
                     }
+                    else if (it->isTerminator()) {
+
+                    }
+
                     else {
-                        // fprintf(stderr, "Opcode of instruction: %d %s\n", it->getOpcode(), it->getOpcodeName());
-                    } */
+                        Instruction *inst = dyn_cast<Instruction>(it);
+                        string varName = "var" + to_string(ssaVarCounter);
+                        ssaVarCounter++;
+                        nameToValue.emplace(varName, inst);
+                        valueToName.emplace(inst, varName);
+                        curFuncDomain.addVariable(varName);
+                    }
                 }
             }
+            funcInitDomain[func] = curFuncDomain;
         }
     }
 
-    void analyzeProgram(Module &M, Domain initDomain) {
+    void analyzeProgram(Module &M) {
         // call analyzThread, get interf, check fix point
         // need to addRule, check feasible interfs
 
@@ -155,25 +145,20 @@ class VerifierPass : public ModulePass {
             if (searchInterf != feasibleInterf.end()) {
                 curFuncInterf = &(searchInterf->second);
             }
-
-            // map<Instruction*, Domain> *cur_func_domain;
-            // // find domain of current function
-            // auto searchDomain = programState.find(*funcItr);
-            // if (programState.find(*funcItr) != programState.end()) {
-            //     cur_func_domain = &(searchDomain->second);
-            // }
             
-            // TODO: Program state of each function might have different local varibales.
-            
-            map<Instruction*, Domain> newFuncInterf;
-            newFuncInterf = analyzeThread(*funcItr, curFuncInterf, initDomain);
-            // join newFuncInterf of all feasibleInterfs and replace old one
+            map<Instruction*, Domain> newFuncDomain;
+            map<string, vector<Instruction*>> *varToStores;
+            newFuncDomain = analyzeThread(*funcItr, curFuncInterf, varToStores);
+            // join newFuncDomain of all feasibleInterfs and replace old one in state
 
             // curFuncInterf->clear();
         }
     }
 
-    map<Instruction*, Domain> analyzeThread(Function *F, map<Instruction*, Instruction*> *interf, Domain initDomain) {
+    map<Instruction*, Domain> analyzeThread(
+                Function *F, 
+                map<Instruction*, Instruction*> *interf, 
+                map<string, vector<Instruction*>> *varToStores) {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
 
@@ -183,7 +168,8 @@ class VerifierPass : public ModulePass {
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
 
-            Domain predDomain = initDomain;
+            Domain predDomain = funcInitDomain[F];
+            // predDomain.printDomain();
             // initial domain of pred of cur bb to join of all it's pred
             for (BasicBlock *Pred : predecessors(currentBB)){
                 auto searchPredBBDomain = curFuncDomain.find(Pred->getTerminator());
@@ -196,34 +182,142 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain);
+            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain, varToStores);
         }
         return curFuncDomain;
     }
 
-    Domain analyzeBasicBlock(BasicBlock *B, Domain curDomain, map <Instruction*, Domain> curFuncDomain) {
+    Domain analyzeBasicBlock(
+        BasicBlock *B, 
+        Domain curDomain, 
+        map <Instruction*, Domain> curFuncDomain, 
+        map<string, vector<Instruction*>> *varToStores) {
         // check type of inst, and performTrasformations
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
 
             if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
-                auto searchName = valueToName.find(currentInst);
-                if (searchName == valueToName.end()) {
-                    fprintf(stderr, "ERROR: new mem alloca");
-                    exit(0);
-                }
-                curDomain.addVariable(searchName->second);
+                // auto searchName = valueToName.find(currentInst);
+                // if (searchName == valueToName.end()) {
+                //     fprintf(stderr, "ERROR: new mem alloca");
+                //     allocaInst->dump();
+                //     exit(0);
+                // }
             }
-
+            else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(instItr)) {
+                curDomain = checkBinInstruction(binOp, curDomain);
+            }
+            else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
+                curDomain = checkStoreInst(storeInst, curDomain);
+            }
+            else if (UnaryInstruction *unaryInst = dyn_cast<UnaryInstruction>(instItr)) {
+                curDomain = checkUnaryInst(unaryInst, curDomain);
+            }
+            // RMW, CMPXCHG
         }
         
         return curDomain;
     }
 
-    //  call approprproate function for the inst passed
-    void checkInstruction(Instruction* inst){
+    string getNameFromValue(Value *val) {
+        auto searchName = valueToName.find(val);
+        if (searchName == valueToName.end()) {
+            val->dump();
+            fprintf(stderr, "ERROR: Instrution not found in Instruction to Name map\n");
+            exit(0);
+        }
+        return searchName->second;
+    }
 
+    //  call approprproate function for the inst passed
+    Domain checkBinInstruction(BinaryOperator* binOp, Domain curDomain) {
+        operation oper;
+        switch (binOp->getOpcode()) {
+            case Instruction::Add:
+                oper = ADD;
+                break;
+            case Instruction::Sub:
+                oper = SUB;
+                break;
+            case Instruction::Mul:
+                oper = MUL;
+                break;
+            // TODO: add more cases
+            default:
+                fprintf(stderr, "ERROR: unknown operation: ");
+                binOp->dump();
+        }
+
+        string destVarName = getNameFromValue(binOp);
+        Value* fromVar1 = binOp->getOperand(0);
+        Value* fromVar2 = binOp->getOperand(1);
+        if (Constant *constFromVar1 = dyn_cast<Constant>(fromVar1)) {
+            int constFromIntVar1= constFromVar1->getUniqueInteger().getSExtValue();
+            if (Constant *constFromVar2 = dyn_cast<Constant>(fromVar2)) {
+                int constFromIntVar2 = constFromVar2->getUniqueInteger().getSExtValue();
+                fprintf(stderr, "BinOp with int int\n");
+                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
+            }
+            else { 
+                string fromVar2Name = getNameFromValue(fromVar2);
+                fprintf(stderr, "BinOp with int string\n");
+                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
+            }
+        }
+        else if (Constant *constFromVar2 = dyn_cast<Constant>(fromVar2)) {
+            string fromVar1Name = getNameFromValue(fromVar1);
+            int constFromIntVar2 = constFromVar2->getUniqueInteger().getSExtValue();
+            fprintf(stderr, "BinOp with string int\n");
+            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
+        }
+        else {
+            string fromVar1Name = getNameFromValue(fromVar1);
+            string fromVar2Name = getNameFromValue(fromVar2);
+            fprintf(stderr, "BinOp with string string\n");
+            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, fromVar2Name);
+        }
+
+        return curDomain;
+    }
+
+    Domain checkStoreInst(StoreInst* storeInst, Domain curDomain) {
+        Value* destVar = storeInst->getPointerOperand();
+        string destVarName = getNameFromValue(destVar);
+
+        Value* fromVar = storeInst->getValueOperand();
+        if (Constant *constFromVar = dyn_cast<Constant>(fromVar)) {
+            int constFromIntVar = constFromVar->getUniqueInteger().getSExtValue();
+            curDomain.performUnaryOp(STORE, destVarName, constFromIntVar);
+        }
+        else if(Argument *argFromVar = dyn_cast<Argument>(fromVar)) {
+            // TODO: handle function arguments
+        }
+        else {
+            string fromVarName = getNameFromValue(fromVar);
+            curDomain.performUnaryOp(STORE, destVarName, fromVarName);
+        }
+        return curDomain;
+    }
+
+    Domain checkUnaryInst(UnaryInstruction* unaryInst, Domain curDomain) {
+        operation oper;
+        switch (unaryInst->getOpcode()) {
+            case Instruction::Load:
+                oper = LOAD;
+                break;
+            // TODO: add more cases
+            default: 
+                fprintf(stderr, "ERROR: unknown operation: ");
+                unaryInst->dump();
+        }
+        Value* fromVar = unaryInst->getOperand(0);
+        string fromVarName = getNameFromValue(fromVar);
+        string destVarName = getNameFromValue(unaryInst);
+
+        curDomain.performUnaryOp(oper, destVarName, fromVarName);
+
+        return curDomain;
     }
 
     public:

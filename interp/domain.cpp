@@ -13,7 +13,7 @@ void Domain::init(string domainType, vector<string> intVars){
     ap_abstract1_fdump(stderr, man,  &absValue);
 
     DEBUG && fprintf(stderr, "performing transforms\n");
-    performTrasfer(man, env, absValue);
+    // performTrasfer(man, env, absValue);
 }
 
 ap_manager_t* Domain::initApManager(string domainType) {
@@ -44,7 +44,34 @@ void Domain::joinDomain(Domain other) {
 }
 
 void Domain::addVariable(string varName) {
+    ap_var_t newIntAp = (ap_var_t)(varName.c_str());
+    int oldSize = env->intdim;
+    // env = ap_environment_add(env, &newIntAp, oldSize+1, NULL, 0);
+}
 
+void Domain::performUnaryOp(operation oper, string strTo, int intOp) {
+    fprintf(stderr, "%d %d to %s\n", oper, intOp, strTo.c_str());
+}
+void Domain::performUnaryOp(operation oper, string strTo, string strOp) {
+    fprintf(stderr, "%d %s to %s\n", oper, strOp.c_str(), strTo.c_str());
+}
+
+void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+    fprintf(stderr, "%d %s and %s to %s\n", oper, strOp1.c_str(), strOp2.c_str(), strTo.c_str());
+}
+void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+    fprintf(stderr, "%d %s and %d to %s\n", oper, strOp1.c_str(), intOp2, strTo.c_str());
+}
+void performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+    fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
+}
+void performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+    fprintf(stderr, "%d %d and %d to %s\n", oper, intOp1, intOp2, strTo.c_str());
+}
+    
+
+void Domain::printDomain() {
+    ap_abstract1_fdump(stderr, man,  &absValue);
 }
 
 void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {

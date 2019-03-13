@@ -12,6 +12,11 @@ A. ???
 Q. Do we need to keep env of all instr in memory?
 A. 
 
+Q. What to do for loops?
+A. 
+
+Q. What to do for function arguments
+
 
 Instructions that need Apron interface-
     BinOp   +, -, *, /, %, &&, ||, rmw, 
@@ -34,6 +39,7 @@ Possible Optimizations:
         reduced one pass over program
     Reduce number of maps (if maps are taking too much time):
         run a pass to give instr id to each intruction and store the environment of the intructions in this order or make a wrapper around Instructions
+
 
     parallelization
         checking feasiblity of interfernces with analysis of other thread

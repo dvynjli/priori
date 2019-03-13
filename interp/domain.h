@@ -19,11 +19,21 @@ class Domain {
 
     public:
     void init(string domainType, vector<string> intVars);
-    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+
+    //overload these functions for constants
+    // Operations on variables
     void performUnaryOp(operation oper, string strTo, string strOp);
+    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
     void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
+    // Operations on constants
+    void performUnaryOp(operation oper, string strTo, int intOp);
+    void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
+    void performBinaryOp(operation oper, string strTo, int intOp1, string strOp2);
+    void performBinaryOp(operation oper, string strTo, int intOp1, int intOp2);
+
     void joinDomain(Domain other);
     void addVariable(string varName);
+    void printDomain();
 };
 
 
