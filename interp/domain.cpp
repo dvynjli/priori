@@ -64,6 +64,25 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int in
 }
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
     fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
+    // ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    // switch(oper) {
+    //     case ADD:
+    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp2, AP_CST_S_INT, intOp1, AP_END);
+    //         break;
+    //     case SUB:
+    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, -1, strOp2, AP_CST_S_INT, intOp1, AP_END);
+    //         break;
+    //     case MUL:
+    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2, AP_END);
+    //         break;
+    // }
+    // ap_linexpr1_fprint(stderr, &expr);
+    // ap_var_t var = (ap_var_t) strTo.c_str();
+    // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    // fprintf(stderr, "assigned linexpr to x\n");
+    // ap_abstract1_fprint(stderr, man, &absValue);
+    
+    
 }
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
     fprintf(stderr, "%d %d and %d to %s\n", oper, intOp1, intOp2, strTo.c_str());

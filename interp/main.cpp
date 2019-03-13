@@ -3,6 +3,7 @@
 #include "analyzer.h"
 #include "z3_handler.h"
 #include "llvm/IR/CFG.h"
+#include "llvm/IR/Constants.h"
 
 class VerifierPass : public ModulePass {
 
@@ -119,7 +120,8 @@ class VerifierPass : public ModulePass {
                         }
                         else {
                             cout << "unknown function call:\n";
-                            it->dump();
+                            // it->dump();
+                            it->print(errs());
                         }
                     }
                     else if (StoreInst *storeInst = dyn_cast<StoreInst>(it)) {
@@ -210,6 +212,9 @@ class VerifierPass : public ModulePass {
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
 
+            currentInst->print(errs());
+            errs()<<"\n";
+
             if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
                 // auto searchName = valueToName.find(currentInst);
                 // if (searchName == valueToName.end()) {
@@ -236,8 +241,10 @@ class VerifierPass : public ModulePass {
     string getNameFromValue(Value *val) {
         auto searchName = valueToName.find(val);
         if (searchName == valueToName.end()) {
-            val->dump();
-            fprintf(stderr, "ERROR: Instrution not found in Instruction to Name map\n");
+            // val->dump();
+            val->print(errs());
+            errs() << "\nERROR: Instrution not found in Instruction to Name map\n";
+            // fprintf(stderr, "ERROR: Instrution not found in Instruction to Name map\n");
             exit(0);
         }
         return searchName->second;
@@ -265,10 +272,10 @@ class VerifierPass : public ModulePass {
         string destVarName = getNameFromValue(binOp);
         Value* fromVar1 = binOp->getOperand(0);
         Value* fromVar2 = binOp->getOperand(1);
-        if (Constant *constFromVar1 = dyn_cast<Constant>(fromVar1)) {
-            int constFromIntVar1= constFromVar1->getUniqueInteger().getSExtValue();
-            if (Constant *constFromVar2 = dyn_cast<Constant>(fromVar2)) {
-                int constFromIntVar2 = constFromVar2->getUniqueInteger().getSExtValue();
+        if (ConstantInt *constFromVar1 = dyn_cast<ConstantInt>(fromVar1)) {
+            int constFromIntVar1= constFromVar1->getValue().getSExtValue();
+            if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
+                int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
                 curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
             }
             else { 
@@ -276,9 +283,9 @@ class VerifierPass : public ModulePass {
                 curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
             }
         }
-        else if (Constant *constFromVar2 = dyn_cast<Constant>(fromVar2)) {
+        else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
-            int constFromIntVar2 = constFromVar2->getUniqueInteger().getSExtValue();
+            int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
             curDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
         }
         else {
@@ -294,18 +301,39 @@ class VerifierPass : public ModulePass {
         Value* destVar = storeInst->getPointerOperand();
         string destVarName = getNameFromValue(destVar);
 
+        errs()<<"Type of fromval operand\n";
+        storeInst->getValueOperand()->getType()->print(errs());
+        errs()<<"\n";
+
         Value* fromVar = storeInst->getValueOperand();
-        if (Constant *constFromVar = dyn_cast<Constant>(fromVar)) {
-            int constFromIntVar = constFromVar->getUniqueInteger().getSExtValue();
+        fprintf(stderr, "storeinst1, fromVar: \n");
+        fromVar->print(errs());
+        errs()<<"\n";
+
+        if (ConstantInt *constFromVar = dyn_cast<ConstantInt>(fromVar)) {
+            int constFromIntVar = constFromVar->getValue().getSExtValue();
             curDomain.performUnaryOp(STORE, destVarName, constFromIntVar);
         }
-        else if(Argument *argFromVar = dyn_cast<Argument>(fromVar)) {
-            // TODO: handle function arguments
+        else if (fromVar->getType()->isStructTy()) {
+            // fprintf(stderr, "here\n");
+            // if  (!structTy->getName().compare("struct.std::atomic")) {
+            //     string fromVarName = structTy->getName();
+            //     fprintf(stderr, "Atomic var found: %s\n", fromVarName.c_str());
+            // }
         }
+        else if (Argument *argFromVar = dyn_cast<Argument>(fromVar)) {
+            // TODO: handle function arguments
+            // fprintf(stderr, "storeinst3\n");
+
+        }
+        else if (fromVar->getType()->isPointerTy()) {}
         else {
+            // fprintf(stderr, "storeinst4\n");
             string fromVarName = getNameFromValue(fromVar);
             curDomain.performUnaryOp(STORE, destVarName, fromVarName);
         }
+        // fprintf(stderr, "storeinst5\n");
+
         return curDomain;
     }
 
