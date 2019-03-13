@@ -256,25 +256,21 @@ class VerifierPass : public ModulePass {
             int constFromIntVar1= constFromVar1->getUniqueInteger().getSExtValue();
             if (Constant *constFromVar2 = dyn_cast<Constant>(fromVar2)) {
                 int constFromIntVar2 = constFromVar2->getUniqueInteger().getSExtValue();
-                fprintf(stderr, "BinOp with int int\n");
                 curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
             }
             else { 
                 string fromVar2Name = getNameFromValue(fromVar2);
-                fprintf(stderr, "BinOp with int string\n");
                 curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
             }
         }
         else if (Constant *constFromVar2 = dyn_cast<Constant>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
             int constFromIntVar2 = constFromVar2->getUniqueInteger().getSExtValue();
-            fprintf(stderr, "BinOp with string int\n");
             curDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
         }
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
-            fprintf(stderr, "BinOp with string string\n");
             curDomain.performBinaryOp(oper, destVarName, fromVar1Name, fromVar2Name);
         }
 

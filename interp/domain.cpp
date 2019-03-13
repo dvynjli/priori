@@ -56,16 +56,16 @@ void Domain::performUnaryOp(operation oper, string strTo, string strOp) {
     fprintf(stderr, "%d %s to %s\n", oper, strOp.c_str(), strTo.c_str());
 }
 
-void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+void Domain::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
     fprintf(stderr, "%d %s and %s to %s\n", oper, strOp1.c_str(), strOp2.c_str(), strTo.c_str());
 }
-void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
     fprintf(stderr, "%d %s and %d to %s\n", oper, strOp1.c_str(), intOp2, strTo.c_str());
 }
-void performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
     fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
 }
-void performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
     fprintf(stderr, "%d %d and %d to %s\n", oper, intOp1, intOp2, strTo.c_str());
 }
     
