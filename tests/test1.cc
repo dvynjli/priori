@@ -1,20 +1,27 @@
-#include <stdio.h>
+#include <iostream>
 #include <pthread.h>
 #include <assert.h>
+#include <atomic>
 
-int x, y;
+using namespace std;
+
+atomic<int> x, y;
+float a;
+int b;
 
 void* fun2(void * arg){
-	x = y + 1;
+	// x.compare_exchange_strong(a, b, memory_order_relaxed);
+	// atomic_fetch_add_explicit(&x, 1, memory_order_acq_rel);
+	x.store(y.load(memory_order_relaxed)+1, memory_order_relaxed);
 	int a = 10;
-	y = a+x;
+	y.store(a+x.load(memory_order_relaxed), memory_order_relaxed);
 	return NULL;
 }
 
 void* fun1(void * arg){
 	pthread_t t1;
 	pthread_create(&t1, NULL, fun2, NULL);
-	y = 10;
+	y.store(10, memory_order_relaxed);
 	pthread_join(t1, NULL);
 	return NULL;
 }

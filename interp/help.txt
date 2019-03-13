@@ -9,13 +9,11 @@ A. From Apron point of view - yes,
 Q. How to handle interferences of a thread with itself if more than one instance of a thread is executing?
 A. ???
 
-Q. Do we need to keep env of all instr in memory?
-A. 
-
 Q. What to do for loops?
 A. 
 
-Q. What to do for function arguments
+Q. What to do for function arguments?
+A.
 
 
 Instructions that need Apron interface-
@@ -27,6 +25,9 @@ Instructions that need Apron interface-
     Function calls (can be added later)
 Instructions that need Z3 interface-
     thread create, thread join, fences, lock,
+
+TODO:
+    atomic global int
 
 
 
