@@ -104,7 +104,6 @@ class VerifierPass : public ModulePass {
         {
             Function *func = funcQ.front();
             funcQ.pop();
-            fprintf(stderr, "\n**********Analyzing thread %s*********\n", func->getName());
             Domain curFuncDomain(initDomain);
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
@@ -159,7 +158,7 @@ class VerifierPass : public ModulePass {
         
         map<Instruction*, Instruction*> *curFuncInterf;
         for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
-            fprintf(stderr, "DEBUG: Analyzing thread %s\n", (*funcItr)->getName());
+            fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", (*funcItr)->getName());
 
             // find feasible interfernce for current function
             auto searchInterf = feasibleInterf.find(*funcItr);
