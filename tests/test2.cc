@@ -5,17 +5,11 @@
 
 using namespace std;
 
-atomic<int> x, y;
-int b;
+int x,y;
 float c;
 
 void* fun2(void * arg){
-	// x.compare_exchange_strong(a, b, memory_order_relaxed);
-	// atomic_fetch_add_explicit(&x, 1, memory_order_acq_rel);
-	// x.store(y.load(memory_order_relaxed)+1, memory_order_relaxed);
-	// int a = 10;
-	// y.store(a+x.load(memory_order_relaxed), memory_order_relaxed);
-	y.load(memory_order_relaxed);
+	x = 10;
 	return NULL;
 }
 
@@ -24,7 +18,7 @@ void* fun1(void * arg){
 	pthread_create(&t1, NULL, fun2, NULL);
 	int a = 10+20;
 	int b = a*a;
-	x.store(b, memory_order_relaxed);
+	y = x + b;
 	pthread_join(t1, NULL);
 	return NULL;
 }
