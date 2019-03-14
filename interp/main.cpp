@@ -21,12 +21,12 @@ class VerifierPass : public ModulePass {
     
     bool runOnModule (Module &M) {
         errs() << "LLVM pass is running\n";
-        Domain initDomain = Domain();
+        // Domain initDomain = Domain();
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
-        initDomain.init(domainType, getGlobalIntVars(M));
+        // initDomain.init(domainType, getGlobalIntVars(M));
         
-        initThreadDetails(M, initDomain);
+        initThreadDetails(M, getGlobalIntVars(M), domainType);
 
         analyzeProgram(M);
 
@@ -85,7 +85,7 @@ class VerifierPass : public ModulePass {
         return mainF;
     }
 
-    void initThreadDetails(Module &M, Domain initDomain) {
+    void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
         //find main function
         Function *mainF = getMainFunction(M);
 
@@ -104,7 +104,7 @@ class VerifierPass : public ModulePass {
         {
             Function *func = funcQ.front();
             funcQ.pop();
-            Domain curFuncDomain(initDomain);
+            vector<string> funcVars(globalVars);
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
@@ -113,10 +113,11 @@ class VerifierPass : public ModulePass {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
                             {  
-                                threads.push_back(newThread); 	
                                 auto inSet = funcSet.insert(newThread);
-                                if (inSet.second)
+                                if (inSet.second) {
                                     funcQ.push(newThread);
+                                    threads.push_back(newThread); 	
+                                }
                             }
                             // TODO: need to add dominates rules
                         }
@@ -127,6 +128,7 @@ class VerifierPass : public ModulePass {
                             cout << "unknown function call:\n";
                             // it->dump();
                             it->print(errs());
+                            errs() <<"\n";
                         }
                     }
                     else if (StoreInst *storeInst = dyn_cast<StoreInst>(it)) {
@@ -142,11 +144,13 @@ class VerifierPass : public ModulePass {
                         ssaVarCounter++;
                         nameToValue.emplace(varName, inst);
                         valueToName.emplace(inst, varName);
-                        curFuncDomain.addVariable(varName);
+                        funcVars.push_back(varName);
                     }
                 }
             }
-            funcInitDomain[func] = curFuncDomain;
+            Domain curFuncDomain;
+            curFuncDomain.init(domainType, funcVars);
+            funcInitDomain.emplace(func, curFuncDomain);
         }
     }
 
@@ -275,7 +279,7 @@ class VerifierPass : public ModulePass {
             // TODO: add more cases
             default:
                 fprintf(stderr, "WARNING: unknown operation: ");
-                binOp->dump();
+                binOp->print(errs());
                 return curDomain;
         }
 
@@ -338,7 +342,7 @@ class VerifierPass : public ModulePass {
             // TODO: add more cases
             default: 
                 fprintf(stderr, "ERROR: unknown operation: ");
-                unaryInst->dump();
+                unaryInst->print(errs());
                 return curDomain;
         }
         Value* fromVar = unaryInst->getOperand(0);
