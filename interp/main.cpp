@@ -93,7 +93,9 @@ class VerifierPass : public ModulePass {
 
         // TODO: Why queue? Is it better to take it as set
         queue<Function*> funcQ;
+        unordered_set<Function*> funcSet;
         funcQ.push(mainF);
+        funcSet.insert(mainF);
         // for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
 
         int ssaVarCounter = 0;
@@ -102,7 +104,8 @@ class VerifierPass : public ModulePass {
         {
             Function *func = funcQ.front();
             funcQ.pop();
-            Domain curFuncDomain = initDomain;
+            fprintf(stderr, "\n**********Analyzing thread %s*********\n", func->getName());
+            Domain curFuncDomain(initDomain);
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
@@ -111,8 +114,10 @@ class VerifierPass : public ModulePass {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
                             {  
-                                threads.push_back(newThread);
-                                funcQ.push(newThread);
+                                threads.push_back(newThread); 	
+                                auto inSet = funcSet.insert(newThread);
+                                if (inSet.second)
+                                    funcQ.push(newThread);
                             }
                             // TODO: need to add dominates rules
                         }
@@ -213,9 +218,9 @@ class VerifierPass : public ModulePass {
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
 
-            // errs() << "DEBUG: Analyzing: ";
-            // currentInst->print(errs());
-            // errs()<<"\n";
+            errs() << "DEBUG: Analyzing: ";
+            currentInst->print(errs());
+            errs()<<"\n";
 
             if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
                 // auto searchName = valueToName.find(currentInst);
@@ -270,7 +275,7 @@ class VerifierPass : public ModulePass {
                 break;
             // TODO: add more cases
             default:
-                fprintf(stderr, "ERROR: unknown operation: ");
+                fprintf(stderr, "WARNING: unknown operation: ");
                 binOp->dump();
                 return curDomain;
         }

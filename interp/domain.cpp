@@ -55,20 +55,25 @@ void Domain::joinDomain(Domain other) {
 }
 
 void Domain::addVariable(string varName) {
-    // int newSize = env->intdim+1;
-    // fprintf(stderr, "resizing int dim to : %d\n", newSize);
-    // ap_var_t intAp[newSize];
+    int newSize = (env->intdim) + 1;
+    ap_var_t intAp[newSize];
+    for (int i = 0; i < newSize-1; i++){
+        intAp[i] = ap_environment_var_of_dim(env, i);
+    }
+    intAp[newSize-1] = (ap_var_t)(varName.c_str());
+    ap_var_t floatAp[0];
+    ap_environment_t *env1 = ap_environment_alloc(intAp, newSize, floatAp, 0);
+    ap_abstract1_t absVal1 = ap_abstract1_change_environment(man, true, &absValue, env1, false);
+    ap_abstract1_fdump(stderr, man,  &absVal1);
+    env = env1;
+    absValue = absVal1;
+    // env1 = ap_environment_add(env, intAp, newSize, floatAp, 0);
+    // fprintf(stderr, "new env:\n");
+    // ap_environment_fdump(stderr, env);
     // for (int i = 0; i < newSize-1; i++){
-    //     intAp[i] = ap_environment_var_of_dim(env, i);
+    //     intAp[i] = ap_environment_var_of_dim(env1, i);
     // }
-    // intAp[newSize-1] = (ap_var_t)(varName.c_str());
-    // fprintf(stderr, "IntAp done\n");
-    // for(int i = 0; i < newSize; i++)
-    //     fprintf(stderr, "intA %d: %s\n", i, (char*)intAp[i]);
-    // // ap_var_t newIntAp = (ap_var_t)(varName.c_str());
-    // ap_var_t floatAp[0];
-    // ap_environment_t *env1;
-    // // ap_environment_add(env1, intAp, newSize, floatAp, 0);
+    // ap_environment_fdump(stderr, env1);
 }
 
 void Domain::performUnaryOp(operation oper, string strTo, int intOp) {
