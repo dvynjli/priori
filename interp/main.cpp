@@ -24,7 +24,6 @@ class VerifierPass : public ModulePass {
         // Domain initDomain = Domain();
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
-        // initDomain.init(domainType, getGlobalIntVars(M));
         
         initThreadDetails(M, getGlobalIntVars(M), domainType);
 
@@ -96,8 +95,7 @@ class VerifierPass : public ModulePass {
         unordered_set<Function*> funcSet;
         funcQ.push(mainF);
         funcSet.insert(mainF);
-        // for(auto tIt= threads.begin(); tIt != threads.end(); tIt++)                 //all threads created so far
-
+        
         int ssaVarCounter = 0;
 
         while(!funcQ.empty())
@@ -126,7 +124,6 @@ class VerifierPass : public ModulePass {
                         }
                         else {
                             cout << "unknown function call:\n";
-                            // it->dump();
                             it->print(errs());
                             errs() <<"\n";
                         }
@@ -162,10 +159,11 @@ class VerifierPass : public ModulePass {
         
         map<Instruction*, Instruction*> *curFuncInterf;
         for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
-            fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", (*funcItr)->getName());
+            Function *curFunc = (*funcItr);
+            fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
 
             // find feasible interfernce for current function
-            auto searchInterf = feasibleInterf.find(*funcItr);
+            auto searchInterf = feasibleInterf.find(curFunc);
             if (searchInterf != feasibleInterf.end()) {
                 curFuncInterf = &(searchInterf->second);
             }
@@ -174,7 +172,13 @@ class VerifierPass : public ModulePass {
             map<string, vector<Instruction*>> *varToStores;
             newFuncDomain = analyzeThread(*funcItr, curFuncInterf, varToStores);
             // join newFuncDomain of all feasibleInterfs and replace old one in state
-
+            auto searchFunDomain = programState.find(curFunc);
+            if (searchFunDomain == programState.end()) {
+                programState.emplace(curFunc, newFuncDomain);
+            }
+            else {
+                programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
+            }
             // curFuncInterf->clear();
         }
     }
@@ -243,7 +247,9 @@ class VerifierPass : public ModulePass {
                 curDomain = checkUnaryInst(unaryInst, curDomain);
             }
             // RMW, CMPXCHG
+            curFuncDomain.emplace(currentInst, curDomain);
         }
+        
         
         return curDomain;
     }
@@ -352,6 +358,13 @@ class VerifierPass : public ModulePass {
         curDomain.performUnaryOp(oper, destVarName, fromVarName);
 
         return curDomain;
+    }
+
+    map<Instruction*, Domain> joinDomainByInstruction(
+            map<Instruction*, Domain> map1,
+            map<Instruction*, Domain> map2
+            ) {
+        // for (auto it = map1.)
     }
 
     public:

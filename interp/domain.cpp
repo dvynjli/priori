@@ -82,9 +82,7 @@ void Domain::performUnaryOp(operation oper, string strTo, int intOp) {
     // printDomain();
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     switch(oper) {
-        case LOAD:
-            ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp, AP_END);
-            break;
+        // case LOAD is not possible
         case STORE:
             ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp, AP_END);
             break;
@@ -119,11 +117,29 @@ void Domain::performUnaryOp(operation oper, string strTo, string strOp) {
 
 void Domain::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
     fprintf(stderr, "%d %s and %s to %s\n", oper, strOp1.c_str(), strOp2.c_str(), strTo.c_str());
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    switch(oper) {
+        case ADD:
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
+            break;
+        case SUB:
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
+            break;
+        case MUL:
+            // TODO: can't do using linexpr
+            break;
+    }
+    ap_linexpr1_fprint(stderr, &expr);
+    ap_var_t var = (ap_var_t) strTo.c_str();
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    fprintf(stderr, "After Transfer:\n");
+    printDomain();
 }
+
 void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
     fprintf(stderr, "%d %s and %d to %s\n", oper, strOp1.c_str(), intOp2, strTo.c_str());
-    fprintf(stderr, "Before transfor: \n");
-    printDomain();
+    // fprintf(stderr, "Before transfor: \n");
+    // printDomain();
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     switch(oper) {
         case ADD:
@@ -144,26 +160,43 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int in
 }
 
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
-    // fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
-    // ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
-    // switch(oper) {
-    //     case ADD:
-    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp2, AP_CST_S_INT, intOp1, AP_END);
-    //         break;
-    //     case SUB:
-    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, -1, strOp2, AP_CST_S_INT, intOp1, AP_END);
-    //         break;
-    //     case MUL:
-    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2, AP_END);
-    //         break;
-    // }
-    // ap_linexpr1_fprint(stderr, &expr);
-    // ap_var_t var = (ap_var_t) strTo.c_str();
-    // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
-    // fprintf(stderr, "assigned linexpr to x\n");
+    fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    switch(oper) {
+        case ADD:
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp2, AP_CST_S_INT, intOp1, AP_END);
+            break;
+        case SUB:
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, -1, strOp2, AP_CST_S_INT, intOp1, AP_END);
+            break;
+        case MUL:
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2, AP_END);
+            break;
+    }
+    ap_linexpr1_fprint(stderr, &expr);
+    ap_var_t var = (ap_var_t) strTo.c_str();
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    fprintf(stderr, "assigned linexpr to x\n");
 }
+
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
     fprintf(stderr, "%d %d and %d to %s\n", oper, intOp1, intOp2, strTo.c_str());
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    switch(oper) {
+        case ADD:
+            ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp1+intOp2, AP_END);
+            break;
+        case SUB:
+            ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp1-intOp2, AP_END);
+            break;
+        case MUL:
+            ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp1*intOp2, AP_END);
+            break;
+    }
+    ap_linexpr1_fprint(stderr, &expr);
+    ap_var_t var = (ap_var_t) strTo.c_str();
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    fprintf(stderr, "assigned linexpr to x\n");
 }
     
 

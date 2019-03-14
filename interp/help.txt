@@ -26,6 +26,9 @@ Instructions that need Apron interface-
 Instructions that need Z3 interface-
     thread create, thread join, fences, lock,
 
+TODO:
+    init local vars with TOP, not zero
+
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
