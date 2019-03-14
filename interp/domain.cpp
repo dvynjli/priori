@@ -10,10 +10,21 @@ void Domain::init(string domainType, vector<string> intVars){
     // fprintf(stderr, "var: %s\n", var);
     DEBUG && fprintf(stderr, "creating top\n");
     absValue = ap_abstract1_top(man, env);
-    ap_abstract1_fdump(stderr, man,  &absValue);
+    assignZerosToAllVars();
+    printDomain();
 
-    DEBUG && fprintf(stderr, "performing transforms\n");
+
+    // DEBUG && fprintf(stderr, "performing transforms\n");
     // performTrasfer(man, env, absValue);
+}
+
+void Domain::assignZerosToAllVars() {
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    for(int i = 0; i< env->intdim; i++) {
+        ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
+        ap_var_t var = ap_environment_var_of_dim(env, i);
+        absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    }
 }
 
 ap_manager_t* Domain::initApManager(string domainType) {
@@ -44,9 +55,20 @@ void Domain::joinDomain(Domain other) {
 }
 
 void Domain::addVariable(string varName) {
-    ap_var_t newIntAp = (ap_var_t)(varName.c_str());
-    int oldSize = env->intdim;
-    // env = ap_environment_add(env, &newIntAp, oldSize+1, NULL, 0);
+    // int newSize = env->intdim+1;
+    // fprintf(stderr, "resizing int dim to : %d\n", newSize);
+    // ap_var_t intAp[newSize];
+    // for (int i = 0; i < newSize-1; i++){
+    //     intAp[i] = ap_environment_var_of_dim(env, i);
+    // }
+    // intAp[newSize-1] = (ap_var_t)(varName.c_str());
+    // fprintf(stderr, "IntAp done\n");
+    // for(int i = 0; i < newSize; i++)
+    //     fprintf(stderr, "intA %d: %s\n", i, (char*)intAp[i]);
+    // // ap_var_t newIntAp = (ap_var_t)(varName.c_str());
+    // ap_var_t floatAp[0];
+    // ap_environment_t *env1;
+    // // ap_environment_add(env1, intAp, newSize, floatAp, 0);
 }
 
 void Domain::performUnaryOp(operation oper, string strTo, int intOp) {
@@ -60,10 +82,30 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, string
     fprintf(stderr, "%d %s and %s to %s\n", oper, strOp1.c_str(), strOp2.c_str(), strTo.c_str());
 }
 void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
-    fprintf(stderr, "%d %s and %d to %s\n", oper, strOp1.c_str(), intOp2, strTo.c_str());
+    // fprintf(stderr, "%d %s and %d to %s\n", oper, strOp1.c_str(), intOp2, strTo.c_str());
+    // fprintf(stderr, "Before transfor: ");
+    // printDomain();
+    // ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    // switch(oper) {
+    //     case ADD:
+    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1, AP_CST_S_INT, intOp2, AP_END);
+    //         break;
+    //     case SUB:
+    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1, AP_CST_S_INT, intOp2, AP_END);
+    //         break;
+    //     case MUL:
+    //         ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp2, strOp1, AP_END);
+    //         break;
+    // }
+    // ap_linexpr1_fprint(stderr, &expr);
+    // ap_var_t var = (ap_var_t) strTo.c_str();
+    // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    // fprintf(stderr, "assigned linexpr to x\n");
+    // printDomain();
 }
+
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
-    fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
+    // fprintf(stderr, "%d %d and %s to %s\n", oper, intOp1, strOp2.c_str(), strTo.c_str());
     // ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     // switch(oper) {
     //     case ADD:
@@ -80,9 +122,6 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string st
     // ap_var_t var = (ap_var_t) strTo.c_str();
     // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     // fprintf(stderr, "assigned linexpr to x\n");
-    // ap_abstract1_fprint(stderr, man, &absValue);
-    
-    
 }
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
     fprintf(stderr, "%d %d and %d to %s\n", oper, intOp1, intOp2, strTo.c_str());
