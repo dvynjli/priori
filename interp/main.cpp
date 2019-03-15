@@ -156,6 +156,7 @@ class VerifierPass : public ModulePass {
         // need to addRule, check feasible interfs
 
         map<Function*, map<Instruction*, Instruction*>> feasibleInterf;
+        map<Function*, map<string, unordered_set<Instruction*>>> allStores;
         
         map<Instruction*, Instruction*> *curFuncInterf;
         for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
@@ -169,8 +170,14 @@ class VerifierPass : public ModulePass {
             }
             
             map<Instruction*, Domain> newFuncDomain;
-            map<string, vector<Instruction*>> *varToStores;
-            newFuncDomain = analyzeThread(*funcItr, curFuncInterf, varToStores);
+
+            // all stores and loads to a variable from one thread
+            // Need to compute it only ones unless we are stopping analysis in the middle if domain is bottom
+            map<string, unordered_set<Instruction*>> varToStores;
+            map<string, unordered_set<Instruction*>> varToLoads;
+
+            // TODO: run this function for all interfs in curFuncInters
+            newFuncDomain = analyzeThread(*funcItr, curFuncInterf, varToStores, varToLoads);
             // join newFuncDomain of all feasibleInterfs and replace old one in state
             auto searchFunDomain = programState.find(curFunc);
             if (searchFunDomain == programState.end()) {
@@ -179,6 +186,26 @@ class VerifierPass : public ModulePass {
             else {
                 programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
             }
+
+            // all reachable stores from curFunc so far
+            errs() << "Stores in function: \n";
+            for (auto it=varToStores.begin(); it!=varToStores.end(); ++it) {
+                errs() << "Var: " << it->first << " -\n";
+                auto setOfStores = it->second;
+                for(auto it2=setOfStores.begin(); it2!=setOfStores.end(); ++it2) {
+                    (*it2)->print(errs());
+                    errs() << "\n";
+                }
+            }
+            errs() << "Loads in function: \n";
+            for (auto it=varToLoads.begin(); it!=varToLoads.end(); ++it) {
+                errs() << "Var: " << it->first << " -\n";
+                auto setOfLoads = it->second;
+                for(auto it2=setOfLoads.begin(); it2!=setOfLoads.end(); ++it2) {
+                    (*it2)->print(errs());
+                    errs() << "\n";
+                }
+            }
             // curFuncInterf->clear();
         }
     }
@@ -186,7 +213,9 @@ class VerifierPass : public ModulePass {
     map<Instruction*, Domain> analyzeThread(
                 Function *F, 
                 map<Instruction*, Instruction*> *interf, 
-                map<string, vector<Instruction*>> *varToStores) {
+                map<string, unordered_set<Instruction*>> &varToStores,
+                map<string, unordered_set<Instruction*>> &varToLoads
+                ) {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
 
@@ -210,8 +239,9 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain, varToStores);
+            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain, varToStores, varToLoads);
         }
+
         return curFuncDomain;
     }
 
@@ -219,7 +249,9 @@ class VerifierPass : public ModulePass {
         BasicBlock *B, 
         Domain curDomain, 
         map <Instruction*, Domain> curFuncDomain, 
-        map<string, vector<Instruction*>> *varToStores) {
+        map<string, unordered_set<Instruction*>> &varToStores,
+        map<string, unordered_set<Instruction*>> &varToLoads
+        ) {
         // check type of inst, and performTrasformations
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
@@ -241,10 +273,10 @@ class VerifierPass : public ModulePass {
                 curDomain = checkBinInstruction(binOp, curDomain);
             }
             else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
-                curDomain = checkStoreInst(storeInst, curDomain);
+                curDomain = checkStoreInst(storeInst, curDomain, varToStores);
             }
             else if (UnaryInstruction *unaryInst = dyn_cast<UnaryInstruction>(instItr)) {
-                curDomain = checkUnaryInst(unaryInst, curDomain);
+                curDomain = checkUnaryInst(unaryInst, curDomain, varToLoads);
             }
             // RMW, CMPXCHG
             curFuncDomain.emplace(currentInst, curDomain);
@@ -317,9 +349,16 @@ class VerifierPass : public ModulePass {
         return curDomain;
     }
 
-    Domain checkStoreInst(StoreInst* storeInst, Domain curDomain) {
+    Domain checkStoreInst(StoreInst* storeInst, Domain curDomain, map<string, unordered_set<Instruction*>> &varToStores) {
         Value* destVar = storeInst->getPointerOperand();
         string destVarName = getNameFromValue(destVar);
+
+        if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+           destVar = gepOp->getPointerOperand();
+        }
+        if (dyn_cast<GlobalVariable>(destVar)) {
+            varToStores[destVarName].insert(storeInst);
+        }
         
         Value* fromVar = storeInst->getValueOperand();
         
@@ -339,11 +378,21 @@ class VerifierPass : public ModulePass {
         return curDomain;
     }
 
-    Domain checkUnaryInst(UnaryInstruction* unaryInst, Domain curDomain) {
+    Domain checkUnaryInst(UnaryInstruction* unaryInst, Domain curDomain, map<string, unordered_set<Instruction*>> &varToLoads) {
+        Value* fromVar = unaryInst->getOperand(0);
+        string fromVarName = getNameFromValue(fromVar);
+        string destVarName = getNameFromValue(unaryInst);
+        
         operation oper;
         switch (unaryInst->getOpcode()) {
             case Instruction::Load:
                 oper = LOAD;
+                if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                    fromVar = gepOp->getPointerOperand();
+                }
+                if (dyn_cast<GlobalVariable>(fromVar)) {
+                    varToLoads[destVarName].insert(unaryInst);
+                }
                 break;
             // TODO: add more cases
             default: 
@@ -351,10 +400,7 @@ class VerifierPass : public ModulePass {
                 unaryInst->print(errs());
                 return curDomain;
         }
-        Value* fromVar = unaryInst->getOperand(0);
-        string fromVarName = getNameFromValue(fromVar);
-        string destVarName = getNameFromValue(unaryInst);
-
+        
         curDomain.performUnaryOp(oper, destVarName, fromVarName);
 
         return curDomain;

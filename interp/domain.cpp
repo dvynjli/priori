@@ -8,10 +8,10 @@ void Domain::init(string domainType, vector<string> intVars){
     ap_environment_fdump(stderr, env);
     // ap_var_t var = ap_environment_var_of_dim(env, 0);
     // fprintf(stderr, "var: %s\n", var);
-    DEBUG && fprintf(stderr, "creating top\n");
+    // DEBUG && fprintf(stderr, "creating top\n");
     absValue = ap_abstract1_top(man, env);
     assignZerosToAllVars();
-    printDomain();
+    // printDomain();
 
 
     // DEBUG && fprintf(stderr, "performing transforms\n");

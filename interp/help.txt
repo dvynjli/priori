@@ -28,6 +28,7 @@ Instructions that need Z3 interface-
 
 TODO:
     init local vars with TOP, not zero
+    check how to merge environments from two different iteration (due to different interferences)
 
 
 
