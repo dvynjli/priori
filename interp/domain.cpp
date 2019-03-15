@@ -101,9 +101,6 @@ void Domain::performUnaryOp(operation oper, string strTo, string strOp) {
     switch(oper) {
         case LOAD:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp.c_str(), AP_END);
-            fprintf(stderr, "loading ");
-            ap_linexpr1_fprint(stderr, &expr);
-            fprintf(stderr, " to %s\n", strTo.c_str());
             break;
         case STORE:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp.c_str(), AP_END);
@@ -202,6 +199,18 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp
 
 void Domain::printDomain() {
     ap_abstract1_fdump(stderr, man,  &absValue);
+}
+
+void Domain::applyInterference(string interfVar, Domain fromDomain) {
+    ap_var_t apInterVar = (ap_var_t) interfVar.c_str();
+    if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
+        fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
+        exit(0);
+    }
+    ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromDomain.man, &fromDomain.absValue, apInterVar);
+    ap_linexpr1_t expr = ap_linexpr1_make(fromDomain.env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
 }
 
 void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {

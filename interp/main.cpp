@@ -149,6 +149,18 @@ class VerifierPass : public ModulePass {
             curFuncDomain.init(domainType, funcVars);
             funcInitDomain.emplace(func, curFuncDomain);
         }
+        /*
+        // Sample code to test applyInterference()
+        auto funIt = funcInitDomain.begin();
+        Function *fun1 = funIt->first;
+        Domain fun1Domain = funIt->second;
+        fun1Domain.performUnaryOp(STORE, "x", 1);
+        funIt++;
+        Function *fun2 = funIt->first;
+        Domain fun2Domain = funIt->second;
+        fun2Domain.applyInterference("x", fun1Domain);
+        */
+
     }
 
     void analyzeProgram(Module &M) {
@@ -158,12 +170,15 @@ class VerifierPass : public ModulePass {
         map<Function*, map<Instruction*, Instruction*>> feasibleInterf;
         map<Function*, map<string, unordered_set<Instruction*>>> allStores;
         
-        map<Instruction*, Instruction*> *curFuncInterf;
+
+
         for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
             Function *curFunc = (*funcItr);
             fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
 
             // find feasible interfernce for current function
+            map<Instruction*, Instruction*> *curFuncInterf;
+
             auto searchInterf = feasibleInterf.find(curFunc);
             if (searchInterf != feasibleInterf.end()) {
                 curFuncInterf = &(searchInterf->second);
@@ -187,25 +202,6 @@ class VerifierPass : public ModulePass {
                 programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
             }
 
-            // all reachable stores from curFunc so far
-            errs() << "Stores in function: \n";
-            for (auto it=varToStores.begin(); it!=varToStores.end(); ++it) {
-                errs() << "Var: " << it->first << " -\n";
-                auto setOfStores = it->second;
-                for(auto it2=setOfStores.begin(); it2!=setOfStores.end(); ++it2) {
-                    (*it2)->print(errs());
-                    errs() << "\n";
-                }
-            }
-            errs() << "Loads in function: \n";
-            for (auto it=varToLoads.begin(); it!=varToLoads.end(); ++it) {
-                errs() << "Var: " << it->first << " -\n";
-                auto setOfLoads = it->second;
-                for(auto it2=setOfLoads.begin(); it2!=setOfLoads.end(); ++it2) {
-                    (*it2)->print(errs());
-                    errs() << "\n";
-                }
-            }
             // curFuncInterf->clear();
         }
     }

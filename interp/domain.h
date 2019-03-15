@@ -32,6 +32,8 @@ class Domain {
     void performBinaryOp(operation oper, string strTo, int intOp1, string strOp2);
     void performBinaryOp(operation oper, string strTo, int intOp1, int intOp2);
 
+    void applyInterference(string interfVar, Domain fromDomain);
+
     void joinDomain(Domain other);
     void addVariable(string varName);
     void printDomain();
