@@ -7,13 +7,19 @@ A. From Apron point of view - yes,
     from static analyzer - no (race detection)
 
 Q. How to handle interferences of a thread with itself if more than one instance of a thread is executing?
-A. ???
+A. Not handling as of now. Multiple threads of a function are not supported.
 
 Q. What to do for loops?
-A. 
+A. Can do manual unrooling. Will think about implementing support for widening and narrowing later
 
 Q. What to do for function arguments?
-A.
+A. Ignoring for now. Not to hard to add support for this
+
+Q. Can we work with computing possible interferences ones? Is there a way for these interferneces to change
+A. We can work with computing feasible interfernces ones before starting thread-modular analysis. 
+    All possible interferences are fixed since loads and stores of global variables can not change (assuming no pointers).
+    Feasiblity of these interferences depends upon memory order, program order and happens before relations,
+    which can not change mid-analysis.
 
 
 Instructions that need Apron interface-
