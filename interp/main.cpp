@@ -151,14 +151,31 @@ class VerifierPass : public ModulePass {
         return allLoadStorePair;
     }
 
+    map<Function*, vector< map<Instruction*, Instruction*>>> makeInterfsFromLSPair (
+        map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> allLoadStorePair
+    ){
+        for (auto allLSPairItr = allLoadStorePair.begin(); allLSPairItr!=allLoadStorePair.end(); ++allLSPairItr) {
+            Function *curFunc = allLSPairItr->first;
+            auto allLSPairOfFun = allLSPairItr->second;
+            for (auto varToLSPairItr=allLSPairOfFun.begin(); varToLSPairItr!=allLSPairOfFun.end(); ++varToLSPairItr) {
+                string varName = varToLSPairItr->first;
+                auto LSPairOfVar = varToLSPairItr->second;
+            }
+        }
+    }
+
+    
+
     void getFeasibleInterferences (
         map<Function*, map<string, unordered_set<Instruction*>>> allLoads,
         map<Function*, map<string, unordered_set<Instruction*>>> allStores
         ){
         map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
+        map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> allLoadStorePair;
         // Make all permutations
         // TODO: add dummy env i.e. load from itself
-        makeAllLSPair(allLoads, allStores);
+        allLoadStorePair = makeAllLSPair(allLoads, allStores);
+        allInterfs = makeInterfsFromLSPair(allLoadStorePair);
 
         // Check feasibility of permutations and save them in feasibleInterfences
     }
