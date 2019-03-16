@@ -86,50 +86,50 @@ class VerifierPass : public ModulePass {
     }
 
     map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> makeAllLSPair (
-        map<Function*, map<string, unordered_set<Instruction*>>> allLoads,
-        map<Function*, map<string, unordered_set<Instruction*>>> allStores
+            map<Function*, map<string, unordered_set<Instruction*>>> allLoads,
+            map<Function*, map<string, unordered_set<Instruction*>>> allStores
         ) {
-            map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> allLoadStorePair;
+        map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> allLoadStorePair;
 
-            for (auto funcItr=allLoads.begin(); funcItr!=allLoads.end(); ++funcItr){
-            Function * curFunc = funcItr->first;
-            auto curFuncLoads = funcItr->second;
-            // loads of each variable
-            for (auto varItr=curFuncLoads.begin(); varItr!=curFuncLoads.end(); ++varItr) {
-                string varName = varItr->first;
-                auto loadsOfVar = varItr->second;
-                // iterate over stores
-                for (auto storeFunItr=allStores.begin(); storeFunItr!=allStores.end(); ++storeFunItr) {
-                    Function *storeFunc = storeFunItr->first;
-                    // ne need to check interfernce of a function with itself
-                    if (storeFunc != curFunc) {
-                        auto stores = storeFunItr->second;
-                        // if a store of current variable exist
-                        auto searchVarInStores = stores.find(varName);
-                        if (searchVarInStores != stores.end()) {
-                            auto storesOfVar = searchVarInStores->second;
-                            // for all loads of this variable in curFunc
-                            for (auto loadsOfVarItr=loadsOfVar.begin(); loadsOfVarItr!=loadsOfVar.end(); ++loadsOfVarItr) {
-                                Instruction* currenLoad = *loadsOfVarItr;
-                                // for all stores of this variable from all the other functions
-                                for (auto storesOfVarItr=storesOfVar.begin(); storesOfVarItr!=storesOfVar.end(); ++storesOfVarItr) {
-                                    Instruction* currentStore = *storesOfVarItr;
-                                    pair<Instruction*, Instruction*> loadStorePair = make_pair(currenLoad, currentStore);
-                                    // store (l,s) pair in
-                                    allLoadStorePair[curFunc][varName].push_back(loadStorePair);
-                                    /* // print the pair created
-                                    errs() << "current load: ";
-                                    loadStorePair.first->print(errs());
-                                    errs() << "\ncurrent store: ";
-                                    loadStorePair.second->print(errs());
-                                    errs() << "\n"; */
-                                }
+        for (auto funcItr=allLoads.begin(); funcItr!=allLoads.end(); ++funcItr){
+        Function * curFunc = funcItr->first;
+        auto curFuncLoads = funcItr->second;
+        // loads of each variable
+        for (auto varItr=curFuncLoads.begin(); varItr!=curFuncLoads.end(); ++varItr) {
+            string varName = varItr->first;
+            auto loadsOfVar = varItr->second;
+            // iterate over stores
+            for (auto storeFunItr=allStores.begin(); storeFunItr!=allStores.end(); ++storeFunItr) {
+                Function *storeFunc = storeFunItr->first;
+                // ne need to check interfernce of a function with itself
+                if (storeFunc != curFunc) {
+                    auto stores = storeFunItr->second;
+                    // if a store of current variable exist
+                    auto searchVarInStores = stores.find(varName);
+                    if (searchVarInStores != stores.end()) {
+                        auto storesOfVar = searchVarInStores->second;
+                        // for all loads of this variable in curFunc
+                        for (auto loadsOfVarItr=loadsOfVar.begin(); loadsOfVarItr!=loadsOfVar.end(); ++loadsOfVarItr) {
+                            Instruction* currenLoad = *loadsOfVarItr;
+                            // for all stores of this variable from all the other functions
+                            for (auto storesOfVarItr=storesOfVar.begin(); storesOfVarItr!=storesOfVar.end(); ++storesOfVarItr) {
+                                Instruction* currentStore = *storesOfVarItr;
+                                pair<Instruction*, Instruction*> loadStorePair = make_pair(currenLoad, currentStore);
+                                // store (l,s) pair in
+                                allLoadStorePair[curFunc][varName].push_back(loadStorePair);
+                                /* // print the pair created
+                                errs() << "current load: ";
+                                loadStorePair.first->print(errs());
+                                errs() << "\ncurrent store: ";
+                                loadStorePair.second->print(errs());
+                                errs() << "\n"; */
                             }
                         }
                     }
                 }
             }
         }
+    }
         /* 
         // print the allLoadStorePair
         for (auto it1=allLoadStorePair.begin(); it1!=allLoadStorePair.end(); ++it1) {
@@ -153,35 +153,88 @@ class VerifierPass : public ModulePass {
 
     map<Function*, vector< map<Instruction*, Instruction*>>> makeInterfsFromLSPair (
         map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> allLoadStorePair
-    ){
-        for (auto allLSPairItr = allLoadStorePair.begin(); allLSPairItr!=allLoadStorePair.end(); ++allLSPairItr) {
-            Function *curFunc = allLSPairItr->first;
-            auto allLSPairOfFun = allLSPairItr->second;
-            for (auto varToLSPairItr=allLSPairOfFun.begin(); varToLSPairItr!=allLSPairOfFun.end(); ++varToLSPairItr) {
-                string varName = varToLSPairItr->first;
-                auto LSPairOfVar = varToLSPairItr->second;
-            }
-        }
+        ){
+        map<Function*, vector< map<Instruction*, Instruction*>>> interfs;
+        // for (auto allLSPairItr = allLoadStorePair.begin(); allLSPairItr!=allLoadStorePair.end(); ++allLSPairItr) {
+        //     Function *curFunc = allLSPairItr->first;
+        //     auto allLSPairOfFun = allLSPairItr->second;
+        //     for (auto varToLSPairItr=allLSPairOfFun.begin(); varToLSPairItr!=allLSPairOfFun.end(); ++varToLSPairItr) {
+        //         string varName = varToLSPairItr->first;
+        //         auto LSPairOfVar = varToLSPairItr->second;
+        //     }
+        // }
+        return interfs;
     }
 
-    
+    map<Function*, map<Instruction*, vector<Instruction*>>> getLoadsToAllStoresMap (
+        map<Function*, unordered_map<Instruction*, string>> allLoads,
+        map<Function*, map<string, unordered_set<Instruction*>>> allStores
+        ){
+        map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores;
+
+        for (auto allLoadsItr=allLoads.begin(); allLoadsItr!=allLoads.end(); ++allLoadsItr) {
+            Function* curFunc = allLoadsItr->first;
+            auto curFuncLoads = allLoadsItr->second;
+            for (auto curFuncLoadsItr=curFuncLoads.begin(); curFuncLoadsItr!=curFuncLoads.end(); ++curFuncLoadsItr) {
+                Instruction *load =curFuncLoadsItr->first;
+                string loadVar = curFuncLoadsItr->second;
+                vector<Instruction*> allStoresForCurLoad;
+                // loads of same var from all other functions
+                for (auto allStoresItr=allStores.begin(); allStoresItr!=allStores.end(); ++allStoresItr) {
+                    Function *otherFunc = allStoresItr->first;
+                    // need interfernce only from other threads
+                    if (otherFunc != curFunc) {
+                        auto otherFuncStores = allStoresItr->second;
+                        auto searchStoresOfVar = otherFuncStores.find(loadVar);
+                        if (searchStoresOfVar != otherFuncStores.end()) {
+                            auto allStoresFromFun = searchStoresOfVar->second;
+                            copy(allStoresFromFun.begin(), 
+                                allStoresFromFun.end(), 
+                                inserter(allStoresForCurLoad, 
+                                allStoresForCurLoad.end()));
+                        }
+                    }
+                }
+                // loadsToAllStores[curFunc][load] = allStoresForCurLoad;
+            }
+        }
+
+        return loadsToAllStores;
+    }
+
+    // void printLoadsToAllStores(map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores) {
+    //     for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
+    //         errs () << "***Function " << it1->first->getName() << ":\n";
+    //         auto l2s = it1->second;
+    //         for (auto it2=l2s.begin(); it2!=l2s.end(); ++it2) {
+    //             errs() << "Stores for Load: ";
+    //             it2->first->print(errs());
+    //             errs() << "\n";
+    //             auto stores = it2->second;
+    //             for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
+    //                 errs() << "\t";
+    //                 (*it3)->print(errs());
+    //                 errs() << "\n";
+    //             }
+    //         }
+    //     }
+    // }
 
     void getFeasibleInterferences (
-        map<Function*, map<string, unordered_set<Instruction*>>> allLoads,
+        map<Function*, unordered_map<Instruction*, string>> allLoads,
         map<Function*, map<string, unordered_set<Instruction*>>> allStores
         ){
         map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
-        map<Function*, map<string, vector<pair<Instruction*, Instruction*>>>> allLoadStorePair;
+        map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores;
         // Make all permutations
         // TODO: add dummy env i.e. load from itself
-        allLoadStorePair = makeAllLSPair(allLoads, allStores);
-        allInterfs = makeInterfsFromLSPair(allLoadStorePair);
+        loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
 
         // Check feasibility of permutations and save them in feasibleInterfences
     }
 
     void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
-        map<Function*, map<string, unordered_set<Instruction*>>> allLoads;
+        map<Function*, unordered_map<Instruction*, string>> allLoads;
         map<Function*, map<string, unordered_set<Instruction*>>> allStores;
 
         //find main function
@@ -205,7 +258,7 @@ class VerifierPass : public ModulePass {
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 map<string, unordered_set<Instruction*>> varToStores;
-                map<string, unordered_set<Instruction*>> varToLoads;
+                unordered_map<Instruction*, string> varToLoads;
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
                 {
                     if (CallInst *call = dyn_cast<CallInst>(it)) {
@@ -258,7 +311,7 @@ class VerifierPass : public ModulePass {
                             }
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
-                                varToLoads[fromVarName].insert(loadInst);
+                                varToLoads.emplace(loadInst, fromVar);
                             }
                         }
                     }
