@@ -1,5 +1,5 @@
 # abs_interp
-Python based bstract Interpreter for pthread programs. Creates a LLVM pass to verify properties of LLVM IR.
+C++ based Abstract Interpreter for C++11 programs. An LLVM pass that verifies properties of LLVM IR.
 
 # Building
 ```
