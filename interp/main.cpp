@@ -195,30 +195,59 @@ class VerifierPass : public ModulePass {
                         }
                     }
                 }
-                // loadsToAllStores[curFunc][load] = allStoresForCurLoad;
+                loadsToAllStores[curFunc][load] = allStoresForCurLoad;
             }
         }
+        printLoadsToAllStores(loadsToAllStores);
 
         return loadsToAllStores;
     }
 
-    // void printLoadsToAllStores(map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores) {
-    //     for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
-    //         errs () << "***Function " << it1->first->getName() << ":\n";
-    //         auto l2s = it1->second;
-    //         for (auto it2=l2s.begin(); it2!=l2s.end(); ++it2) {
-    //             errs() << "Stores for Load: ";
-    //             it2->first->print(errs());
-    //             errs() << "\n";
-    //             auto stores = it2->second;
-    //             for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
-    //                 errs() << "\t";
-    //                 (*it3)->print(errs());
-    //                 errs() << "\n";
-    //             }
-    //         }
-    //     }
-    // }
+    void printLoadsToAllStores(map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores) {
+        errs() << "All load-store pair in the program\n";
+        for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
+            errs () << "***Function " << it1->first->getName() << ":\n";
+            auto l2s = it1->second;
+            for (auto it2=l2s.begin(); it2!=l2s.end(); ++it2) {
+                errs() << "Stores for Load: ";
+                it2->first->print(errs());
+                errs() << "\n";
+                auto stores = it2->second;
+                for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
+                    errs() << "\t";
+                    (*it3)->print(errs());
+                    errs() << "\n";
+                }
+            }
+        }
+    }
+
+    map<Function*, vector< map<Instruction*, Instruction*>>> getAllInterferences (
+        map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores
+        ){
+        map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
+
+        for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
+            Function *curFunc = funItr->first;
+            errs() << "Interfs for function " << curFunc->getName() << "\n";
+            auto allLS = funItr->second;
+            errs() << "\t#Loads = " << allLS.size() << "\n";
+            Instruction* loads[allLS.size()];
+            vector<Instruction*>::iterator allItr[allLS.size()];
+            int noOfInterfs = 1;
+            int i=0;
+            for (auto itr=allLS.begin(); itr!=allLS.end(); ++itr, i++) {
+                loads[i] = itr->first;
+                allItr[i] = itr->second.begin();
+                errs() << "\t#Stores for " << i << "th Load = " << itr->second.size() << "\n";
+                if (!itr->second.empty()) noOfInterfs *= itr->second.size();
+            }
+            errs() << "Number of possible permutations = " << noOfInterfs << "\n";
+
+            
+        }
+        return allInterfs;
+    }
 
     void getFeasibleInterferences (
         map<Function*, unordered_map<Instruction*, string>> allLoads,
@@ -229,6 +258,7 @@ class VerifierPass : public ModulePass {
         // Make all permutations
         // TODO: add dummy env i.e. load from itself
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
+        allInterfs = getAllInterferences(loadsToAllStores);
 
         // Check feasibility of permutations and save them in feasibleInterfences
     }
@@ -305,13 +335,14 @@ class VerifierPass : public ModulePass {
                         funcVars.push_back(varName);
 
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(it)) {
+                            
                             Value* fromVar = loadInst->getOperand(0);
                             if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
                                 fromVar = gepOp->getPointerOperand();
                             }
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
-                                varToLoads.emplace(loadInst, fromVar);
+                                varToLoads.emplace(loadInst, fromVarName);
                             }
                         }
                     }
