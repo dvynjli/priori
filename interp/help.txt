@@ -56,3 +56,4 @@ Possible Optimizations:
     
 export CPLUS_INCLUDE_PATH=/home/divyanjali/.opam/system/share/apron/include/
 export LIBRARY_PATH=/home/divyanjali/.opam/system/share/apron/lib/
+export LD_LIBRARY_PATH=/home/divyanjali/.opam/system/share/apron/lib/
