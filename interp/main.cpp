@@ -15,7 +15,7 @@ class VerifierPass : public ModulePass {
     vector <Function*> threads;
     map <Function*, map<Instruction*, Domain>> programState;
     map <Function*, Domain> funcInitDomain;
-    map <Function*, vector< vector< map<Instruction*, Instruction*>>>> feasibleInterfences;
+    map <Function*, vector< map<Instruction*, Instruction*>>> feasibleInterfences;
     map <string, Value*> nameToValue;
     map <Value*, string> valueToName;
 
@@ -28,7 +28,7 @@ class VerifierPass : public ModulePass {
         
         initThreadDetails(M, getGlobalIntVars(M), domainType);
 
-        // analyzeProgram(M);
+        analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -124,7 +124,7 @@ class VerifierPass : public ModulePass {
         return loadsToAllStores;
     }
 
-    void printLoadsToAllStores(map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores) {
+    void printLoadsToAllStores(map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores){
         errs() << "All load-store pair in the program\n";
         for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
             errs () << "***Function " << it1->first->getName() << ":\n";
@@ -186,7 +186,7 @@ class VerifierPass : public ModulePass {
     map<Function*, vector< map<Instruction*, Instruction*>>> getFeasibleInterferences (
         map<Function*, unordered_map<Instruction*, string>> allLoads,
         map<Function*, map<string, unordered_set<Instruction*>>> allStores
-        ){
+    ){
         map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores;
         // Make all permutations
@@ -195,6 +195,7 @@ class VerifierPass : public ModulePass {
         allInterfs = getAllInterferences(loadsToAllStores);
 
         // TODO: Check feasibility of permutations and save them in feasibleInterfences
+        feasibleInterfences = allInterfs;
 
         return allInterfs;
     }
@@ -312,38 +313,38 @@ class VerifierPass : public ModulePass {
         // call analyzThread, get interf, check fix point
         // need to addRule, check feasible interfs
 
-        map<Function*, map<Instruction*, Instruction*>> feasibleInterf;
-
         for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
             Function *curFunc = (*funcItr);
             fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
 
             // find feasible interfernce for current function
-            map<Instruction*, Instruction*> *curFuncInterf;
+            vector <map <Instruction*, Instruction*>> curFuncInterfs;
 
-            auto searchInterf = feasibleInterf.find(curFunc);
-            if (searchInterf != feasibleInterf.end()) {
-                curFuncInterf = &(searchInterf->second);
+            auto searchInterf = feasibleInterfences.find(curFunc);
+            if (searchInterf != feasibleInterfences.end()) {
+                curFuncInterfs = (searchInterf->second);
             }
             
+            // analyze the Thread for each interference
             map<Instruction*, Domain> newFuncDomain;
-
-            // TODO: run this function for all interfs in curFuncInters
-            newFuncDomain = analyzeThread(*funcItr, curFuncInterf);
-            // join newFuncDomain of all feasibleInterfs and replace old one in state
-            auto searchFunDomain = programState.find(curFunc);
-            if (searchFunDomain == programState.end()) {
-                programState.emplace(curFunc, newFuncDomain);
-            }
-            else {
-                programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
+            for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
+                newFuncDomain = analyzeThread(*funcItr, *interfItr);
+            
+                // join newFuncDomain of all feasibleInterfs and replace old one in state
+                auto searchFunDomain = programState.find(curFunc);
+                if (searchFunDomain == programState.end()) {
+                    programState.emplace(curFunc, newFuncDomain);
+                }
+                else {
+                    programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
+                }
             }
 
             // curFuncInterf->clear();
         }
     }
 
-    map<Instruction*, Domain> analyzeThread (Function *F, map<Instruction*, Instruction*> *interf) {
+    map<Instruction*, Domain> analyzeThread (Function *F, map<Instruction*, Instruction*> interf) {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
 
@@ -367,13 +368,17 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain);
+            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain, interf);
         }
 
         return curFuncDomain;
     }
 
-    Domain analyzeBasicBlock (BasicBlock *B, Domain curDomain, map <Instruction*, Domain> curFuncDomain) {
+    Domain analyzeBasicBlock (BasicBlock *B, 
+        Domain curDomain, 
+        map <Instruction*, Domain> curFuncDomain,
+        map<Instruction*, Instruction*> interf
+    ) {
         // check type of inst, and performTrasformations
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
@@ -398,7 +403,7 @@ class VerifierPass : public ModulePass {
                 curDomain = checkStoreInst(storeInst, curDomain);
             }
             else if (UnaryInstruction *unaryInst = dyn_cast<UnaryInstruction>(instItr)) {
-                curDomain = checkUnaryInst(unaryInst, curDomain);
+                curDomain = checkUnaryInst(unaryInst, curDomain, interf);
             }
             // RMW, CMPXCHG
             curFuncDomain.emplace(currentInst, curDomain);
@@ -493,7 +498,11 @@ class VerifierPass : public ModulePass {
         return curDomain;
     }
 
-    Domain checkUnaryInst(UnaryInstruction* unaryInst, Domain curDomain) {
+    Domain checkUnaryInst(
+        UnaryInstruction* unaryInst, 
+        Domain curDomain, 
+        map<Instruction*, Instruction*> interf
+    ) {
         Value* fromVar = unaryInst->getOperand(0);
         string fromVarName = getNameFromValue(fromVar);
         string destVarName = getNameFromValue(unaryInst);
@@ -502,6 +511,7 @@ class VerifierPass : public ModulePass {
         switch (unaryInst->getOpcode()) {
             case Instruction::Load:
                 oper = LOAD;
+                curDomain = applyInterfToLoad(unaryInst, curDomain, interf, fromVarName);
                 break;
             // TODO: add more cases
             default: 
@@ -512,6 +522,49 @@ class VerifierPass : public ModulePass {
         
         curDomain.performUnaryOp(oper, destVarName, fromVarName);
 
+        return curDomain;
+    }
+
+    Domain applyInterfToLoad(
+        UnaryInstruction* unaryInst, 
+        Domain curDomain, 
+        map<Instruction*, Instruction*> interf,
+        string varName
+    ) {
+        // Apply interfernce before analyzing the instruction
+        
+        // find interfering instruction
+        auto searchInterf = interf.find(unaryInst);
+        if (searchInterf == interf.end()) {
+            errs() << "ERROR: Interfernce for the load instrction not found\n";
+            unaryInst->print(errs());
+            errs() << "\n";
+            return curDomain;
+        }
+        Instruction *interfInst = searchInterf->second;
+        
+        // if interfernce is from some other thread
+        if (interfInst != unaryInst->getPrevNode()) {
+            // find the domain of interfering instruction
+            auto searchInterfFunc = programState.find(interfInst->getFunction());
+            if (searchInterfFunc != programState.end()) {
+                auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
+                if (searchInterfDomain != searchInterfFunc->second.end()) {
+                    // apply the interference
+                    errs() << "For Load: ";
+                    unaryInst->print(errs());
+                    errs() << "\nInterf with Store: ";
+                    interfInst->print(errs());
+                    errs() << "\nBefore Interf:\n";
+                    curDomain.printDomain();
+
+                    curDomain.applyInterference(varName, searchInterfDomain->second);
+                    
+                    errs() << "***After Inter:\n";
+                    curDomain.printDomain();
+                }
+            }
+        }
         return curDomain;
     }
 
