@@ -244,12 +244,38 @@ class VerifierPass : public ModulePass {
             }
             errs() << "Number of possible permutations = " << noOfInterfs << "\n";
 
+            map<Instruction*, Instruction*> curInterf;
             
+            for (int i=0; i<noOfInterfs; i++) {
+                errs() << "***Making another interf. allLS.size = " << allLS.size() <<"\n";
+                for (int j=0; j<allLS.size(); j++) {
+                    // errs() << "Function: " <<curFunc->getName() << "\n";
+                    if (allItr[j] != allLS[loads[j]].end()) {
+                        // errs () << "here0" <<" allLS.size = " <<allLS.size() <<"\n";
+                        curInterf[loads[j]] = (*allItr[j]);
+                        errs() << "load: " << "\n";
+                        loads[j]->print(errs());
+                        errs() << "\tStore: " <<"\n";
+                        (*allItr[j])->print(errs());
+                        errs() << "\n\n";
+                        
+                    }
+                }
+                int k = allLS.size()-1;
+                if (allItr[k] != allLS[loads[k]].end()) {
+                    allItr[k]++;
+                }
+                while (allItr[k] == allLS[loads[k]].end()) {
+                    allItr[k] = allLS[loads[k]].begin();
+                    k--;
+                    if (k>=0) allItr[k]++;
+                }
+            }
         }
         return allInterfs;
     }
 
-    void getFeasibleInterferences (
+    map<Function*, vector< map<Instruction*, Instruction*>>> getFeasibleInterferences (
         map<Function*, unordered_map<Instruction*, string>> allLoads,
         map<Function*, map<string, unordered_set<Instruction*>>> allStores
         ){
@@ -260,7 +286,9 @@ class VerifierPass : public ModulePass {
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
         allInterfs = getAllInterferences(loadsToAllStores);
 
-        // Check feasibility of permutations and save them in feasibleInterfences
+        // TODO: Check feasibility of permutations and save them in feasibleInterfences
+
+        return allInterfs;
     }
 
     void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
