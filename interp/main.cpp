@@ -119,7 +119,7 @@ class VerifierPass : public ModulePass {
                 loadsToAllStores[curFunc][load] = allStoresForCurLoad;
             }
         }
-        printLoadsToAllStores(loadsToAllStores);
+        // printLoadsToAllStores(loadsToAllStores);
 
         return loadsToAllStores;
     }
@@ -150,9 +150,7 @@ class VerifierPass : public ModulePass {
 
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
             Function *curFunc = funItr->first;
-            errs() << "Interfs for function " << curFunc->getName() << "\n";
             auto allLS = funItr->second;
-            errs() << "\t#Loads = " << allLS.size() << "\n";
             Instruction* loads[allLS.size()];
             vector<Instruction*>::iterator allItr[allLS.size()];
             int noOfInterfs = 1;
@@ -160,26 +158,15 @@ class VerifierPass : public ModulePass {
             for (auto itr=allLS.begin(); itr!=allLS.end(); ++itr, i++) {
                 loads[i] = itr->first;
                 allItr[i] = itr->second.begin();
-                errs() << "\t#Stores for " << i << "th Load = " << itr->second.size() << "\n";
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
-            errs() << "Number of possible permutations = " << noOfInterfs << "\n";
-
+            
             map<Instruction*, Instruction*> curInterf;
             
             for (int i=0; i<noOfInterfs; i++) {
-                errs() << "***Making another interf. allLS.size = " << allLS.size() <<"\n";
                 for (int j=0; j<allLS.size(); j++) {
-                    // errs() << "Function: " <<curFunc->getName() << "\n";
                     if (allItr[j] != allLS[loads[j]].end()) {
-                        // errs () << "here0" <<" allLS.size = " <<allLS.size() <<"\n";
                         curInterf[loads[j]] = (*allItr[j]);
-                        errs() << "load: " << "\n";
-                        loads[j]->print(errs());
-                        errs() << "\tStore: " <<"\n";
-                        (*allItr[j])->print(errs());
-                        errs() << "\n\n";
-                        
                     }
                 }
                 int k = allLS.size()-1;
