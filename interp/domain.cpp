@@ -50,6 +50,12 @@ ap_environment_t* Domain::initEnvironment(vector<string> intVars){
     return ap_environment_alloc(intAp, intVars.size(), floatAp, 0);
 }
 
+void Domain::copyDomain(Domain copyFrom) {
+    man = copyFrom.man;
+    env = ap_environment_copy(copyFrom.env);
+    absValue = ap_abstract1_copy(man, &copyFrom.absValue);
+}
+
 void Domain::joinDomain(Domain other) {
     ap_abstract1_join(man, true, &absValue, &other.absValue);
 }

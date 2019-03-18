@@ -5,21 +5,18 @@
 
 using namespace std;
 
-int x,y;
-float c;
+atomic<int> x,y;
 
 void* fun2(void * arg){
-	x = 10;
-	y = x + 1;
+	x.store(10, memory_order_relaxed);
+	int a = x.load(memory_order_relaxed);
+	y.store(20, memory_order_relaxed);
 	return NULL;
 }
 
 void* fun1(void * arg){
 	pthread_t t1;
 	pthread_create(&t1, NULL, fun2, NULL);
-	int a = 10+20;
-	int b = a*a;
-	y = x + b;
 	pthread_join(t1, NULL);
 	return NULL;
 }

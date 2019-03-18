@@ -12,6 +12,7 @@ class Domain {
     ap_manager_t *man;
     ap_environment_t *env;
     ap_abstract1_t absValue;
+    
     ap_manager_t* initApManager(string domainType);
     ap_environment_t* initEnvironment(vector<string> intVars);
     void assignZerosToAllVars();
@@ -20,6 +21,7 @@ class Domain {
 
     public:
     void init(string domainType, vector<string> intVars);
+    void copyDomain(Domain copyFrom);
 
     //overload these functions for constants
     // Operations on variables
