@@ -1,5 +1,16 @@
 #include "domain.h"
 
+
+bool Domain::operator== (const Domain &other) const {
+    ap_abstract1_t tempAbsVal = other.absValue;
+    return ap_environment_is_eq(env, other.env) && 
+        ap_abstract1_is_eq(man, &absValue, &tempAbsVal);
+}
+
+// bool Domain::operator!= (Domain other) {
+//     return !(operator==(other));
+// }
+
 void Domain::init(string domainType, vector<string> intVars){
     fprintf(stderr, "initializing ap_man\n");
     man = initApManager(domainType);

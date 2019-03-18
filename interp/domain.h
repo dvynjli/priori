@@ -20,6 +20,8 @@ class Domain {
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
 
     public:
+    bool operator== (const Domain &other) const;
+    // bool operator!= (Domain other);
     void init(string domainType, vector<string> intVars);
     void copyDomain(Domain copyFrom);
 

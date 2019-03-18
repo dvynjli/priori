@@ -18,8 +18,7 @@ A. Ignoring for now. Not to hard to add support for this
 Q. Can we work with computing possible interferences ones? Is there a way for these interferneces to change
 A. We can work with computing feasible interfernces ones before starting thread-modular analysis. 
     All possible interferences are fixed since loads and stores of global variables can not change (assuming no pointers).
-    Feasiblity of these interferences depends upon memory order, program order and happens before relations,
-    which can not change mid-analysis.
+    Feasiblity of these interferences depends upon memory order, program order and happens before relations, which can not change mid-analysis.
 
 
 Instructions that need Apron interface-
@@ -39,7 +38,6 @@ TODO:
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
         can optimize this
     if a function has no loads, it will have no interferences, and will never be analyzed
-    Join domains after analysis and add to programState map
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
@@ -51,7 +49,7 @@ Possible Optimizations:
         reduced one pass over program
     Reduce number of maps (if maps are taking too much time):
         run a pass to give instr id to each intruction and store the environment of the intructions in this order or make a wrapper around Instructions
-
+    LoadStore map
 
     parallelization
         checking feasiblity of interfernces with analysis of other thread

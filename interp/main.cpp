@@ -338,49 +338,60 @@ class VerifierPass : public ModulePass {
         }
     }
 
+    bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Domain>> newProgramState) {
+        errs() << "Program state size: " << programState.size();
+        errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
+        return (newProgramState == programState);
+    }
+
     void analyzeProgram(Module &M) {
         // call analyzThread, get interf, check fix point
         // need to addRule, check feasible interfs
+        unsigned int iterations = 0;
+        unordered_map <Function*, unordered_map<Instruction*, Domain>> programStateCurItr;
+        do {
+            programState = programStateCurItr;
+            for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
+                Function *curFunc = (*funcItr);
+                fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
 
-        for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
-            Function *curFunc = (*funcItr);
-            fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
+                // find feasible interfernce for current function
+                vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
 
-            // find feasible interfernce for current function
-            vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
-
-            auto searchInterf = feasibleInterfences.find(curFunc);
-            if (searchInterf != feasibleInterfences.end()) {
-                curFuncInterfs = (searchInterf->second);
-            } else {
-                errs() << "WARNING: No interf found for Function. It won't be analyzed.\n";
-            }
-            
-            // errs() << "Number of interf= " << curFuncInterfs.size();
-            // analyze the Thread for each interference
-            unordered_map<Instruction*, Domain> newFuncDomain;
-            for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
-                // errs() << "\n***For new interf\n";
-
-                newFuncDomain = analyzeThread(*funcItr, *interfItr);
-
-                // errs() << "Domain after analysis:\n";
-                // printInstToDomainMap(newFuncDomain);
-
-                // join newFuncDomain of all feasibleInterfs and replace old one in state
-                auto searchFunDomain = programState.find(curFunc);
-                if (searchFunDomain == programState.end()) {
-                    // errs() << "curfunc not found in program state\n";
-                    programState.emplace(curFunc, newFuncDomain);
+                auto searchInterf = feasibleInterfences.find(curFunc);
+                if (searchInterf != feasibleInterfences.end()) {
+                    curFuncInterfs = (searchInterf->second);
+                } else {
+                    errs() << "WARNING: No interf found for Function. It won't be analyzed.\n";
                 }
-                else {
-                    // errs() << "curfunc already exist in program state. joining\n";
-                    programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
+                
+                // errs() << "Number of interf= " << curFuncInterfs.size();
+                // analyze the Thread for each interference
+                unordered_map<Instruction*, Domain> newFuncDomain;
+                for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
+                    // errs() << "\n***For new interf\n";
+
+                    newFuncDomain = analyzeThread(*funcItr, *interfItr);
+
+                    // errs() << "Domain after analysis:\n";
+                    // printInstToDomainMap(newFuncDomain);
+
+                    // join newFuncDomain of all feasibleInterfs and replace old one in state
+                    auto searchFunDomain = programStateCurItr.find(curFunc);
+                    if (searchFunDomain == programStateCurItr.end()) {
+                        // errs() << "curfunc not found in program state\n";
+                        programStateCurItr.emplace(curFunc, newFuncDomain);
+                    }
+                    else {
+                        // errs() << "curfunc already exist in program state. joining\n";
+                        programStateCurItr.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
+                    }
                 }
             }
+            iterations++;
+        } while(! isFixedPoint(programStateCurItr));
+        errs() << "Fized point reached in " << iterations << " iteratons\n";
 
-            // curFuncInterf->clear();
-        }
     }
 
     unordered_map<Instruction*, Domain> analyzeThread (Function *F, unordered_map<Instruction*, Instruction*> interf) {
