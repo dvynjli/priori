@@ -28,7 +28,7 @@ class VerifierPass : public ModulePass {
         
         initThreadDetails(M, getGlobalIntVars(M), domainType);
 
-        // analyzeProgram(M);
+        analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -169,6 +169,7 @@ class VerifierPass : public ModulePass {
                         curInterf[loads[j]] = (*allItr[j]);
                     }
                 }
+                allInterfs[curFunc].push_back(curInterf);
                 int k = allLS.size()-1;
                 if (allItr[k] != allLS[loads[k]].end()) {
                     allItr[k]++;
@@ -179,7 +180,6 @@ class VerifierPass : public ModulePass {
                     if (k>=0) allItr[k]++;
                 }
             }
-            allInterfs[curFunc].push_back(curInterf);
         }
         
         return allInterfs;
@@ -538,8 +538,13 @@ class VerifierPass : public ModulePass {
             case Instruction::Load:
                 oper = LOAD;
                 // Apply interfernce before analyzing the instruction
-                if (dyn_cast<GlobalVariable>(fromVar))
+                if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                    fromVar = gepOp->getPointerOperand();
+                }           
+                if (dyn_cast<GlobalVariable>(fromVar)) {
+                    errs() << "Load of global\n";
                     curDomain = applyInterfToLoad(unaryInst, curDomain, interf, fromVarName);
+                } else errs() << "Load of non global\n";
                 break;
             // TODO: add more cases
             default: 
@@ -576,13 +581,14 @@ class VerifierPass : public ModulePass {
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
                 auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
+                errs() << "For Load: ";
+                unaryInst->print(errs());
+                errs() << "\nInterf with Store: ";
+                interfInst->print(errs());
+                errs() << "\n";
                 if (searchInterfDomain != searchInterfFunc->second.end()) {
                     // apply the interference
-                    errs() << "For Load: ";
-                    unaryInst->print(errs());
-                    errs() << "\nInterf with Store: ";
-                    interfInst->print(errs());
-                    errs() << "\nBefore Interf:\n";
+                    errs() << "Before Interf:\n";
                     curDomain.printDomain();
 
                     curDomain.applyInterference(varName, searchInterfDomain->second);
@@ -590,12 +596,10 @@ class VerifierPass : public ModulePass {
                     errs() << "***After Inter:\n";
                     curDomain.printDomain();
                 } else {
-                    errs() << "No domain found for Load: ";
-                    unaryInst->print(errs());
-                    errs() << "\n";
+                    errs() << "No domain found for interfernce of Load\n";
                 }
             } else {
-                errs() << "Interf inst: ";
+                errs() << "Function of Interf inst: ";
                 interfInst->print(errs());
                 errs() << " not found in program state\n";
             }

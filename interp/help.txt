@@ -39,6 +39,7 @@ TODO:
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
         can optimize this
     if a function has no loads, it's will have no interferences, and will never be analyzed
+    Join domains after analysis and add to programState map
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
