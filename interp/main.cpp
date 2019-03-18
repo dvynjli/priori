@@ -266,7 +266,7 @@ class VerifierPass : public ModulePass {
                             // TODO: need to add dominates rules
                         }
                         else {
-                            cout << "unknown function call:\n";
+                            errs() << "unknown function call:\n";
                             it->print(errs());
                             errs() <<"\n";
                         }
@@ -353,14 +353,14 @@ class VerifierPass : public ModulePass {
             if (searchInterf != feasibleInterfences.end()) {
                 curFuncInterfs = (searchInterf->second);
             } else {
-                errs() << "No interf found for Function\n";
+                errs() << "WARNING: No interf found for Function. It won't be analyzed.\n";
             }
             
-            errs() << "Number of interf= " << curFuncInterfs.size();
+            // errs() << "Number of interf= " << curFuncInterfs.size();
             // analyze the Thread for each interference
             unordered_map<Instruction*, Domain> newFuncDomain;
             for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
-                errs() << "\n***For new interf\n";
+                // errs() << "\n***For new interf\n";
 
                 newFuncDomain = analyzeThread(*funcItr, *interfItr);
 
@@ -370,11 +370,11 @@ class VerifierPass : public ModulePass {
                 // join newFuncDomain of all feasibleInterfs and replace old one in state
                 auto searchFunDomain = programState.find(curFunc);
                 if (searchFunDomain == programState.end()) {
-                    errs() << "curfunc not found in program state\n";
+                    // errs() << "curfunc not found in program state\n";
                     programState.emplace(curFunc, newFuncDomain);
                 }
                 else {
-                    errs() << "curfunc already exist in program state. joining\n";
+                    // errs() << "curfunc already exist in program state. joining\n";
                     programState.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
                 }
             }
@@ -603,28 +603,22 @@ class VerifierPass : public ModulePass {
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
                 auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
-                errs() << "For Load: ";
-                unaryInst->print(errs());
-                errs() << "\nInterf with Store: ";
-                interfInst->print(errs());
-                errs() << "\n";
+                // errs() << "For Load: ";
+                // unaryInst->print(errs());
+                // errs() << "\nInterf with Store: ";
+                // interfInst->print(errs());
+                // errs() << "\n";
                 if (searchInterfDomain != searchInterfFunc->second.end()) {
                     // apply the interference
-                    errs() << "Before Interf:\n";
-                    curDomain.printDomain();
+                    // errs() << "Before Interf:\n";
+                    // curDomain.printDomain();
 
                     curDomain.applyInterference(varName, searchInterfDomain->second);
                     
-                    errs() << "***After Inter:\n";
-                    curDomain.printDomain();
-                } else {
-                    errs() << "No domain found for interfernce of Load\n";
+                    // errs() << "***After Inter:\n";
+                    // curDomain.printDomain();
                 }
-            } else {
-                errs() << "Function of Interf inst not found in program state\n";
             }
-        } else {
-            errs() << "Interf with it's own env\n";
         }
         return curDomain;
     }
@@ -633,28 +627,28 @@ class VerifierPass : public ModulePass {
         unordered_map<Instruction*, Domain> instrToDomainOld,
         unordered_map<Instruction*, Domain> instrToDomainNew
     ) {
-        errs() << "joining domains. Incoming Domain:\n";
-        errs() << "siez of OLD= " << instrToDomainOld.size() << "\n";
-        errs() << "size of NEW= " << instrToDomainNew.size() << "\n";
+        // errs() << "joining domains. Incoming Domain:\n";
+        // errs() << "siez of OLD= " << instrToDomainOld.size() << "\n";
+        // errs() << "size of NEW= " << instrToDomainNew.size() << "\n";
 
         
         // new = old join new
         for (auto itOld=instrToDomainOld.begin(); itOld!=instrToDomainOld.end(); ++itOld) {
-            errs() << "joining for instruction: ";
-            itOld->first->print(errs());
-            errs() << "\n";
+            // errs() << "joining for instruction: ";
+            // itOld->first->print(errs());
+            // errs() << "\n";
             auto searchNewMap = instrToDomainNew.find(itOld->first);
             if (searchNewMap == instrToDomainNew.end()) {
                 instrToDomainNew.emplace(itOld->first, itOld->second);
             } else {
                 Domain newDomain = searchNewMap->second;
-                errs() << "OLD:\n";
-                itOld->second.printDomain();
-                errs() << "NEW:\n";
-                newDomain.printDomain();
+                // errs() << "OLD:\n";
+                // itOld->second.printDomain();
+                // errs() << "NEW:\n";
+                // newDomain.printDomain();
                 newDomain.joinDomain(itOld->second);
-                errs() << "Joined domain:\n";
-                newDomain.printDomain();
+                // errs() << "Joined domain:\n";
+                // newDomain.printDomain();
                 instrToDomainNew.emplace(itOld->first, newDomain);
             }
         }
