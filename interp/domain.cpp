@@ -189,10 +189,21 @@ void Domain::applyInterference(string interfVar, Domain fromDomain) {
         fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
         exit(0);
     }
+
+    fprintf(stderr, "Appling insterf from domain: \n");
+    fromDomain.printDomain();
+    fprintf(stderr, "To domain: \n");
+    printDomain();
+    fprintf(stderr, "On var %s\n", interfVar.c_str());
+
     ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromDomain.man, &fromDomain.absValue, apInterVar);
-    ap_linexpr1_t expr = ap_linexpr1_make(fromDomain.env, AP_LINEXPR_SPARSE, 0);
+    ap_interval_fprint(stderr, fromInterval);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
+
+    fprintf(stderr, "Domain after interf:\n");
+    printDomain();
 }
 
 void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {

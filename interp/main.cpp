@@ -586,13 +586,13 @@ class VerifierPass : public ModulePass {
         unordered_map<Instruction*, Instruction*> interf,
         string varName
     ) {
-        // errs() << "\n----Applying interf----\n";
+        errs() << "\n----Applying interf----\n";
         // find interfering instruction
         auto searchInterf = interf.find(unaryInst);
         if (searchInterf == interf.end()) {
-            // errs() << "ERROR: Interfernce for the load instrction not found\n";
-            // unaryInst->print(errs());
-            // errs() << "\n";
+            errs() << "ERROR: Interfernce for the load instrction not found\n";
+            unaryInst->print(errs());
+            errs() << "\n";
             return curDomain;
         }
         Instruction *interfInst = searchInterf->second;
@@ -603,28 +603,28 @@ class VerifierPass : public ModulePass {
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
                 auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
-                // errs() << "For Load: ";
-                // unaryInst->print(errs());
-                // errs() << "\nInterf with Store: ";
-                // interfInst->print(errs());
-                // errs() << "\n";
+                errs() << "For Load: ";
+                unaryInst->print(errs());
+                errs() << "\nInterf with Store: ";
+                interfInst->print(errs());
+                errs() << "\n";
                 if (searchInterfDomain != searchInterfFunc->second.end()) {
                     // apply the interference
-                    // errs() << "Before Interf:\n";
-                    // curDomain.printDomain();
+                    errs() << "Before Interf:\n";
+                    curDomain.printDomain();
 
                     curDomain.applyInterference(varName, searchInterfDomain->second);
                     
-                    // errs() << "***After Inter:\n";
-                    // curDomain.printDomain();
+                    errs() << "***After Inter:\n";
+                    curDomain.printDomain();
                 } else {
-                    // errs() << "No domain found for interfernce of Load\n";
+                    errs() << "No domain found for interfernce of Load\n";
                 }
             } else {
-                // errs() << "Function of Interf inst not found in program state\n";
+                errs() << "Function of Interf inst not found in program state\n";
             }
         } else {
-            // errs() << "Interf with it's own env\n";
+            errs() << "Interf with it's own env\n";
         }
         return curDomain;
     }
@@ -633,28 +633,28 @@ class VerifierPass : public ModulePass {
         unordered_map<Instruction*, Domain> instrToDomainOld,
         unordered_map<Instruction*, Domain> instrToDomainNew
     ) {
-        // errs() << "joining domains. Incoming Domain:\n";
-        // errs() << "siez of OLD= " << instrToDomainOld.size() << "\n";
-        // errs() << "size of NEW= " << instrToDomainNew.size() << "\n";
+        errs() << "joining domains. Incoming Domain:\n";
+        errs() << "siez of OLD= " << instrToDomainOld.size() << "\n";
+        errs() << "size of NEW= " << instrToDomainNew.size() << "\n";
 
         
         // new = old join new
         for (auto itOld=instrToDomainOld.begin(); itOld!=instrToDomainOld.end(); ++itOld) {
-            // errs() << "joining for instruction: ";
-            // itOld->first->print(errs());
-            // errs() << "\n";
+            errs() << "joining for instruction: ";
+            itOld->first->print(errs());
+            errs() << "\n";
             auto searchNewMap = instrToDomainNew.find(itOld->first);
             if (searchNewMap == instrToDomainNew.end()) {
                 instrToDomainNew.emplace(itOld->first, itOld->second);
             } else {
                 Domain newDomain = searchNewMap->second;
-                // errs() << "OLD:\n";
-                // itOld->second.printDomain();
-                // errs() << "NEW:\n";
-                // newDomain.printDomain();
+                errs() << "OLD:\n";
+                itOld->second.printDomain();
+                errs() << "NEW:\n";
+                newDomain.printDomain();
                 newDomain.joinDomain(itOld->second);
-                // errs() << "Joined domain:\n";
-                // newDomain.printDomain();
+                errs() << "Joined domain:\n";
+                newDomain.printDomain();
                 instrToDomainNew.emplace(itOld->first, newDomain);
             }
         }

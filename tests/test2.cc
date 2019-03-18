@@ -17,6 +17,8 @@ void* fun2(void * arg){
 void* fun1(void * arg){
 	pthread_t t1;
 	pthread_create(&t1, NULL, fun2, NULL);
+	x.store(50, memory_order_relaxed);
+	y.load(memory_order_relaxed);
 	pthread_join(t1, NULL);
 	return NULL;
 }
