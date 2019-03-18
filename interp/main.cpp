@@ -28,7 +28,7 @@ class VerifierPass : public ModulePass {
         
         initThreadDetails(M, getGlobalIntVars(M), domainType);
 
-        analyzeProgram(M);
+        // analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -145,7 +145,7 @@ class VerifierPass : public ModulePass {
 
     map<Function*, vector< map<Instruction*, Instruction*>>> getAllInterferences (
         map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores
-        ){
+    ){
         map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
 
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
@@ -179,7 +179,9 @@ class VerifierPass : public ModulePass {
                     if (k>=0) allItr[k]++;
                 }
             }
+            allInterfs[curFunc].push_back(curInterf);
         }
+        
         return allInterfs;
     }
 
@@ -196,8 +198,28 @@ class VerifierPass : public ModulePass {
 
         // TODO: Check feasibility of permutations and save them in feasibleInterfences
         feasibleInterfences = allInterfs;
+        printFeasibleInterf();
 
         return allInterfs;
+    }
+
+    void printFeasibleInterf() {
+        errs() << "\nAll Interfs\n";
+        for (auto it1=feasibleInterfences.begin(); it1!=feasibleInterfences.end(); ++it1) {
+            errs() << "Interfs for function: " << it1->first->getName();
+            auto allInterfOfFun = it1->second;
+            int i = 0;
+            for (auto it2=allInterfOfFun.begin(); it2!=allInterfOfFun.end(); ++it2, ++i) {
+                errs() << "Interf " << i << ":\n";
+                for (auto it3=it2->begin(); it3!=it2->end(); ++it3) {
+                    errs() << "\tLoad: ";
+                    it3->first->print(errs());
+                    errs() << "\n\tStore: ";
+                    it3->second->print(errs());
+                    errs() << "\n";
+                }
+            }
+        }
     }
 
     void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
@@ -323,11 +345,15 @@ class VerifierPass : public ModulePass {
             auto searchInterf = feasibleInterfences.find(curFunc);
             if (searchInterf != feasibleInterfences.end()) {
                 curFuncInterfs = (searchInterf->second);
+            } else {
+                errs() << "No interf found for Function\n";
             }
             
+            errs() << "Number of interf= " << curFuncInterfs.size();
             // analyze the Thread for each interference
             map<Instruction*, Domain> newFuncDomain;
             for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
+                errs() << "\n***For new interf\n";
                 newFuncDomain = analyzeThread(*funcItr, *interfItr);
             
                 // join newFuncDomain of all feasibleInterfs and replace old one in state
@@ -511,7 +537,9 @@ class VerifierPass : public ModulePass {
         switch (unaryInst->getOpcode()) {
             case Instruction::Load:
                 oper = LOAD;
-                curDomain = applyInterfToLoad(unaryInst, curDomain, interf, fromVarName);
+                // Apply interfernce before analyzing the instruction
+                if (dyn_cast<GlobalVariable>(fromVar))
+                    curDomain = applyInterfToLoad(unaryInst, curDomain, interf, fromVarName);
                 break;
             // TODO: add more cases
             default: 
@@ -531,8 +559,7 @@ class VerifierPass : public ModulePass {
         map<Instruction*, Instruction*> interf,
         string varName
     ) {
-        // Apply interfernce before analyzing the instruction
-        
+        errs() << "\n----Applying interf----\n";
         // find interfering instruction
         auto searchInterf = interf.find(unaryInst);
         if (searchInterf == interf.end()) {
@@ -562,8 +589,18 @@ class VerifierPass : public ModulePass {
                     
                     errs() << "***After Inter:\n";
                     curDomain.printDomain();
+                } else {
+                    errs() << "No domain found for Load: ";
+                    unaryInst->print(errs());
+                    errs() << "\n";
                 }
+            } else {
+                errs() << "Interf inst: ";
+                interfInst->print(errs());
+                errs() << " not found in program state\n";
             }
+        } else {
+            errs() << "Interf with it's own env\n";
         }
         return curDomain;
     }
