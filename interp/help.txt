@@ -33,11 +33,10 @@ Instructions that need Z3 interface-
 
 TODO:
     init local vars with TOP, not zero
-    check how to merge environments from two different iteration (due to different interferences)
     get load store pairs only ones (from initThreadDetails) - 
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
         can optimize this
-    if a function has no loads, it will have no interferences, and will never be analyzed
+    control structure dependent static analysis
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes

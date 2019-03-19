@@ -342,7 +342,7 @@ class VerifierPass : public ModulePass {
         for (auto it1=programState.begin(); it1!=programState.end(); ++it1) {
             errs() << "\n-----------------------------------------------\n";
             errs() << "Function " << it1->first->getName() << ":\n";
-            errs() << "-------------------------------------------------\n";
+            errs() << "-----------------------------------------------\n";
             printInstToDomainMap(it1->second);
         }
     }
@@ -362,6 +362,9 @@ class VerifierPass : public ModulePass {
 
         while (!isFixedPointReached) {
             programState = programStateCurItr;
+
+            errs() << "Iteration: " << iterations << "\n";
+
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
                 fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
@@ -401,13 +404,16 @@ class VerifierPass : public ModulePass {
                     }
                     else {
                         // errs() << "curfunc already exist in program state. joining\n";
-                        programStateCurItr.emplace(curFunc, joinDomainByInstruction(searchFunDomain->second, newFuncDomain));
+                        programStateCurItr[curFunc] =  joinDomainByInstruction(searchFunDomain->second, newFuncDomain);
                     }
                 }
             }
+            
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
+            // printProgramState();
         }
+        errs() << "_____________________________________________\n";
         errs() << "Fized point reached in " << iterations << " iteratons\n";
         errs() << "Final domain:\n";
         printProgramState();
@@ -594,9 +600,9 @@ class VerifierPass : public ModulePass {
                     fromVar = gepOp->getPointerOperand();
                 }           
                 if (dyn_cast<GlobalVariable>(fromVar)) {
-                    errs() << "Load of global\n";
+                    // errs() << "Load of global\n";
                     curDomain = applyInterfToLoad(unaryInst, curDomain, interf, fromVarName);
-                } else errs() << "Load of non global\n";
+                }
                 break;
             // TODO: add more cases
             default: 
@@ -633,20 +639,20 @@ class VerifierPass : public ModulePass {
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
                 auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
-                // errs() << "For Load: ";
-                // unaryInst->print(errs());
-                // errs() << "\nInterf with Store: ";
-                // interfInst->print(errs());
-                // errs() << "\n";
+                errs() << "For Load: ";
+                unaryInst->print(errs());
+                errs() << "\nInterf with Store: ";
+                interfInst->print(errs());
+                errs() << "\n";
                 if (searchInterfDomain != searchInterfFunc->second.end()) {
                     // apply the interference
-                    // errs() << "Before Interf:\n";
-                    // curDomain.printDomain();
+                    errs() << "Before Interf:\n";
+                    curDomain.printDomain();
 
                     curDomain.applyInterference(varName, searchInterfDomain->second);
                     
-                    // errs() << "***After Inter:\n";
-                    // curDomain.printDomain();
+                    errs() << "***After Inter:\n";
+                    curDomain.printDomain();
                 }
             }
         }
@@ -682,6 +688,8 @@ class VerifierPass : public ModulePass {
                 instrToDomainNew.emplace(itOld->first, newDomain);
             }
         }
+        // errs() << "***In join domain. Before return:\n";
+        // printInstToDomainMap(instrToDomainNew);
 
         return instrToDomainNew;
     }
