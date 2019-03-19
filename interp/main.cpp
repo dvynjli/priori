@@ -338,9 +338,18 @@ class VerifierPass : public ModulePass {
         }
     }
 
+    void printProgramState() {
+        for (auto it1=programState.begin(); it1!=programState.end(); ++it1) {
+            errs() << "\n-----------------------------------------------\n";
+            errs() << "Function " << it1->first->getName() << ":\n";
+            errs() << "-------------------------------------------------\n";
+            printInstToDomainMap(it1->second);
+        }
+    }
+
     bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Domain>> newProgramState) {
-        errs() << "Program state size: " << programState.size();
-        errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
+        // errs() << "Program state size: " << programState.size();
+        // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
         return (newProgramState == programState);
     }
 
@@ -349,7 +358,9 @@ class VerifierPass : public ModulePass {
         // need to addRule, check feasible interfs
         unsigned int iterations = 0;
         unordered_map <Function*, unordered_map<Instruction*, Domain>> programStateCurItr;
-        do {
+        bool isFixedPointReached = false;
+
+        while (!isFixedPointReached) {
             programState = programStateCurItr;
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
@@ -357,17 +368,23 @@ class VerifierPass : public ModulePass {
 
                 // find feasible interfernce for current function
                 vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
+                unordered_map<Instruction*, Domain> newFuncDomain;
 
                 auto searchInterf = feasibleInterfences.find(curFunc);
+                
                 if (searchInterf != feasibleInterfences.end()) {
                     curFuncInterfs = (searchInterf->second);
                 } else {
-                    errs() << "WARNING: No interf found for Function. It won't be analyzed.\n";
+                    errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
+                    if (iterations == 0) {
+                        unordered_map <Instruction*, Instruction*> interf;
+                        newFuncDomain = analyzeThread(*funcItr, interf);
+                        programStateCurItr.emplace(curFunc, newFuncDomain);
+                    }
                 }
                 
                 // errs() << "Number of interf= " << curFuncInterfs.size();
                 // analyze the Thread for each interference
-                unordered_map<Instruction*, Domain> newFuncDomain;
                 for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                     // errs() << "\n***For new interf\n";
 
@@ -388,9 +405,12 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
+            isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
-        } while(! isFixedPoint(programStateCurItr));
+        }
         errs() << "Fized point reached in " << iterations << " iteratons\n";
+        errs() << "Final domain:\n";
+        printProgramState();
 
     }
 
@@ -399,7 +419,6 @@ class VerifierPass : public ModulePass {
         //init for next BB with assume
 
         unordered_map <Instruction*, Domain> curFuncDomain;
-        // Domain predDomain;
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
