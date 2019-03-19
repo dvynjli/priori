@@ -362,7 +362,8 @@ class VerifierPass : public ModulePass {
 
         while (!isFixedPointReached) {
             programState = programStateCurItr;
-
+            
+            errs() << "_________________________________________________\n";
             errs() << "Iteration: " << iterations << "\n";
 
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
@@ -413,7 +414,7 @@ class VerifierPass : public ModulePass {
             iterations++;
             // printProgramState();
         }
-        errs() << "_____________________________________________\n";
+        errs() << "_________________________________________________\n";
         errs() << "Fized point reached in " << iterations << " iteratons\n";
         errs() << "Final domain:\n";
         printProgramState();
@@ -622,7 +623,7 @@ class VerifierPass : public ModulePass {
         unordered_map<Instruction*, Instruction*> interf,
         string varName
     ) {
-        errs() << "\n----Applying interf----\n";
+        errs() << "Applying interf\n";
         // find interfering instruction
         auto searchInterf = interf.find(unaryInst);
         if (searchInterf == interf.end()) {
@@ -639,20 +640,20 @@ class VerifierPass : public ModulePass {
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
                 auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
-                errs() << "For Load: ";
-                unaryInst->print(errs());
-                errs() << "\nInterf with Store: ";
-                interfInst->print(errs());
-                errs() << "\n";
+                // errs() << "For Load: ";
+                // unaryInst->print(errs());
+                // errs() << "\nInterf with Store: ";
+                // interfInst->print(errs());
+                // errs() << "\n";
                 if (searchInterfDomain != searchInterfFunc->second.end()) {
                     // apply the interference
-                    errs() << "Before Interf:\n";
-                    curDomain.printDomain();
+                    // errs() << "Before Interf:\n";
+                    // curDomain.printDomain();
 
                     curDomain.applyInterference(varName, searchInterfDomain->second);
                     
-                    errs() << "***After Inter:\n";
-                    curDomain.printDomain();
+                    // errs() << "***After Inter:\n";
+                    // curDomain.printDomain();
                 }
             }
         }
@@ -675,7 +676,7 @@ class VerifierPass : public ModulePass {
             // errs() << "\n";
             auto searchNewMap = instrToDomainNew.find(itOld->first);
             if (searchNewMap == instrToDomainNew.end()) {
-                instrToDomainNew.emplace(itOld->first, itOld->second);
+                instrToDomainNew[itOld->first] = itOld->second;
             } else {
                 Domain newDomain = searchNewMap->second;
                 // errs() << "OLD:\n";
@@ -685,7 +686,7 @@ class VerifierPass : public ModulePass {
                 newDomain.joinDomain(itOld->second);
                 // errs() << "Joined domain:\n";
                 // newDomain.printDomain();
-                instrToDomainNew.emplace(itOld->first, newDomain);
+                instrToDomainNew[itOld->first] = newDomain;
             }
         }
         // errs() << "***In join domain. Before return:\n";
