@@ -20,6 +20,9 @@ A. We can work with computing feasible interfernces ones before starting thread-
     All possible interferences are fixed since loads and stores of global variables can not change (assuming no pointers).
     Feasiblity of these interferences depends upon memory order, program order and happens before relations, which can not change mid-analysis.
 
+Q. The query to sat solver should be in it's negation form?
+A. ??
+
 
 Instructions that need Apron interface-
     BinOp   +, -, *, /, %, &&, ||, rmw, 
@@ -49,6 +52,8 @@ Possible Optimizations:
     Reduce number of maps (if maps are taking too much time):
         run a pass to give instr id to each intruction and store the environment of the intructions in this order or make a wrapper around Instructions
     LoadStore map
+    while checking if fixed point is reached, we are comparing somain of all the Instructions. It will be sufficient to compare domain of only stores
+        But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr
 
     parallelization
         checking feasiblity of interfernces with analysis of other thread
