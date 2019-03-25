@@ -7,12 +7,13 @@
 using namespace z3;
 
 class Z3Helper {
-	context z3Context;
-	solver z3Solver;
+	context zcontext;
+	solver zsolver;
+	fixedpoint zfp; 
 
 	public:
 	void initZ3();
 	void addMHB(llvm::Instruction *from, llvm::Instruction *to);
-}
+};
 
 #endif

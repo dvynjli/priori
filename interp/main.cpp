@@ -15,6 +15,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
+    Z3Helper zHelper;
 
     
     bool runOnModule (Module &M) {
@@ -25,7 +26,7 @@ class VerifierPass : public ModulePass {
         
         initThreadDetails(M, getGlobalIntVars(M), domainType);
 
-        initZ3();
+        zHelper.initZ3();
 
         analyzeProgram(M);
 

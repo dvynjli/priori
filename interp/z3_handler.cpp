@@ -1,8 +1,23 @@
 #include "z3_handler.h"
 
 void Z3Helper::initZ3() {
-    z3Solver = solver(z3Context);
-    func_decl mhb = function("mhb", z3Context.int_sort(), z3Context.int_sort());
+    zsolver = solver(zcontext);
+    zfp = fixedpoint(zcontext);
+
+    // TODO: declare enum for mem order and variable (if possible).
+    // and change function varOf and memOrder accordingly
+    // might need to define <=  for acq and rel mem orders
+
+    // functions
+    func_decl isLoad = function("isLoad", zcontext.int_sort(), zcontext.bool_sort());
+    func_decl isStore = function("isStore", zcontext.int_sort(), zcontext.bool_sort());
+    func_decl varOf = function("varOf", zcontext.int_sort(), zcontext.int_sort());
+    func_decl memOrder = function("memOrder", zcontext.int_sort(), zcontext.int_sort());
+
+    // relations
+    func_decl mhb = function("MHB", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
+    func_decl mhb = function("RF", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
+
 }
 
 void Z3Helper::addMHB(llvm::Instruction *from, llvm::Instruction *to) {
