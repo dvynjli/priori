@@ -31,3 +31,11 @@ void unsat_core_example1() {
 }
 
 
+/*
+useful links
+detailed tutorial (not c++): http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
+an example: https://github.com/Z3Prover/z3/blob/master/examples/c%2B%2B/example.cpp
+z3 fixpoints (not c++): https://rise4fun.com/z3/tutorialcontent/fixedpoints
+short notes: http://www.cs.utah.edu/~vinu/research/formal/tools/notes/z3-notes.html
+*/
+

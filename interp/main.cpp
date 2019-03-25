@@ -2,9 +2,6 @@
 #include "domain.h"
 #include "analyzer.h"
 #include "z3_handler.h"
-#include "llvm/IR/CFG.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Operator.h"
 
 class VerifierPass : public ModulePass {
 
@@ -27,6 +24,8 @@ class VerifierPass : public ModulePass {
         string domainType = "box";
         
         initThreadDetails(M, getGlobalIntVars(M), domainType);
+
+        initZ3();
 
         analyzeProgram(M);
 
@@ -258,9 +257,11 @@ class VerifierPass : public ModulePass {
                                 if (inSet.second) {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
+                                    // need to add dominates rules
+                                    addMHBRule(call, &*(newThread->begin()->begin()));
                                 }
+
                             }
-                            // TODO: need to add dominates rules
                         }
                         else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
                             // TODO: need to add dominates rules

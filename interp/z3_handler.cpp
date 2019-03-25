@@ -1,5 +1,14 @@
 #include "z3_handler.h"
 
+void Z3Helper::initZ3() {
+    z3Solver = solver(z3Context);
+    func_decl mhb = function("mhb", z3Context.int_sort(), z3Context.int_sort());
+}
+
+void Z3Helper::addMHB(llvm::Instruction *from, llvm::Instruction *to) {
+
+}
+
 
 /* void unsat_core_example1() {
         std::cout << "unsat core example1\n";
