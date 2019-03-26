@@ -2,6 +2,7 @@
 #include "domain.h"
 #include "analyzer.h"
 #include "z3_handler.h"
+#include "test_capi.c"
 
 class VerifierPass : public ModulePass {
 
@@ -24,11 +25,13 @@ class VerifierPass : public ModulePass {
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
         
-        initThreadDetails(M, getGlobalIntVars(M), domainType);
+        vector<string> globalVars = getGlobalIntVars(M);
+        // initThreadDetails(M, globalVars, domainType);
 
-        zHelper.initZ3();
+        zHelper.initZ3(globalVars);
+        enum_example();
 
-        analyzeProgram(M);
+        // analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -259,7 +262,7 @@ class VerifierPass : public ModulePass {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
                                     // need to add dominates rules
-                                    addMHBRule(call, &*(newThread->begin()->begin()));
+                                    // addMHB(call, &*(newThread->begin()->begin()));
                                 }
 
                             }

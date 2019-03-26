@@ -51,6 +51,14 @@ void enum_sort_example() {
     apply_result result_of_elimination = qe.apply(g);
     goal result_goal = result_of_elimination[0];
     std::cout << "2: " << result_goal.as_expr() << std::endl;
+
+    // From z3++.h
+    /**
+           \brief Return an enumeration sort: enum_names[0], ..., enum_names[n-1].
+           \c cs and \c ts are output parameters. The method stores in \c cs the constants corresponding to the enumerated elements,
+           and in \c ts the predicates for testing if terms of the enumeration sort correspond to an enumeration.
+        */
+    sort enumeration_sort(char const * name, unsigned n, char const * const * enum_names, func_decl_vector & cs, func_decl_vector & ts);
 }
 
 

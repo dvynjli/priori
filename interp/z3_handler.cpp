@@ -1,23 +1,68 @@
 #include "z3_handler.h"
 
-void Z3Helper::initZ3() {
-    zsolver = solver(zcontext);
-    zfp = fixedpoint(zcontext);
-
+void Z3Helper::initZ3(vector<string> globalVars) {
     // TODO: declare enum for mem order and variable (if possible).
     // and change function varOf and memOrder accordingly
     // might need to define <=  for acq and rel mem orders
+    const char * memOrderNames[] = { "rlx", "acq", "rel", "acq-rel", "seq_cst" };
+    z3::func_decl_vector memOrderEnumConsts(zcontext);
+    z3::func_decl_vector memOrderEnumTesters(zcontext);
+    z3::sort memOrderSort = zcontext.enumeration_sort("memOrder", 5, memOrderNames, memOrderEnumConsts, memOrderEnumTesters);
+
+    // TODO: should vars be considered constd instead of enum? will it improve performance?
+    int noOfVars = globalVars.size();
+    const char * varNames[noOfVars];
+    for (int i=0; i<noOfVars; i++) {
+        varNames[i] = globalVars[i].c_str();
+    }
+    z3::func_decl_vector varsEnumConsts(zcontext);
+    z3::func_decl_vector varsEnumTesters(zcontext);
+    z3::sort vars = zcontext.enumeration_sort("vars", noOfVars, varNames, varsEnumConsts, varsEnumTesters);
 
     // functions
-    func_decl isLoad = function("isLoad", zcontext.int_sort(), zcontext.bool_sort());
-    func_decl isStore = function("isStore", zcontext.int_sort(), zcontext.bool_sort());
-    func_decl varOf = function("varOf", zcontext.int_sort(), zcontext.int_sort());
-    func_decl memOrder = function("memOrder", zcontext.int_sort(), zcontext.int_sort());
+    // isLoad: instr -> bool
+    z3::func_decl isLoad = z3::function("isLoad", zcontext.int_sort(), zcontext.bool_sort());
+    // isStore: instr -> bool
+    z3::func_decl isStore = z3::function("isStore", zcontext.int_sort(), zcontext.bool_sort());
+    // varOf: instr -> var
+    z3::func_decl varOf = z3::function("varOf", zcontext.int_sort(), vars);
+    // memOrderOf: instr -> memOrder
+    z3::func_decl memOrderOf = z3::function("memOrder", zcontext.int_sort(), memOrderSort);
 
     // relations
-    func_decl mhb = function("MHB", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
-    func_decl mhb = function("RF", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
+    // MHB: does a MHB b? (instr, instr) -> bool
+    z3::func_decl mhb = z3::function("MHB", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
+    // RF: des a RF b? (instr, instr) -> bool
+    z3::func_decl rf = z3::function("RF", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
 
+    enum_sort_example();
+
+}
+
+void Z3Helper::enum_sort_example() {
+    std::cout << "enumeration sort example\n";
+    const char * enum_names[] = { "aa", "bb", "cc" };
+    z3::func_decl_vector enum_consts(zcontext);
+    z3::func_decl_vector enum_testers(zcontext);
+    z3::sort s = zcontext.enumeration_sort("enumT", 3, enum_names, enum_consts, enum_testers);
+    // enum_consts[0] is a func_decl of arity 0.
+    // we convert it to an expression using the operator()
+    z3::expr a = enum_consts[0]();
+    z3::expr b = enum_consts[1]();
+    z3::expr c = enum_consts[2]();
+    z3::expr x = zcontext.constant("x", s);
+    x=c;
+    z3::expr test = (x==a) || (x==b);
+    std::cout << "1: " << test << std::endl;
+    zsolver.add(test);
+    cout << zsolver.check() << endl;
+    z3::tactic qe(zcontext, "ctx-solver-simplify");
+    z3::goal g(zcontext);
+    g.add(test);
+    z3::expr res(zcontext);
+    z3::apply_result result_of_elimination = qe.apply(g);
+    z3::goal result_goal = result_of_elimination[0];
+    std::cout << "2: " << result_goal.as_expr() << std::endl;
 }
 
 void Z3Helper::addMHB(llvm::Instruction *from, llvm::Instruction *to) {

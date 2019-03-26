@@ -1,18 +1,22 @@
 #ifndef __Z3_HANDLER
 #define __Z3_HANDLER
 
+#include "common.h"
+
 #include "z3++.h"
 #include "llvm/IR/Instructions.h"
 
-using namespace z3;
-
 class Z3Helper {
-	context zcontext;
-	solver zsolver;
-	fixedpoint zfp; 
+	z3::context zcontext;
+	z3::solver zsolver;
+	z3::fixedpoint zfp;
+
+
+	void enum_sort_example();
 
 	public:
-	void initZ3();
+	Z3Helper() : zsolver(z3::solver(zcontext)), zfp(z3::fixedpoint(zcontext)) {}
+	void initZ3(vector<string> globalVars);
 	void addMHB(llvm::Instruction *from, llvm::Instruction *to);
 };
 
