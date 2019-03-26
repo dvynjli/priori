@@ -2,7 +2,6 @@
 #include "domain.h"
 #include "analyzer.h"
 #include "z3_handler.h"
-#include "test_capi.c"
 
 class VerifierPass : public ModulePass {
 
@@ -29,7 +28,6 @@ class VerifierPass : public ModulePass {
         // initThreadDetails(M, globalVars, domainType);
 
         zHelper.initZ3(globalVars);
-        enum_example();
 
         // analyzeProgram(M);
 

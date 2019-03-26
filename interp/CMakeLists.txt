@@ -1,4 +1,4 @@
-add_llvm_loadable_module( VerifierPass MODULE main.cpp domain.cpp z3_handler.cpp test_capi.c)
+add_llvm_loadable_module( VerifierPass MODULE main.cpp domain.cpp z3_handler.cpp)
 
 # Use C++11 to compile our pass (i.e., supply -std=c++11).
 target_compile_features(VerifierPass PRIVATE cxx_range_for cxx_auto_type)
