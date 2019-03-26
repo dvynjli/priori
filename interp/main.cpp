@@ -305,6 +305,10 @@ class VerifierPass : public ModulePass {
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
                                 varToLoads.emplace(loadInst, fromVarName);
+                                errs() << "****adding load instr for: ";
+                                loadInst->print(errs());
+                                errs() << "\n";
+                                zHelper.addLoadInstr(loadInst);
                             }
                         }
                     }

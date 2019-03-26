@@ -6,6 +6,16 @@
 #include "z3++.h"
 #include "llvm/IR/Instructions.h"
 
+
+#include "llvm/Pass.h"
+#include "llvm/IR/Function.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/CFG.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/Operator.h"
+
 enum mem_order {RLX, ACQ, REL, ACQ_REL, SEQ_CST};
 
 class Z3Helper {
@@ -17,14 +27,15 @@ class Z3Helper {
 	// z3::func_decl vars;
 	z3::func_decl isLoad;
 	z3::func_decl isStore;
-	z3::func_decl varOf;
+	z3::func_decl isVarOf;
 	z3::func_decl memOrderOf;
 	
 	z3::func_decl mhb;
 	z3::func_decl rf;
 
 	z3::expr getBitVec (void *op);
-
+	void addInstToVar(z3::expr inst, llvm::Value *var);
+	void addInstToMemOrd(z3::expr inst, llvm::AtomicOrdering ord);
 
 	public:
 	Z3Helper() : 
@@ -36,8 +47,8 @@ class Z3Helper {
     	isLoad (z3::function("isLoad", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
     	// isStore: instr -> bool
     	isStore (z3::function("isStore", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
-    	// varOf: instr -> var
-    	varOf (z3::function("varOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort())),
+    	// isVarOf: instr -> var
+    	isVarOf (z3::function("varOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
     	// memOrderOf: instr -> memOrder
     	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort())),
 	    // relations
@@ -49,6 +60,9 @@ class Z3Helper {
 	
 	void initZ3(vector<string> globalVars);
 	void addMHB(llvm::Instruction *from, llvm::Instruction *to);
+	void addLoadInstr  (llvm::LoadInst *inst);
+	void addStoreInstr (llvm::StoreInst *inst);
+
 };
 
 #endif
