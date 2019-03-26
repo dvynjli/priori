@@ -54,6 +54,9 @@ Possible Optimizations:
     LoadStore map
     while checking if fixed point is reached, we are comparing somain of all the Instructions. It will be sufficient to compare domain of only stores
         But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr
+    
+    Z3Helper:
+        use bit vectors
 
     parallelization
         checking feasiblity of interfernces with analysis of other thread

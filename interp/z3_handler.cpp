@@ -4,42 +4,50 @@ void Z3Helper::initZ3(vector<string> globalVars) {
     // TODO: declare enum for mem order and variable (if possible).
     // and change function varOf and memOrder accordingly
     // might need to define <=  for acq and rel mem orders
-    const char * memOrderNames[] = { "rlx", "acq", "rel", "acq-rel", "seq_cst" };
-    z3::func_decl_vector memOrderEnumConsts(zcontext);
-    z3::func_decl_vector memOrderEnumTesters(zcontext);
-    z3::sort memOrderSort = zcontext.enumeration_sort("memOrder", 5, memOrderNames, memOrderEnumConsts, memOrderEnumTesters);
+    // can'r find how to use name of enum
+    
+    // const char * memOrderNames[] = { "rlx", "acq", "rel", "acq-rel", "seq_cst" };
+    // z3::func_decl_vector memOrderEnumConsts(zcontext);
+    // z3::func_decl_vector memOrderEnumTesters(zcontext);
+    // z3::sort memOrderSort = zcontext.enumeration_sort("memOrder", 5, memOrderNames, memOrderEnumConsts, memOrderEnumTesters);
 
-    // TODO: should vars be considered constd instead of enum? will it improve performance?
-    int noOfVars = globalVars.size();
-    const char * varNames[noOfVars];
-    for (int i=0; i<noOfVars; i++) {
-        varNames[i] = globalVars[i].c_str();
-    }
-    z3::func_decl_vector varsEnumConsts(zcontext);
-    z3::func_decl_vector varsEnumTesters(zcontext);
-    z3::sort vars = zcontext.enumeration_sort("vars", noOfVars, varNames, varsEnumConsts, varsEnumTesters);
+    // int noOfVars = globalVars.size();
+    // const char * varNames[noOfVars];
+    // for (int i=0; i<noOfVars; i++) {
+    //     varNames[i] = globalVars[i].c_str();
+    // }
+    // z3::func_decl_vector varsEnumConsts(zcontext);
+    // z3::func_decl_vector varsEnumTesters(zcontext);
+    // z3::sort vars = zcontext.enumeration_sort("vars", noOfVars, varNames, varsEnumConsts, varsEnumTesters);
 
-    // functions
-    // isLoad: instr -> bool
-    z3::func_decl isLoad = z3::function("isLoad", zcontext.int_sort(), zcontext.bool_sort());
-    // isStore: instr -> bool
-    z3::func_decl isStore = z3::function("isStore", zcontext.int_sort(), zcontext.bool_sort());
-    // varOf: instr -> var
-    z3::func_decl varOf = z3::function("varOf", zcontext.int_sort(), vars);
-    // memOrderOf: instr -> memOrder
-    z3::func_decl memOrderOf = z3::function("memOrder", zcontext.int_sort(), memOrderSort);
+    
 
-    // relations
-    // MHB: does a MHB b? (instr, instr) -> bool
-    z3::func_decl mhb = z3::function("MHB", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
-    // RF: des a RF b? (instr, instr) -> bool
-    z3::func_decl rf = z3::function("RF", zcontext.int_sort(), zcontext.int_sort(), zcontext.bool_sort());
-
-    enum_sort_example();
+    // enum_sort_example();
 
 }
 
-void Z3Helper::enum_sort_example() {
+void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
+    const z3::expr fromExpr = getBitVec(from, "from");
+    const z3::expr toExpr = getBitVec(to, "to");
+    const z3::expr trueExpr = zcontext.bool_val(true);
+    unsigned int fromInt = (unsigned int) from;
+    unsigned int toInt = (unsigned int) to;
+    // z3::expr fromExpr = zcontext.int_val(fromInt);
+    // z3::expr toExpr = zcontext.int_val(toInt);
+    // printf ("bitvec: %u, %u\t ints: %u, %u\t instr: %u, %u\n", fromExpr, toExpr, fromInt, toInt, from, to);
+    cout << "bitvec from: " << fromExpr << ", to: " << toExpr << ", true: " << trueExpr << "\n";
+    z3::expr app = mhb(fromExpr, toExpr);
+    Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
+
+}
+
+
+z3::expr Z3Helper::getBitVec (void *op, string name) {
+    unsigned int ptr = (unsigned int) op;
+    return zcontext.bv_val(ptr, __SIZEOF_INT__);
+}
+
+/* void Z3Helper::enum_sort_example() {
     std::cout << "enumeration sort example\n";
     const char * enum_names[] = { "aa", "bb", "cc" };
     z3::func_decl_vector enum_consts(zcontext);
@@ -50,9 +58,12 @@ void Z3Helper::enum_sort_example() {
     z3::expr a = enum_consts[0]();
     z3::expr b = enum_consts[1]();
     z3::expr c = enum_consts[2]();
-    z3::expr x = zcontext.constant("x", s);
-    x=c;
-    z3::expr test = (x==a) || (x==b);
+    cout << "enum const [0]: " << enum_consts[0]() << "\n";
+    cout << "enum testers [0]: " << enum_testers[0] << "\n";
+    z3::expr y = zcontext.constant("y", enum_consts[0]().get_sort());
+    cout << "y: " << y << "\n";
+    z3::expr x = zcontext.constant("cc", s);
+    z3::expr test = (y==b) || (y==c);
     std::cout << "1: " << test << std::endl;
     zsolver.add(test);
     cout << zsolver.check() << endl;
@@ -63,12 +74,7 @@ void Z3Helper::enum_sort_example() {
     z3::apply_result result_of_elimination = qe.apply(g);
     z3::goal result_goal = result_of_elimination[0];
     std::cout << "2: " << result_goal.as_expr() << std::endl;
-}
-
-void Z3Helper::addMHB(llvm::Instruction *from, llvm::Instruction *to) {
-
-}
-
+} */
 
 /* void unsat_core_example1() {
         std::cout << "unsat core example1\n";

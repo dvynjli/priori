@@ -25,7 +25,7 @@ class VerifierPass : public ModulePass {
         string domainType = "box";
         
         vector<string> globalVars = getGlobalIntVars(M);
-        // initThreadDetails(M, globalVars, domainType);
+        initThreadDetails(M, globalVars, domainType);
 
         zHelper.initZ3(globalVars);
 
@@ -260,7 +260,7 @@ class VerifierPass : public ModulePass {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
                                     // need to add dominates rules
-                                    // addMHB(call, &*(newThread->begin()->begin()));
+                                    zHelper.addMHB(call, &*(newThread->begin()->begin()));
                                 }
 
                             }
