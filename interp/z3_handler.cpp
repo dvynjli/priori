@@ -20,21 +20,18 @@ void Z3Helper::initZ3(vector<string> globalVars) {
     // z3::func_decl_vector varsEnumTesters(zcontext);
     // z3::sort vars = zcontext.enumeration_sort("vars", noOfVars, varNames, varsEnumConsts, varsEnumTesters);
 
-    
-
-    // enum_sort_example();
 
 }
 
 void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
-    const z3::expr fromExpr = getBitVec(from, "from");
-    const z3::expr toExpr = getBitVec(to, "to");
+    const z3::expr fromExpr = getBitVec(from);
+    const z3::expr toExpr = getBitVec(to);
     const z3::expr trueExpr = zcontext.bool_val(true);
     unsigned int fromInt = (unsigned int) from;
     unsigned int toInt = (unsigned int) to;
     // z3::expr fromExpr = zcontext.int_val(fromInt);
     // z3::expr toExpr = zcontext.int_val(toInt);
-    // printf ("bitvec: %u, %u\t ints: %u, %u\t instr: %u, %u\n", fromExpr, toExpr, fromInt, toInt, from, to);
+    printf ("bitvec: %u, %u\t ints: %u, %u\t instr: %u, %u\n", fromExpr, toExpr, fromInt, toInt, from, to);
     cout << "bitvec from: " << fromExpr << ", to: " << toExpr << ", true: " << trueExpr << "\n";
     z3::expr app = mhb(fromExpr, toExpr);
     Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
@@ -42,10 +39,24 @@ void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
 }
 
 
-z3::expr Z3Helper::getBitVec (void *op, string name) {
+z3::expr Z3Helper::getBitVec (void *op) {
     unsigned int ptr = (unsigned int) op;
-    return zcontext.bv_val(ptr, __SIZEOF_INT__);
+    return zcontext.bv_val(ptr, __SIZEOF_POINTER__*8);
 }
+
+/* void Z3Helper::test_bv_fun() {
+    z3::expr int2Expr = zcontext.bv_val(1024, 2);
+    z3::expr int4Expr = zcontext.bv_val(1024, 4);
+    z3::expr int8Expr = zcontext.bv_val(1024, 8);
+    z3::expr int16Expr = zcontext.bv_val(1024, 16);
+    z3::expr int32Expr = zcontext.bv_val(1024, 32);
+    cout << "int2 : " << int2Expr  << endl <<
+            "int4 : " << int4Expr  << endl <<
+            "int8 : " << int8Expr  << endl <<
+            "int8 : " << int8Expr  << endl <<
+            "int16: " << int16Expr << endl <<
+            "int32: " << int32Expr << endl;
+} */
 
 /* void Z3Helper::enum_sort_example() {
     std::cout << "enumeration sort example\n";

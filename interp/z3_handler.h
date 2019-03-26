@@ -23,7 +23,7 @@ class Z3Helper {
 	z3::func_decl mhb;
 	z3::func_decl rf;
 
-	z3::expr getBitVec (void *op, string name);
+	z3::expr getBitVec (void *op);
 
 
 	public:
@@ -33,18 +33,18 @@ class Z3Helper {
     	// vars (z3::function("vars", zcontext.string_sort(), zcontext.int_sort())),
     	// functions
     	// isLoad: instr -> bool
-    	isLoad (z3::function("isLoad", zcontext.bv_sort(__SIZEOF_INT__), zcontext.bool_sort())),
+    	isLoad (z3::function("isLoad", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
     	// isStore: instr -> bool
-    	isStore (z3::function("isStore", zcontext.bv_sort(__SIZEOF_INT__), zcontext.bool_sort())),
+    	isStore (z3::function("isStore", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
     	// varOf: instr -> var
-    	varOf (z3::function("varOf", zcontext.bv_sort(__SIZEOF_INT__), zcontext.int_sort())),
+    	varOf (z3::function("varOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort())),
     	// memOrderOf: instr -> memOrder
-    	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(__SIZEOF_INT__), zcontext.int_sort())),
+    	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort())),
 	    // relations
     	// MHB: does a MHB b? (instr, instr) -> bool
-    	mhb (z3::function("MHB", zcontext.bv_sort(__SIZEOF_INT__), zcontext.bv_sort(__SIZEOF_INT__), zcontext.bool_sort())),
+    	mhb (z3::function("MHB", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
     	// RF: des a RF b? (instr, instr) -> bool
-    	rf (z3::function("RF", zcontext.bv_sort(__SIZEOF_INT__), zcontext.bv_sort(__SIZEOF_INT__), zcontext.bool_sort()))
+    	rf (z3::function("RF", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort()))
 		{}
 	
 	void initZ3(vector<string> globalVars);
