@@ -25,9 +25,9 @@ void* fun1(void * arg){
 	int a = 10;
 	b = 5;
 	int c = x.load(memory_order_acquire);
-	y.store(a+c, memory_order_relaxed);
+	y.store(a+c, memory_order_release);
 	c = y.load(memory_order_acq_rel);
-	x.store(c+b, memory_order_relaxed);
+	x.store(c+b, memory_order_acq_rel);
 	pthread_join(t1, NULL);
 	return NULL;
 }

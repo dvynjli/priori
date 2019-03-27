@@ -282,6 +282,10 @@ class VerifierPass : public ModulePass {
                         string destVarName = getNameFromValue(destVar);
                         if (dyn_cast<GlobalVariable>(destVar)) {
                             varToStores[destVarName].insert(storeInst);
+                            errs() << "****adding store instr for: ";
+                            storeInst->print(errs());
+                            errs() << "\n";
+                            zHelper.addStoreInstr(storeInst);
                         }
                     }
                     else if (it->isTerminator()) {
