@@ -26,13 +26,13 @@ void Z3Helper::initZ3(vector<string> globalVars) {
 void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
     const z3::expr fromExpr = getBitVec(from);
     const z3::expr toExpr = getBitVec(to);
-    // const z3::expr trueExpr = zcontext.bool_val(true);
+    const z3::expr trueExpr = zcontext.bool_val(true);
     // unsigned int fromInt = (unsigned int) from;
     // unsigned int toInt = (unsigned int) to;
     // z3::expr fromExpr = zcontext.int_val(fromInt);
     // z3::expr toExpr = zcontext.int_val(toInt);
     // printf ("bitvec: %u, %u\t ints: %u, %u\t instr: %u, %u\n", fromExpr, toExpr, fromInt, toInt, from, to);
-    // cout << "bitvec from: " << fromExpr << ", to: " << toExpr << ", true: " << trueExpr << "\n";
+    cout << "bitvec from: " << fromExpr << ", to: " << toExpr << ", true: " << trueExpr << "\n";
     z3::expr app = mhb(fromExpr, toExpr);
     Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
 }

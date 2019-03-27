@@ -16,7 +16,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 
-// llvm: NA=0, RLX=2, ACQ=4, REL=5, SEQ_CST=7
+// llvm: NA=0, RLX=2, ACQ=4, REL=5, (ACQ_REL=6), SEQ_CST=7
 enum mem_order {NA, RLX, ACQ, REL, ACQ_REL, SEQ_CST};
 
 class Z3Helper {

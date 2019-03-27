@@ -223,6 +223,14 @@ class VerifierPass : public ModulePass {
         }
     }
 
+    Instruction* getLastGlobalInst(Instruction *inst) {
+        return nullptr;
+    }
+
+    Instruction* getNextGlobalInst(Instruction *inst) {
+        return nullptr;
+    }
+
     void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
@@ -260,7 +268,12 @@ class VerifierPass : public ModulePass {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
                                     // need to add dominates rules
-                                    zHelper.addMHB(call, &*(newThread->begin()->begin()));
+                                    Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
+                                    Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
+                                    // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
+                                    // no global instr before thread create in current function (or in newly created thread)
+                                    if (lastGlobalInstBeforeCall && firstGlobalInstInCalled)
+                                        zHelper.addMHB(lastGlobalInstBeforeCall, firstGlobalInstInCalled);
                                 }
 
                             }
@@ -282,9 +295,9 @@ class VerifierPass : public ModulePass {
                         string destVarName = getNameFromValue(destVar);
                         if (dyn_cast<GlobalVariable>(destVar)) {
                             varToStores[destVarName].insert(storeInst);
-                            errs() << "****adding store instr for: ";
-                            storeInst->print(errs());
-                            errs() << "\n";
+                            // errs() << "****adding store instr for: ";
+                            // storeInst->print(errs());
+                            // errs() << "\n";
                             zHelper.addStoreInstr(storeInst);
                         }
                     }
@@ -309,9 +322,9 @@ class VerifierPass : public ModulePass {
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
                                 varToLoads.emplace(loadInst, fromVarName);
-                                errs() << "****adding load instr for: ";
-                                loadInst->print(errs());
-                                errs() << "\n";
+                                // errs() << "****adding load instr for: ";
+                                // loadInst->print(errs());
+                                // errs() << "\n";
                                 zHelper.addLoadInstr(loadInst);
                             }
                         }

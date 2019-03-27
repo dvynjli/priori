@@ -23,6 +23,13 @@ A. We can work with computing feasible interfernces ones before starting thread-
 Q. The query to sat solver should be in it's negation form?
 A. ??
 
+Q. MHB of thread create and join should be with first/last global load/store? 
+A. Have to be careful when doing this. Another option is to add the dominated rule of all the instructions.
+    This is less effective as well as harder to do.
+Q. If there is a thread with no global operations, will this approach suffice?
+A. 
+
+
 
 Instructions that need Apron interface-
     BinOp   +, -, *, /, %, &&, ||, rmw, 
@@ -56,7 +63,7 @@ Possible Optimizations:
         But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr
     
     Z3Helper:
-        use bit vectors
+        use bit vectors of smalled size
 
     parallelization
         checking feasiblity of interfernces with analysis of other thread
