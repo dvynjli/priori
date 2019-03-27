@@ -37,19 +37,8 @@ void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
     Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
 }
 
-void Z3Helper::addInstToVar(z3::expr inst, llvm::Value *var) {
-    const z3::expr varExpr = getBitVec(var);
-    z3::expr app = isVarOf(inst, varExpr);
-    Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
-}
-
-void Z3Helper::addInstToMemOrd(z3::expr inst, llvm::AtomicOrdering ord) {
-    // const z3::expr ordExpr = getMemOrd();
-}
-
 void Z3Helper::addLoadInstr (llvm::LoadInst *inst) {
     const z3::expr instExpr = getBitVec(inst);
-    cout << "adding load inst " << instExpr << endl;
     z3::expr app = isLoad(instExpr);
     Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
     
@@ -61,12 +50,61 @@ void Z3Helper::addLoadInstr (llvm::LoadInst *inst) {
 }
 
 void Z3Helper::addStoreInstr (llvm::StoreInst *inst) {
+    const z3::expr instExpr = getBitVec(inst);
+    z3::expr app = isStore(instExpr);
+    Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
+    
+    llvm::Value* fromVar = inst->getOperand(0);
+    addInstToVar(instExpr, fromVar);
 
+    llvm::AtomicOrdering ord = inst->getOrdering();
+    addInstToMemOrd(instExpr, ord);
+}
+
+void Z3Helper::addInstToVar(z3::expr inst, llvm::Value *var) {
+    const z3::expr varExpr = getBitVec(var);
+    z3::expr app = isVarOf(inst, varExpr);
+    Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
+}
+
+void Z3Helper::addInstToMemOrd(z3::expr inst, llvm::AtomicOrdering ord) {
+    const z3::expr ordExpr = getMemOrd(ord);
+    z3::expr app = memOrderOf(inst, ordExpr);
+    Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
 }
 
 z3::expr Z3Helper::getBitVec (void *op) {
     unsigned int ptr = (unsigned int) op;
     return zcontext.bv_val(ptr, __SIZEOF_POINTER__*8);
+}
+
+z3::expr Z3Helper::getMemOrd(llvm::AtomicOrdering ord) {
+    cout << "-----Mem order: " << ord << " ----\n";
+    enum mem_order ordInt;
+    switch(ord) {
+        case llvm::AtomicOrdering::NotAtomic:
+            ordInt = NA;
+            break;
+        case llvm::AtomicOrdering::Monotonic:
+            ordInt = RLX;
+            break;
+        case llvm::AtomicOrdering::Acquire:
+            ordInt = ACQ;
+            break;
+        case llvm::AtomicOrdering::Release:
+            ordInt = REL;
+            break;
+        case llvm::AtomicOrdering::AcquireRelease:
+            ordInt = ACQ_REL;
+            break;
+        case llvm::AtomicOrdering::SequentiallyConsistent:
+            ordInt = SEQ_CST;
+            break;
+        default:
+            cout << "WARNING: Unknown mem order\n";
+            break;
+    }
+    return zcontext.int_val(ordInt);
 }
 
 /* void Z3Helper::test_bv_fun() {

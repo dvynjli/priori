@@ -16,7 +16,8 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 
-enum mem_order {RLX, ACQ, REL, ACQ_REL, SEQ_CST};
+// llvm: NA=0, RLX=2, ACQ=4, SEQ_CST=7
+enum mem_order {NA, RLX, ACQ, REL, ACQ_REL, SEQ_CST};
 
 class Z3Helper {
 	z3::context zcontext;
@@ -34,6 +35,7 @@ class Z3Helper {
 	z3::func_decl rf;
 
 	z3::expr getBitVec (void *op);
+	z3::expr getMemOrd(llvm::AtomicOrdering ord);
 	void addInstToVar(z3::expr inst, llvm::Value *var);
 	void addInstToMemOrd(z3::expr inst, llvm::AtomicOrdering ord);
 
@@ -50,7 +52,7 @@ class Z3Helper {
     	// isVarOf: instr -> var
     	isVarOf (z3::function("varOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
     	// memOrderOf: instr -> memOrder
-    	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort())),
+    	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort(), zcontext.bool_sort())),
 	    // relations
     	// MHB: does a MHB b? (instr, instr) -> bool
     	mhb (z3::function("MHB", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),

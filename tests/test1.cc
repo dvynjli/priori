@@ -13,8 +13,8 @@ void* fun2(void * arg){
 	// x.compare_exchange_strong(a, b, memory_order_relaxed);
 	// atomic_fetch_add_explicit(&x, 1, memory_order_acq_rel);
 	x.store(10, memory_order_relaxed);
-	y.load(memory_order_relaxed);
-	x.store(20, memory_order_relaxed);
+	y.load(memory_order_seq_cst);
+	x.store(20, memory_order_seq_cst);
 	// y.load(memory_order_relaxed);
 	return NULL;
 }
@@ -24,9 +24,9 @@ void* fun1(void * arg){
 	pthread_create(&t1, NULL, fun2, NULL);
 	int a = 10;
 	b = 5;
-	int c = x.load(memory_order_relaxed);
+	int c = x.load(memory_order_acquire);
 	y.store(a+c, memory_order_relaxed);
-	c = y.load(memory_order_relaxed);
+	c = y.load(memory_order_acq_rel);
 	x.store(c+b, memory_order_relaxed);
 	pthread_join(t1, NULL);
 	return NULL;
