@@ -24,10 +24,11 @@ Q. The query to sat solver should be in it's negation form?
 A. ??
 
 Q. MHB of thread create and join should be with first/last global load/store? 
-A. Have to be careful when doing this. Another option is to add the dominated rule of all the instructions.
-    This is less effective as well as harder to do.
+A. Have to be careful when doing this. Another option is to add the dominated rule of all the instructions,
+    which is less effective as well as harder to do.
 Q. If there is a thread with no global operations, will this approach suffice?
-A. 
+A. We can consider pthread create/join instructions as global instructions and add MHB of first/last global load/store  with these.
+    Also need to set last global for same environment in l-s pair
 
 
 

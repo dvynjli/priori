@@ -223,12 +223,84 @@ class VerifierPass : public ModulePass {
         }
     }
 
+    bool isGlobalLoad(Instruction *inst) {
+        // errs() << "Checking for global load: ";
+        // inst->print(errs());
+        // errs() << "\n";
+        if (LoadInst *loadInst = dyn_cast<LoadInst> (inst)) {
+            Value* fromVar = loadInst->getOperand(0);
+            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                fromVar = gepOp->getPointerOperand();
+            }
+            if (dyn_cast<GlobalVariable>(fromVar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isGlobalStore(Instruction *inst) {
+        // errs() << "Checking for global store: ";
+        // inst->print(errs());
+        // errs() << "\n";
+        if(StoreInst *storeInst = dyn_cast<StoreInst>(inst)) {
+            Value* destVar = storeInst->getPointerOperand();
+            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+                destVar = gepOp->getPointerOperand();
+            }
+            if (dyn_cast<GlobalVariable>(destVar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isPthreadCreate(Instruction *inst) {
+        // errs() << "Checking for pthread create: ";
+        // inst->print(errs());
+        // errs() << "\n";
+        if (CallInst *call = dyn_cast<CallInst>(inst)) {
+            if(!call->getCalledFunction()->getName().compare("pthread_create")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isPthreadJoin(Instruction *inst) {
+        // errs() << "Checking for pthread join: ";
+        // inst->print(errs());
+        // errs() << "\n";
+        if (CallInst *call = dyn_cast<CallInst>(inst)) {
+            if(!call->getCalledFunction()->getName().compare("pthread_join")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     Instruction* getLastGlobalInst(Instruction *inst) {
-        return nullptr;
+        Instruction *prevInst = inst->getPrevNode();
+        while ( prevInst                    &&
+                ! isGlobalLoad(prevInst)    &&
+                ! isGlobalStore(prevInst)   &&
+                ! isPthreadCreate(prevInst) &&
+                ! isPthreadJoin(prevInst)) {
+            prevInst = prevInst->getPrevNode();
+        } 
+        return prevInst;
     }
 
     Instruction* getNextGlobalInst(Instruction *inst) {
-        return nullptr;
+        Instruction *nextInst = inst;
+        while ( nextInst                    &&
+                ! isGlobalLoad(nextInst)    &&
+                ! isGlobalStore(nextInst)   &&
+                ! isPthreadCreate(nextInst) &&
+                ! isPthreadJoin(nextInst)) {
+            nextInst = nextInst->getNextNode ();
+        }
+        return nextInst;
     }
 
     void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
@@ -272,8 +344,12 @@ class VerifierPass : public ModulePass {
                                     Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
                                     // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
                                     // no global instr before thread create in current function (or in newly created thread)
-                                    if (lastGlobalInstBeforeCall && firstGlobalInstInCalled)
-                                        zHelper.addMHB(lastGlobalInstBeforeCall, firstGlobalInstInCalled);
+                                    if (lastGlobalInstBeforeCall) {
+                                        zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                    }
+                                    if (firstGlobalInstInCalled) {
+                                        zHelper.addMHB(call, firstGlobalInstInCalled);
+                                    }
                                 }
 
                             }
