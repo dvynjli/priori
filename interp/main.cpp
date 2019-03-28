@@ -125,184 +125,6 @@ class VerifierPass : public ModulePass {
         return loadsToAllStores;
     }
 
-    void printLoadsToAllStores(unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores){
-        errs() << "All load-store pair in the program\n";
-        for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
-            errs () << "***Function " << it1->first->getName() << ":\n";
-            auto l2s = it1->second;
-            for (auto it2=l2s.begin(); it2!=l2s.end(); ++it2) {
-                errs() << "Stores for Load: ";
-                it2->first->print(errs());
-                errs() << "\n";
-                auto stores = it2->second;
-                for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
-                    errs() << "\t";
-                    (*it3)->print(errs());
-                    errs() << "\n";
-                }
-            }
-        }
-    }
-
-    unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getAllInterferences (
-        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
-    ){
-        unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
-
-        for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
-            Function *curFunc = funItr->first;
-            auto allLS = funItr->second;
-            Instruction* loads[allLS.size()];
-            vector<Instruction*>::iterator allItr[allLS.size()];
-            int noOfInterfs = 1;
-            int i=0;
-            for (auto itr=allLS.begin(); itr!=allLS.end(); ++itr, i++) {
-                loads[i] = itr->first;
-                allItr[i] = itr->second.begin();
-                if (!itr->second.empty()) noOfInterfs *= itr->second.size();
-            }
-            
-            unordered_map<Instruction*, Instruction*> curInterf;
-            
-            for (int i=0; i<noOfInterfs; i++) {
-                for (int j=0; j<allLS.size(); j++) {
-                    if (allItr[j] != allLS[loads[j]].end()) {
-                        curInterf[loads[j]] = (*allItr[j]);
-                    }
-                }
-                allInterfs[curFunc].push_back(curInterf);
-                int k = allLS.size()-1;
-                if (allItr[k] != allLS[loads[k]].end()) {
-                    allItr[k]++;
-                }
-                while (allItr[k] == allLS[loads[k]].end()) {
-                    allItr[k] = allLS[loads[k]].begin();
-                    k--;
-                    if (k>=0) allItr[k]++;
-                }
-            }
-        }
-        
-        return allInterfs;
-    }
-
-    unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getFeasibleInterferences (
-        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
-        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
-    ){
-        unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
-        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
-        // Make all permutations
-        // TODO: add dummy env i.e. load from itself
-        loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
-        allInterfs = getAllInterferences(loadsToAllStores);
-
-        // TODO: Check feasibility of permutations and save them in feasibleInterfences
-        feasibleInterfences = allInterfs;
-        // printFeasibleInterf();
-
-        return allInterfs;
-    }
-
-    void printFeasibleInterf() {
-        errs() << "\nAll Interfs\n";
-        for (auto it1=feasibleInterfences.begin(); it1!=feasibleInterfences.end(); ++it1) {
-            errs() << "Interfs for function: " << it1->first->getName();
-            auto allInterfOfFun = it1->second;
-            int i = 0;
-            for (auto it2=allInterfOfFun.begin(); it2!=allInterfOfFun.end(); ++it2, ++i) {
-                errs() << "Interf " << i << ":\n";
-                for (auto it3=it2->begin(); it3!=it2->end(); ++it3) {
-                    errs() << "\tLoad: ";
-                    it3->first->print(errs());
-                    errs() << "\n\tStore: ";
-                    it3->second->print(errs());
-                    errs() << "\n";
-                }
-            }
-        }
-    }
-
-    bool isGlobalLoad(Instruction *inst) {
-        // errs() << "Checking for global load: ";
-        // inst->print(errs());
-        // errs() << "\n";
-        if (LoadInst *loadInst = dyn_cast<LoadInst> (inst)) {
-            Value* fromVar = loadInst->getOperand(0);
-            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
-                fromVar = gepOp->getPointerOperand();
-            }
-            if (dyn_cast<GlobalVariable>(fromVar)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool isGlobalStore(Instruction *inst) {
-        // errs() << "Checking for global store: ";
-        // inst->print(errs());
-        // errs() << "\n";
-        if(StoreInst *storeInst = dyn_cast<StoreInst>(inst)) {
-            Value* destVar = storeInst->getPointerOperand();
-            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
-                destVar = gepOp->getPointerOperand();
-            }
-            if (dyn_cast<GlobalVariable>(destVar)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool isPthreadCreate(Instruction *inst) {
-        // errs() << "Checking for pthread create: ";
-        // inst->print(errs());
-        // errs() << "\n";
-        if (CallInst *call = dyn_cast<CallInst>(inst)) {
-            if(!call->getCalledFunction()->getName().compare("pthread_create")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool isPthreadJoin(Instruction *inst) {
-        // errs() << "Checking for pthread join: ";
-        // inst->print(errs());
-        // errs() << "\n";
-        if (CallInst *call = dyn_cast<CallInst>(inst)) {
-            if(!call->getCalledFunction()->getName().compare("pthread_join")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    Instruction* getLastGlobalInst(Instruction *inst) {
-        Instruction *prevInst = inst->getPrevNode();
-        while ( prevInst                    &&
-                ! isGlobalLoad(prevInst)    &&
-                ! isGlobalStore(prevInst)   &&
-                ! isPthreadCreate(prevInst) &&
-                ! isPthreadJoin(prevInst)) {
-            prevInst = prevInst->getPrevNode();
-        } 
-        return prevInst;
-    }
-
-    Instruction* getNextGlobalInst(Instruction *inst) {
-        Instruction *nextInst = inst;
-        while ( nextInst                    &&
-                ! isGlobalLoad(nextInst)    &&
-                ! isGlobalStore(nextInst)   &&
-                ! isPthreadCreate(nextInst) &&
-                ! isPthreadJoin(nextInst)) {
-            nextInst = nextInst->getNextNode ();
-        }
-        return nextInst;
-    }
-
     void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
@@ -417,40 +239,6 @@ class VerifierPass : public ModulePass {
             funcInitDomain.emplace(func, curFuncDomain);
         }
         getFeasibleInterferences(allLoads, allStores);
-    }
-
-    void testApplyInterf() {
-        // Sample code to test applyInterference()
-        auto funIt = funcInitDomain.begin();
-        Function *fun1 = funIt->first;
-        Domain fun1Domain = funIt->second;
-        fun1Domain.performUnaryOp(STORE, "x", 1);
-        funIt++;
-        Function *fun2 = funIt->first;
-        Domain fun2Domain = funIt->second;
-        fun2Domain.applyInterference("x", fun1Domain);
-    }
-
-    void printInstToDomainMap(unordered_map<Instruction*, Domain> instToDomainMap) {
-        for (auto it=instToDomainMap.begin(); it!=instToDomainMap.end(); ++it) {
-            it->first->print(errs());
-            it->second.printDomain();
-        }
-    }
-
-    void printProgramState() {
-        for (auto it1=programState.begin(); it1!=programState.end(); ++it1) {
-            errs() << "\n-----------------------------------------------\n";
-            errs() << "Function " << it1->first->getName() << ":\n";
-            errs() << "-----------------------------------------------\n";
-            printInstToDomainMap(it1->second);
-        }
-    }
-
-    bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Domain>> newProgramState) {
-        // errs() << "Program state size: " << programState.size();
-        // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
-        return (newProgramState == programState);
     }
 
     void analyzeProgram(Module &M) {
@@ -760,6 +548,66 @@ class VerifierPass : public ModulePass {
         return curDomain;
     }
 
+    unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getAllInterferences (
+        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
+    ){
+        unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
+
+        for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
+            Function *curFunc = funItr->first;
+            auto allLS = funItr->second;
+            Instruction* loads[allLS.size()];
+            vector<Instruction*>::iterator allItr[allLS.size()];
+            int noOfInterfs = 1;
+            int i=0;
+            for (auto itr=allLS.begin(); itr!=allLS.end(); ++itr, i++) {
+                loads[i] = itr->first;
+                allItr[i] = itr->second.begin();
+                if (!itr->second.empty()) noOfInterfs *= itr->second.size();
+            }
+            
+            unordered_map<Instruction*, Instruction*> curInterf;
+            
+            for (int i=0; i<noOfInterfs; i++) {
+                for (int j=0; j<allLS.size(); j++) {
+                    if (allItr[j] != allLS[loads[j]].end()) {
+                        curInterf[loads[j]] = (*allItr[j]);
+                    }
+                }
+                allInterfs[curFunc].push_back(curInterf);
+                int k = allLS.size()-1;
+                if (allItr[k] != allLS[loads[k]].end()) {
+                    allItr[k]++;
+                }
+                while (allItr[k] == allLS[loads[k]].end()) {
+                    allItr[k] = allLS[loads[k]].begin();
+                    k--;
+                    if (k>=0) allItr[k]++;
+                }
+            }
+        }
+        
+        return allInterfs;
+    }
+
+    unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getFeasibleInterferences (
+        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
+        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
+    ){
+        unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
+        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
+        // Make all permutations
+        // TODO: add dummy env i.e. load from itself
+        loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
+        allInterfs = getAllInterferences(loadsToAllStores);
+
+        // TODO: Check feasibility of permutations and save them in feasibleInterfences
+        feasibleInterfences = allInterfs;
+        // printFeasibleInterf();
+
+        return allInterfs;
+    }
+
     unordered_map<Instruction*, Domain> joinDomainByInstruction(
         unordered_map<Instruction*, Domain> instrToDomainOld,
         unordered_map<Instruction*, Domain> instrToDomainNew
@@ -793,6 +641,146 @@ class VerifierPass : public ModulePass {
         // printInstToDomainMap(instrToDomainNew);
 
         return instrToDomainNew;
+    }
+
+    void printLoadsToAllStores(unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores){
+        errs() << "All load-store pair in the program\n";
+        for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
+            errs () << "***Function " << it1->first->getName() << ":\n";
+            auto l2s = it1->second;
+            for (auto it2=l2s.begin(); it2!=l2s.end(); ++it2) {
+                errs() << "Stores for Load: ";
+                it2->first->print(errs());
+                errs() << "\n";
+                auto stores = it2->second;
+                for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
+                    errs() << "\t";
+                    (*it3)->print(errs());
+                    errs() << "\n";
+                }
+            }
+        }
+    }
+
+    void testApplyInterf() {
+        // Sample code to test applyInterference()
+        auto funIt = funcInitDomain.begin();
+        Function *fun1 = funIt->first;
+        Domain fun1Domain = funIt->second;
+        fun1Domain.performUnaryOp(STORE, "x", 1);
+        funIt++;
+        Function *fun2 = funIt->first;
+        Domain fun2Domain = funIt->second;
+        fun2Domain.applyInterference("x", fun1Domain);
+    }
+
+    void printInstToDomainMap(unordered_map<Instruction*, Domain> instToDomainMap) {
+        for (auto it=instToDomainMap.begin(); it!=instToDomainMap.end(); ++it) {
+            it->first->print(errs());
+            it->second.printDomain();
+        }
+    }
+
+    void printProgramState() {
+        for (auto it1=programState.begin(); it1!=programState.end(); ++it1) {
+            errs() << "\n-----------------------------------------------\n";
+            errs() << "Function " << it1->first->getName() << ":\n";
+            errs() << "-----------------------------------------------\n";
+            printInstToDomainMap(it1->second);
+        }
+    }
+
+    bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Domain>> newProgramState) {
+        // errs() << "Program state size: " << programState.size();
+        // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
+        return (newProgramState == programState);
+    }
+
+    void printFeasibleInterf() {
+        errs() << "\nAll Interfs\n";
+        for (auto it1=feasibleInterfences.begin(); it1!=feasibleInterfences.end(); ++it1) {
+            errs() << "Interfs for function: " << it1->first->getName();
+            auto allInterfOfFun = it1->second;
+            int i = 0;
+            for (auto it2=allInterfOfFun.begin(); it2!=allInterfOfFun.end(); ++it2, ++i) {
+                errs() << "Interf " << i << ":\n";
+                for (auto it3=it2->begin(); it3!=it2->end(); ++it3) {
+                    errs() << "\tLoad: ";
+                    it3->first->print(errs());
+                    errs() << "\n\tStore: ";
+                    it3->second->print(errs());
+                    errs() << "\n";
+                }
+            }
+        }
+    }
+
+    bool isGlobalLoad(Instruction *inst) {
+        if (LoadInst *loadInst = dyn_cast<LoadInst> (inst)) {
+            Value* fromVar = loadInst->getOperand(0);
+            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                fromVar = gepOp->getPointerOperand();
+            }
+            if (dyn_cast<GlobalVariable>(fromVar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isGlobalStore(Instruction *inst) {
+        if(StoreInst *storeInst = dyn_cast<StoreInst>(inst)) {
+            Value* destVar = storeInst->getPointerOperand();
+            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+                destVar = gepOp->getPointerOperand();
+            }
+            if (dyn_cast<GlobalVariable>(destVar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isPthreadCreate(Instruction *inst) {
+        if (CallInst *call = dyn_cast<CallInst>(inst)) {
+            if(!call->getCalledFunction()->getName().compare("pthread_create")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isPthreadJoin(Instruction *inst) {
+        if (CallInst *call = dyn_cast<CallInst>(inst)) {
+            if(!call->getCalledFunction()->getName().compare("pthread_join")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    Instruction* getLastGlobalInst(Instruction *inst) {
+        Instruction *prevInst = inst->getPrevNode();
+        while ( prevInst                    &&
+                ! isGlobalLoad(prevInst)    &&
+                ! isGlobalStore(prevInst)   &&
+                ! isPthreadCreate(prevInst) &&
+                ! isPthreadJoin(prevInst)) {
+            prevInst = prevInst->getPrevNode();
+        } 
+        return prevInst;
+    }
+
+    Instruction* getNextGlobalInst(Instruction *inst) {
+        Instruction *nextInst = inst;
+        while ( nextInst                    &&
+                ! isGlobalLoad(nextInst)    &&
+                ! isGlobalStore(nextInst)   &&
+                ! isPthreadCreate(nextInst) &&
+                ! isPthreadJoin(nextInst)) {
+            nextInst = nextInst->getNextNode ();
+        }
+        return nextInst;
     }
 
     public:
