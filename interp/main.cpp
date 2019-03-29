@@ -24,10 +24,12 @@ class VerifierPass : public ModulePass {
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
         
-        vector<string> globalVars = getGlobalIntVars(M);
-        initThreadDetails(M, globalVars, domainType);
+        zHelper.testFixedPoint();
 
-        zHelper.initZ3(globalVars);
+        // vector<string> globalVars = getGlobalIntVars(M);
+        // initThreadDetails(M, globalVars, domainType);
+
+        // zHelper.initZ3(globalVars);
 
         // analyzeProgram(M);
 

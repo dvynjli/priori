@@ -16,6 +16,8 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 
+#define BV_SIZE (__SIZEOF_POINTER__*8)
+
 // llvm: NA=0, RLX=2, ACQ=4, REL=5, (ACQ_REL=6), SEQ_CST=7
 enum mem_order {NA, RLX, ACQ, REL, ACQ_REL, SEQ_CST};
 
@@ -33,6 +35,7 @@ class Z3Helper {
 	
 	z3::func_decl mhb;
 	z3::func_decl rf;
+	z3::func_decl noReorder;
 
 	z3::expr getBitVec (void *op);
 	z3::expr getMemOrd(llvm::AtomicOrdering ord);
@@ -46,25 +49,32 @@ class Z3Helper {
     	// vars (z3::function("vars", zcontext.string_sort(), zcontext.int_sort())),
     	// functions
     	// isLoad: instr -> bool
-    	isLoad (z3::function("isLoad", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
+    	isLoad (z3::function("isLoad", zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
     	// isStore: instr -> bool
-    	isStore (z3::function("isStore", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
+    	isStore (z3::function("isStore", zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
     	// isVarOf: instr -> var
-    	isVarOf (z3::function("varOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
+    	isVarOf (z3::function("varOf", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
     	// memOrderOf: instr -> memOrder
-    	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.int_sort(), zcontext.bool_sort())),
+    	memOrderOf (z3::function("memOrderOf", zcontext.bv_sort(BV_SIZE), zcontext.int_sort(), zcontext.bool_sort())),
 	    // relations
     	// MHB: does a MHB b? (instr, instr) -> bool
-    	mhb (z3::function("MHB", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort())),
-    	// RF: des a RF b? (instr, instr) -> bool
-    	rf (z3::function("RF", zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bv_sort(__SIZEOF_POINTER__*8), zcontext.bool_sort()))
-		{}
+    	mhb (z3::function("MHB", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
+    	// RF: does a RF b? (instr, instr) -> bool
+    	rf (z3::function("RF", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
+		// NoReorder: a can't reorder with b. (instr, instr) -> bool
+    	noReorder (z3::function("NoReorder", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort()))
+		{
+			// Z3_fixedpoint_set_params(zcontext, zfp, "datalog");
+			z3::params params(zcontext);
+			params.set("engine", zcontext.str_symbol("datalog"));
+		}
 	
 	void initZ3(vector<string> globalVars);
 	void addMHB(llvm::Instruction *from, llvm::Instruction *to);
 	void addLoadInstr  (llvm::LoadInst *inst);
 	void addStoreInstr (llvm::StoreInst *inst);
 
+	void testFixedPoint();
 };
 
 #endif
