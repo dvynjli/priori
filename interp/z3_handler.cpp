@@ -131,51 +131,55 @@ z3::expr Z3Helper::getMemOrd(llvm::AtomicOrdering ord) {
 }
 
 void Z3Helper::testFixedPoint() {
-    z3::sort s = zcontext.bv_sort(3);
-    z3::sort B = zcontext.bool_sort();
-    z3::func_decl edge = z3::function("edge", s, s, B);
-    z3::func_decl path = z3::function("path", s, s, B);
-    z3::expr a = zcontext.bv_const("a", 3);
-    z3::expr b = zcontext.bv_const("b", 3);
-    z3::expr c = zcontext.bv_const("c", 3);
-    z3::expr t = zcontext.bool_val(true);
-    z3::expr f = zcontext.bool_val(false);
+    // z3::sort s = zcontext.bv_sort(3);
+    // z3::sort B = zcontext.bool_sort();
+    // z3::func_decl edge = z3::function("edge", s, s, B);
+    // z3::func_decl path = z3::function("path", s, s, B);
+    // z3::expr a = zcontext.bv_const("a", 3);
+    // z3::expr b = zcontext.bv_const("b", 3);
+    // z3::expr c = zcontext.bv_const("c", 3);
+    // z3::expr t = zcontext.bool_val(true);
+    // z3::expr f = zcontext.bool_val(false);
 
-    try {
-        z3::expr rule1 = z3::implies((edge(a,b)==t), (path(a,b)==t));
-        Z3_fixedpoint_add_rule(zcontext, zfp, rule1, NULL);
-        z3::expr rule2 = z3::implies( (path(a,b)==t && path(b,c)==t), path(a,c)==t );
-        Z3_fixedpoint_add_rule(zcontext, zfp, rule2, NULL);
+    // try {
+    //     z3::expr rule1 = z3::implies((edge(a,b)==t), (path(a,b)==t));
+    //     Z3_fixedpoint_add_rule(zcontext, zfp, rule1, NULL);
+    //     z3::expr rule2 = z3::implies( (path(a,b)==t && path(b,c)==t), path(a,c)==t );
+    //     Z3_fixedpoint_add_rule(zcontext, zfp, rule2, NULL);
 
-        z3::expr n1 = zcontext.bv_val(1,3);
-        z3::expr n2 = zcontext.bv_val(2,3);
-        z3::expr n3 = zcontext.bv_val(3,3);
-        z3::expr n4 = zcontext.bv_val(4,3);
+    //     z3::expr n1 = zcontext.bv_val(1,3);
+    //     z3::expr n2 = zcontext.bv_val(2,3);
+    //     z3::expr n3 = zcontext.bv_val(3,3);
+    //     z3::expr n4 = zcontext.bv_val(4,3);
 
-        Z3_fixedpoint_add_rule(zcontext, zfp, edge(n1,n2)==t, NULL);
-        Z3_fixedpoint_add_rule(zcontext, zfp, edge(n1,n3)==t, NULL);
-        Z3_fixedpoint_add_rule(zcontext, zfp, edge(n2,n4)==t, NULL);
+    //     Z3_fixedpoint_add_rule(zcontext, zfp, edge(n1,n2)==t, NULL);
+    //     Z3_fixedpoint_add_rule(zcontext, zfp, edge(n1,n3)==t, NULL);
+    //     Z3_fixedpoint_add_rule(zcontext, zfp, edge(n2,n4)==t, NULL);
 
-        z3::expr q1 = zcontext.bool_const("q1");
-        z3::expr q2 = zcontext.bool_const("q2");
-        z3::expr q3 = zcontext.bv_const("q3", 3);
-        Z3_fixedpoint_add_rule(zcontext, zfp, z3::implies(path(n1,n4)==t, q1), NULL);
-        // Z3_fixedpoint_add_rule(zcontext, zfp, (path(n1,n4)==q1), NULL);
+    //     z3::expr q1 = zcontext.bool_const("q1");
+    //     z3::expr q2 = zcontext.bool_const("q2");
+    //     z3::expr q3 = zcontext.bv_const("q3", 3);
+    //     Z3_fixedpoint_add_rule(zcontext, zfp, z3::implies(path(n1,n4)==t, q1), NULL);
+    //     // Z3_fixedpoint_add_rule(zcontext, zfp, (path(n1,n4)==q1), NULL);
 
-        cout << "\nFixed point: \n" << zfp.to_string() << "\n";
-        Z3_lbool result = Z3_fixedpoint_query(zcontext, zfp, q1);
-        if (result == Z3_L_UNDEF)
-            cout << "undefined\n";
-        else if (result == Z3_L_FALSE)
-            cout << "unsat\n";
-        else if (result == Z3_L_TRUE)
-            cout << "sat\n";
-        else cout << "something went wrong!!\n";
+    //     cout << "\nFixed point: \n" << zfp.to_string() << "\n";
+    //     Z3_lbool result = Z3_fixedpoint_query(zcontext, zfp, q1);
+    //     if (result == Z3_L_UNDEF)
+    //         cout << "undefined\n";
+    //     else if (result == Z3_L_FALSE)
+    //         cout << "unsat\n";
+    //     else if (result == Z3_L_TRUE)
+    //         cout << "sat\n";
+    //     else cout << "something went wrong!!\n";
 
-    } catch (z3::exception e) { cout << "Exception: " << e << "\n";}
-    // z3::func_decl fun1 = z3::function ("fun1", zcontext.int_sort(), zcontext.bool_sort());
-    // z3::expr a = zcontext.int_val(5);
-    // z3::expr app = fun1(a);
+    // } catch (z3::exception e) { cout << "Exception: " << e << "\n";}
+
+
+    z3::func_decl fun1 = z3::function ("fun1", zcontext.int_sort(), zcontext.bool_sort());
+    z3::expr a = zcontext.int_val(5);
+    // z3::expr t = zcontext.bool_val(true);
+    // z3::expr f = zcontext.bool_val(false);
+    // z3::expr app = (fun1(a)==t);
     // Z3_fixedpoint_add_rule(zcontext, zfp, app, NULL);
     // zsolver.add(app);
     // z3::expr x = zcontext.int_const("x");
@@ -191,22 +195,22 @@ void Z3Helper::testFixedPoint() {
     // cout << "Z3 result: " << zsolver.check() << "\n";
     // cout << "Model: " << zsolver.get_model() << "\n";
 
-    // cout << "\nFixed point: \n" << zfp.to_string() << "\n";
+    cout << "\nFixed point: \n" << zfp.to_string() << "\n";
     // z3::expr q1 = zcontext.bool_const("query1");
     // z3::expr test = z3::implies(zcontext.bool_val(true), q1);
     // Z3_fixedpoint_add_rule(zcontext, zfp, test, NULL);
     // cout << "query: " << test << "\n";
-    // Z3_lbool result = Z3_fixedpoint_query(zcontext, zfp, q1);
-    // if (result == Z3_L_UNDEF)
-    //     cout << "undefined\n";
-    // else if (result == Z3_L_FALSE)
-    //     cout << "unsat\n";
-    // else if (result == Z3_L_TRUE)
-    //     cout << "sat\n";
-    // else cout << "something went wrong!!\n";
-    // try {
-    //     cout << "Z3 fp query: " << zfp.query(x) << "\n";
-    // } catch (z3::exception e) {cout << "Exception: " << e << "\n";}
+    Z3_lbool result = Z3_fixedpoint_query(zcontext, zfp, fun1(a));
+    if (result == Z3_L_UNDEF)
+        cout << "undefined\n";
+    else if (result == Z3_L_FALSE)
+        cout << "unsat\n";
+    else if (result == Z3_L_TRUE)
+        cout << "sat\n";
+    else cout << "something went wrong!!\n";
+    try {
+        // cout << "Z3 fp query: " << zfp.query(x) << "\n";
+    } catch (z3::exception e) {cout << "Exception: " << e << "\n";}
 }
 
 /* void Z3Helper::test_bv_fun() {
