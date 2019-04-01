@@ -188,6 +188,24 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
 }
+
+void Domain::performCmpOp(operation oper, string strTo, string strOp1, int intOp2) {
+    // Constr ->expr->assign
+}
+
+void Domain::performCmpOp(operation oper, string strTo, int intOp1, string strOp2) {
+
+}
+
+void Domain::performCmpOp(operation oper, string strTo, int intOp1, int intOp2) {
+    // never occur
+    fprintf(stderr, "performCmpOp() with both operand of condition as constant. This function should never called!!");
+    exit(0);
+}
+
+void Domain::performCmpOp(operation oper, string strTo, string strOp1, string strOp2) {
+
+}
     
 
 void Domain::printDomain() {

@@ -102,7 +102,7 @@ z3::expr Z3Helper::getBitVec (void *op) {
 }
 
 z3::expr Z3Helper::getMemOrd(llvm::AtomicOrdering ord) {
-    cout << "-----Mem order: " << ord << " ----\n";
+    // cout << "-----Mem order: " << ord << " ----\n";
     enum mem_order ordInt;
     switch(ord) {
         case llvm::AtomicOrdering::NotAtomic:

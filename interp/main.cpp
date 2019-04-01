@@ -164,16 +164,16 @@ class VerifierPass : public ModulePass {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
                                     // need to add dominates rules
-                                    Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
-                                    Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
-                                    // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
-                                    // no global instr before thread create in current function (or in newly created thread)
-                                    if (lastGlobalInstBeforeCall) {
-                                        zHelper.addMHB(lastGlobalInstBeforeCall, call);
-                                    }
-                                    if (firstGlobalInstInCalled) {
-                                        zHelper.addMHB(call, firstGlobalInstInCalled);
-                                    }
+                                    // Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
+                                    // Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
+                                    // // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
+                                    // // no global instr before thread create in current function (or in newly created thread)
+                                    // if (lastGlobalInstBeforeCall) {
+                                    //     zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                    // }
+                                    // if (firstGlobalInstInCalled) {
+                                    //     zHelper.addMHB(call, firstGlobalInstInCalled);
+                                    // }
                                 }
 
                             }
@@ -198,7 +198,7 @@ class VerifierPass : public ModulePass {
                             // errs() << "****adding store instr for: ";
                             // storeInst->print(errs());
                             // errs() << "\n";
-                            zHelper.addStoreInstr(storeInst);
+                            // zHelper.addStoreInstr(storeInst);
                         }
                     }
                     else if (it->isTerminator()) {
@@ -225,7 +225,7 @@ class VerifierPass : public ModulePass {
                                 // errs() << "****adding load instr for: ";
                                 // loadInst->print(errs());
                                 // errs() << "\n";
-                                zHelper.addLoadInstr(loadInst);
+                                // zHelper.addLoadInstr(loadInst);
                             }
                         }
                     }
@@ -410,26 +410,27 @@ class VerifierPass : public ModulePass {
         return searchName->second;
     }
 
-     Domain checkCmpInst(CmpInst* cmpInst, Domain curDomain) {
-        operation oper;
+    Domain checkCmpInst(CmpInst* cmpInst, Domain curDomain) { 
+        // need to computer Domain of both true and false branch
+        operation operTrueBranch;
         switch (cmpInst->getPredicate()) {
             case CmpInst::Predicate::ICMP_EQ:
-                oper = EQ;
+                operTrueBranch = EQ;
                 break;
             case CmpInst::Predicate::ICMP_NE:
-                oper = NE;
+                operTrueBranch = NE;
                 break;
             case CmpInst::Predicate::ICMP_SGT:
-                oper = GT;
+                operTrueBranch = GT;
                 break;
             case CmpInst::Predicate::ICMP_SGE:
-                oper = GE;
+                operTrueBranch = GE;
                 break;
             case CmpInst::Predicate::ICMP_SLT:
-                oper = LT;
+                operTrueBranch = LT;
                 break;
             case CmpInst::Predicate::ICMP_SLE:
-                oper = LE;
+                operTrueBranch = LE;
                 break;
             default:
                 errs() << "WARNING: Unknown cmp instruction: ";
@@ -453,22 +454,22 @@ class VerifierPass : public ModulePass {
             int constFromIntVar1= constFromVar1->getValue().getSExtValue();
             if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
                 int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-                curDomain.performCmpOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
+                curDomain.performCmpOp(operTrueBranch, destVarName, constFromIntVar1, constFromIntVar2);
             }
             else { 
                 string fromVar2Name = getNameFromValue(fromVar2);
-                curDomain.performCmpOp(oper, destVarName, constFromIntVar1, fromVar2Name);
+                curDomain.performCmpOp(operTrueBranch, destVarName, constFromIntVar1, fromVar2Name);
             }
         }
         else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
             int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-            curDomain.performCmpOp(oper, destVarName, fromVar1Name, constFromIntVar2);
+            curDomain.performCmpOp(operTrueBranch, destVarName, fromVar1Name, constFromIntVar2);
         }
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
-            curDomain.performCmpOp(oper, destVarName, fromVar1Name, fromVar2Name);
+            curDomain.performCmpOp(operTrueBranch, destVarName, fromVar1Name, fromVar2Name);
         }
 
         return curDomain;
