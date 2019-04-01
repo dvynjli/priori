@@ -25,20 +25,21 @@ class Domain {
     void init(string domainType, vector<string> intVars);
     void copyDomain(Domain copyFrom);
 
-    //overload these functions for constants
-    // Operations on variables
+    // Unary Operations
     void performUnaryOp(operation oper, string strTo, string strOp);
-    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
-    void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
-    // Operations on constants
     void performUnaryOp(operation oper, string strTo, int intOp);
+    // Binary Operations
     void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
     void performBinaryOp(operation oper, string strTo, int intOp1, string strOp2);
     void performBinaryOp(operation oper, string strTo, int intOp1, int intOp2);
-
+    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    // Other Operations
+    void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
+    
+    
     void applyInterference(string interfVar, Domain fromDomain);
-
     void joinDomain(Domain other);
+
     void addVariable(string varName);
     void printDomain();
 };

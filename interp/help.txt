@@ -48,6 +48,9 @@ TODO:
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
         can optimize this
     control structure dependent static analysis
+        dominate rules
+        termination and conditional branching
+        comaprision a==b is (a meet b != bottom) or eq? a!=b is neq or ...
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes

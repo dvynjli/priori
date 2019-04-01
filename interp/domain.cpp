@@ -149,7 +149,7 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int in
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp2, strOp1.c_str(), AP_END);
             break;
     }
-    ap_linexpr1_fprint(stderr, &expr);
+    // ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
 }
@@ -167,7 +167,7 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string st
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2, AP_END);
             break;
     }
-    ap_linexpr1_fprint(stderr, &expr);
+    // ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
 }

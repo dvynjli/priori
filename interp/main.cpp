@@ -24,14 +24,14 @@ class VerifierPass : public ModulePass {
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
         
-        zHelper.testFixedPoint();
+        // zHelper.testFixedPoint();
 
-        // vector<string> globalVars = getGlobalIntVars(M);
-        // initThreadDetails(M, globalVars, domainType);
+        vector<string> globalVars = getGlobalIntVars(M);
+        initThreadDetails(M, globalVars, domainType);
 
         // zHelper.initZ3(globalVars);
 
-        // analyzeProgram(M);
+        analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -375,6 +375,13 @@ class VerifierPass : public ModulePass {
             else if (UnaryInstruction *unaryInst = dyn_cast<UnaryInstruction>(instItr)) {
                 curDomain = checkUnaryInst(unaryInst, curDomain, interf);
             }
+            else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
+                errs() << "cmpInst: ";
+                cmpInst->print(errs());
+                errs() << "\n";
+                curDomain = checkCmpInst(cmpInst, curDomain);
+                
+            }
             else {
                 
             }
@@ -401,6 +408,70 @@ class VerifierPass : public ModulePass {
             exit(0);
         }
         return searchName->second;
+    }
+
+     Domain checkCmpInst(CmpInst* cmpInst, Domain curDomain) {
+        operation oper;
+        switch (cmpInst->getPredicate()) {
+            case CmpInst::Predicate::ICMP_EQ:
+                oper = EQ;
+                break;
+            case CmpInst::Predicate::ICMP_NE:
+                oper = NE;
+                break;
+            case CmpInst::Predicate::ICMP_SGT:
+                oper = GT;
+                break;
+            case CmpInst::Predicate::ICMP_SGE:
+                oper = GE;
+                break;
+            case CmpInst::Predicate::ICMP_SLT:
+                oper = LT;
+                break;
+            case CmpInst::Predicate::ICMP_SLE:
+                oper = LE;
+                break;
+            default:
+                errs() << "WARNING: Unknown cmp instruction: ";
+                cmpInst->print(errs());
+                errs() << "\n";
+                return curDomain;
+        }
+
+        string destVarName = getNameFromValue(cmpInst);
+        Value* fromVar1 = cmpInst->getOperand(0);
+        Value* fromVar2 = cmpInst->getOperand(1);
+        // errs() << "destVarName: " << destVarName << "\n";
+        // errs() << "fromVar1: ";
+        // fromVar1->print(errs());
+        // errs() << "\n";
+        // errs() << "fromVar2: ";
+        // fromVar2->print(errs());
+        // errs() << "\n";
+
+        if (ConstantInt *constFromVar1 = dyn_cast<ConstantInt>(fromVar1)) {
+            int constFromIntVar1= constFromVar1->getValue().getSExtValue();
+            if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
+                int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
+                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
+            }
+            else { 
+                string fromVar2Name = getNameFromValue(fromVar2);
+                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
+            }
+        }
+        else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
+            string fromVar1Name = getNameFromValue(fromVar1);
+            int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
+            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
+        }
+        else {
+            string fromVar1Name = getNameFromValue(fromVar1);
+            string fromVar2Name = getNameFromValue(fromVar2);
+            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, fromVar2Name);
+        }
+
+        return curDomain;
     }
 
     //  call approprproate function for the inst passed
