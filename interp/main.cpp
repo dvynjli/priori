@@ -453,22 +453,22 @@ class VerifierPass : public ModulePass {
             int constFromIntVar1= constFromVar1->getValue().getSExtValue();
             if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
                 int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
+                curDomain.performCmpOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
             }
             else { 
                 string fromVar2Name = getNameFromValue(fromVar2);
-                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
+                curDomain.performCmpOp(oper, destVarName, constFromIntVar1, fromVar2Name);
             }
         }
         else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
             int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
+            curDomain.performCmpOp(oper, destVarName, fromVar1Name, constFromIntVar2);
         }
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
-            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, fromVar2Name);
+            curDomain.performCmpOp(oper, destVarName, fromVar1Name, fromVar2Name);
         }
 
         return curDomain;
