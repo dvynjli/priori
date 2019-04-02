@@ -16,6 +16,7 @@ class Domain {
     ap_manager_t* initApManager(string domainType);
     ap_environment_t* initEnvironment(vector<string> intVars);
     void assignZerosToAllVars();
+    ap_constyp_t getApConsType(operation oper);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
 

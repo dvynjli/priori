@@ -190,36 +190,20 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp
 }
 
 void Domain::performCmpOp(operation oper, string strOp1, int intOp2) {
-    // Constr ->expr->assign
+    if (oper==LT) {
+        // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
+        performCmpOp(GT, intOp2, strOp1);
+        return;
+    }
+    else if (oper == LE) {
+        // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
+        performCmpOp(GE, intOp2, strOp1);
+        return;
+    }
+    ap_constyp_t op = getApConsType(oper);
+    
     fprintf(stderr, "%d %s %d\n", oper, strOp1.c_str(), intOp2);
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
-    // ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, intOp2, AP_END);
-    // fprintf(stderr, "Expr: ");
-    // ap_linexpr1_fprint(stderr, &expr);
-    ap_constyp_t op;
-    switch (oper) {
-        case EQ:
-            op = AP_CONS_EQ;
-            break;
-        case NE:
-            op = AP_CONS_DISEQ;
-            break;
-        case GT:
-            op = AP_CONS_SUP;
-            break;
-        case GE:
-            op = AP_CONS_SUPEQ;
-            break;
-        case LT:
-            // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
-            performCmpOp(GT, intOp2, strOp1);
-            return;
-        case LE:
-            // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
-            performCmpOp(GE, intOp2, strOp1);
-            return;
-        
-    }
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, (-1)*intOp2, AP_END);
     fprintf(stderr, "ConsExpr: ");
@@ -235,36 +219,19 @@ void Domain::performCmpOp(operation oper, string strOp1, int intOp2) {
 }
 
 void Domain::performCmpOp(operation oper,int intOp1, string strOp2) {
-    // Constr ->expr->assign
+    if (oper==LT) {
+        // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
+        performCmpOp(GT, strOp2, intOp1);
+        return;
+    }
+    else if (oper == LE) {
+        // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
+        performCmpOp(GE, strOp2, intOp1);
+        return;
+    }
+    ap_constyp_t op = getApConsType(oper);
     fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
-    // ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, intOp2, AP_END);
-    // fprintf(stderr, "Expr: ");
-    // ap_linexpr1_fprint(stderr, &expr);
-    ap_constyp_t op;
-    switch (oper) {
-        case EQ:
-            op = AP_CONS_EQ;
-            break;
-        case NE:
-            op = AP_CONS_DISEQ;
-            break;
-        case GT:
-            op = AP_CONS_SUP;
-            break;
-        case GE:
-            op = AP_CONS_SUPEQ;
-            break;
-        case LT:
-            // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
-            performCmpOp(GT, strOp2, intOp1);
-            return;
-        case LE:
-            // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
-            performCmpOp(GE, strOp2, intOp1);
-            return;
-        
-    }
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, -1, strOp2.c_str(), AP_CST_S_INT, intOp1, AP_END);
     fprintf(stderr, "ConsExpr: ");
@@ -288,7 +255,6 @@ void Domain::performCmpOp(operation oper, int intOp1, int intOp2) {
 void Domain::performCmpOp(operation oper, string strOp1, string strOp2) {
 
 }
-    
 
 void Domain::printDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
@@ -315,6 +281,19 @@ void Domain::applyInterference(string interfVar, Domain fromDomain) {
 
     // fprintf(stderr, "Domain after interf:\n");
     // printDomain();
+}
+
+ap_constyp_t Domain::getApConsType(operation oper) {
+    switch (oper) {
+        case EQ:
+            return AP_CONS_EQ;
+        case NE:
+            return AP_CONS_DISEQ;
+        case GT:
+            return AP_CONS_SUP;
+        case GE:
+            return AP_CONS_SUPEQ;
+    }
 }
 
 void Domain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {
