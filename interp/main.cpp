@@ -307,7 +307,7 @@ class VerifierPass : public ModulePass {
         errs() << "_________________________________________________\n";
         errs() << "Fized point reached in " << iterations << " iteratons\n";
         errs() << "Final domain:\n";
-        printProgramState();
+        // printProgramState();
 
     }
 
@@ -412,25 +412,38 @@ class VerifierPass : public ModulePass {
 
     Domain checkCmpInst(CmpInst* cmpInst, Domain curDomain) { 
         // need to computer Domain of both true and false branch
+        Domain trueBranchDomain;
+        Domain falseBranchDomain;
+        trueBranchDomain.copyDomain(curDomain);
+        falseBranchDomain.copyDomain(curDomain);
+
         operation operTrueBranch;
+        operation operFalseBranch;
+
         switch (cmpInst->getPredicate()) {
             case CmpInst::Predicate::ICMP_EQ:
                 operTrueBranch = EQ;
+                operFalseBranch = NE;
                 break;
             case CmpInst::Predicate::ICMP_NE:
                 operTrueBranch = NE;
+                operFalseBranch = EQ;
                 break;
             case CmpInst::Predicate::ICMP_SGT:
                 operTrueBranch = GT;
+                operFalseBranch = LE;
                 break;
             case CmpInst::Predicate::ICMP_SGE:
                 operTrueBranch = GE;
+                operFalseBranch = LT;
                 break;
             case CmpInst::Predicate::ICMP_SLT:
                 operTrueBranch = LT;
+                operFalseBranch = GE;
                 break;
             case CmpInst::Predicate::ICMP_SLE:
                 operTrueBranch = LE;
+                operFalseBranch = GT;
                 break;
             default:
                 errs() << "WARNING: Unknown cmp instruction: ";
@@ -454,25 +467,29 @@ class VerifierPass : public ModulePass {
             int constFromIntVar1= constFromVar1->getValue().getSExtValue();
             if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
                 int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-                curDomain.performCmpOp(operTrueBranch, destVarName, constFromIntVar1, constFromIntVar2);
+                trueBranchDomain.performCmpOp(operTrueBranch, constFromIntVar1, constFromIntVar2);
+                falseBranchDomain.performCmpOp(operFalseBranch, constFromIntVar1, constFromIntVar2);
             }
             else { 
                 string fromVar2Name = getNameFromValue(fromVar2);
-                curDomain.performCmpOp(operTrueBranch, destVarName, constFromIntVar1, fromVar2Name);
+                trueBranchDomain.performCmpOp(operTrueBranch, constFromIntVar1, fromVar2Name);
+                falseBranchDomain.performCmpOp(operFalseBranch, constFromIntVar1, fromVar2Name);
             }
         }
         else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
             int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-            curDomain.performCmpOp(operTrueBranch, destVarName, fromVar1Name, constFromIntVar2);
+            trueBranchDomain.performCmpOp(operTrueBranch, fromVar1Name, constFromIntVar2);
+            falseBranchDomain.performCmpOp(operFalseBranch, fromVar1Name, constFromIntVar2);
         }
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
-            curDomain.performCmpOp(operTrueBranch, destVarName, fromVar1Name, fromVar2Name);
+            trueBranchDomain.performCmpOp(operTrueBranch, fromVar1Name, fromVar2Name);
+            falseBranchDomain.performCmpOp(operFalseBranch, fromVar1Name, fromVar2Name);
         }
 
-        return curDomain;
+        return trueBranchDomain;
     }
 
     //  call approprproate function for the inst passed

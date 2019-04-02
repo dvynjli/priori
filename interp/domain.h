@@ -30,16 +30,16 @@ class Domain {
     void performUnaryOp(operation oper, string strTo, int intOp);
     // Binary Operations
     void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
-    void performBinaryOp(operation oper, string strTo, int intOp1, string strOp2);
-    void performBinaryOp(operation oper, string strTo, int intOp1, int intOp2);
+    void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
+    void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
     void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
     // Other Operations
     void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
     // Cmp Operations
-    void performCmpOp(operation oper, string strTo, string strOp1, int intOp2);
-    void performCmpOp(operation oper, string strTo, int intOp1, string strOp2);
-    void performCmpOp(operation oper, string strTo, int intOp1, int intOp2);
-    void performCmpOp(operation oper, string strTo, string strOp1, string strOp2);
+    void performCmpOp(operation oper, string strOp1, int intOp2);
+    void performCmpOp(operation oper, int intOp1,    string strOp2);
+    void performCmpOp(operation oper, int intOp1,    int intOp2);
+    void performCmpOp(operation oper, string strOp1, string strOp2);
     
     void applyInterference(string interfVar, Domain fromDomain);
     void joinDomain(Domain other);

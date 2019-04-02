@@ -143,7 +143,7 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int in
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, intOp2, AP_END);
             break;
         case SUB:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, intOp2, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, (-1)*intOp2, AP_END);
             break;
         case MUL:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp2, strOp1.c_str(), AP_END);
@@ -189,27 +189,109 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
 }
 
-void Domain::performCmpOp(operation oper, string strTo, string strOp1, int intOp2) {
+void Domain::performCmpOp(operation oper, string strOp1, int intOp2) {
     // Constr ->expr->assign
+    fprintf(stderr, "%d %s %d\n", oper, strOp1.c_str(), intOp2);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    // ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, intOp2, AP_END);
+    // fprintf(stderr, "Expr: ");
+    // ap_linexpr1_fprint(stderr, &expr);
+    ap_constyp_t op;
+    switch (oper) {
+        case EQ:
+            op = AP_CONS_EQ;
+            break;
+        case NE:
+            op = AP_CONS_DISEQ;
+            break;
+        case GT:
+            op = AP_CONS_SUP;
+            break;
+        case GE:
+            op = AP_CONS_SUPEQ;
+            break;
+        case LT:
+            // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
+            performCmpOp(GT, intOp2, strOp1);
+            return;
+        case LE:
+            // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
+            performCmpOp(GE, intOp2, strOp1);
+            return;
+        
+    }
+    ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
+    ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, (-1)*intOp2, AP_END);
+    fprintf(stderr, "ConsExpr: ");
+    ap_lincons1_fprint(stderr, &consExpr);
+    ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 1);
+    fprintf(stderr, "\nconsArray: ");
+    ap_lincons1_array_set(&consArray, 0, &consExpr);
+    ap_lincons1_array_fprint(stderr, &consArray);
+    printDomain();
+    fprintf(stderr, "\nmeet:\n");
+    absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
+    printDomain();
 }
 
-void Domain::performCmpOp(operation oper, string strTo, int intOp1, string strOp2) {
-
+void Domain::performCmpOp(operation oper,int intOp1, string strOp2) {
+    // Constr ->expr->assign
+    fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    // ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, intOp2, AP_END);
+    // fprintf(stderr, "Expr: ");
+    // ap_linexpr1_fprint(stderr, &expr);
+    ap_constyp_t op;
+    switch (oper) {
+        case EQ:
+            op = AP_CONS_EQ;
+            break;
+        case NE:
+            op = AP_CONS_DISEQ;
+            break;
+        case GT:
+            op = AP_CONS_SUP;
+            break;
+        case GE:
+            op = AP_CONS_SUPEQ;
+            break;
+        case LT:
+            // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
+            performCmpOp(GT, strOp2, intOp1);
+            return;
+        case LE:
+            // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
+            performCmpOp(GE, strOp2, intOp1);
+            return;
+        
+    }
+    ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
+    ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, -1, strOp2.c_str(), AP_CST_S_INT, intOp1, AP_END);
+    fprintf(stderr, "ConsExpr: ");
+    ap_lincons1_fprint(stderr, &consExpr);
+    ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 1);
+    fprintf(stderr, "\nconsArray: ");
+    ap_lincons1_array_set(&consArray, 0, &consExpr);
+    ap_lincons1_array_fprint(stderr, &consArray);
+    printDomain();
+    fprintf(stderr, "\nmeet:\n");
+    absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
+    printDomain();
 }
 
-void Domain::performCmpOp(operation oper, string strTo, int intOp1, int intOp2) {
+void Domain::performCmpOp(operation oper, int intOp1, int intOp2) {
     // never occur
     fprintf(stderr, "performCmpOp() with both operand of condition as constant. This function should never called!!");
     exit(0);
 }
 
-void Domain::performCmpOp(operation oper, string strTo, string strOp1, string strOp2) {
+void Domain::performCmpOp(operation oper, string strOp1, string strOp2) {
 
 }
     
 
 void Domain::printDomain() {
-    ap_abstract1_fdump(stderr, man,  &absValue);
+    ap_abstract1_fprint(stderr, man,  &absValue);
 }
 
 void Domain::applyInterference(string interfVar, Domain fromDomain) {
