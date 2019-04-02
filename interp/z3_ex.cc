@@ -5,17 +5,17 @@ using namespace std;
 int main() {
 	z3::context ctx;
 	z3::solver zsolver(ctx);
-	// z3::fixedpoint zfp(ctx);
+	z3::fixedpoint zfp(ctx);
 
 	z3::params params(ctx);
-	// params.set("engine", ctx.str_symbol("datalog"));
+	params.set("engine", ctx.str_symbol("datalog"));
 
 	z3::sort s = ctx.bv_sort(3);
     z3::sort B = ctx.bool_sort();
     z3::func_decl edge = z3::function("edge", s, s, B);
-    // zfp.register_relation(edge);
+    zfp.register_relation(edge);
     z3::func_decl path = z3::function("path", s, s, B);
-    // zfp.register_relation(path);
+    zfp.register_relation(path);
 
     z3::expr a = ctx.bv_const("a", 3);
     z3::expr b = ctx.bv_const("b", 3);
@@ -24,46 +24,52 @@ int main() {
     z3::expr f = ctx.bool_val(false);
 
 	try {
-        z3::expr rule1 = z3::implies((edge(a,b)), (path(a,b)));
-        zsolver.add(rule1);
-        // zfp.add_rule(rule1, name);
-        // Z3_fixedpoint_add_rule(ctx, zfp, rule1, NULL);
+        z3::expr rule1 = z3::implies(edge(a,b), path(a,b));
+        // zsolver.add(rule1);
+        // zfp.add_rule(rule1, ctx.str_symbol("edgeIsPath"));
+        Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b, rule1), ctx.str_symbol("edgeIsPath"));
         z3::expr rule2 = z3::implies( (path(a,b) && path(b,c)), path(a,c) );
-        zsolver.add(rule2);
-        // Z3_fixedpoint_add_rule(ctx, zfp, rule2, NULL);
+        // zfp.add_rule(rule2, ctx.str_symbol("transitivity"));
+        Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b,c, rule2), ctx.str_symbol("transitivity"));
 
         z3::expr n1 = ctx.bv_val(1,3);
         z3::expr n2 = ctx.bv_val(2,3);
         z3::expr n3 = ctx.bv_val(3,3);
         z3::expr n4 = ctx.bv_val(4,3);
 
-        zsolver.add(edge(n1,n2));
-        zsolver.add(edge(n1,n3));
-        zsolver.add(edge(n2,n4));
+        z3::expr e1 = edge(n1,n2);
+        z3::expr e2 = edge(n1,n3);
+        z3::expr e3 = edge(n2,n4);
 
-        // Z3_fixedpoint_add_rule(ctx, zfp, edge(n1,n2), NULL);
-        // Z3_fixedpoint_add_rule(ctx, zfp, edge(n1,n3), NULL);
-        // Z3_fixedpoint_add_rule(ctx, zfp, edge(n2,n4), NULL);
+        // zsolver.add(edge(n1,n2));
+        // zsolver.add(edge(n1,n3));
+        // zsolver.add(edge(n2,n4));
+
+        // zfp.add_rule(e1, ctx.str_symbol("1_to_2"));
+        // zfp.add_rule(e2, ctx.str_symbol("1_to_3"));
+        // zfp.add_rule(e3, ctx.str_symbol("2_to_4"));
+
+        Z3_fixedpoint_add_rule(ctx, zfp, e1, ctx.str_symbol("1_to_2"));
+        Z3_fixedpoint_add_rule(ctx, zfp, e2, ctx.str_symbol("1_to_3"));
+        Z3_fixedpoint_add_rule(ctx, zfp, e3, ctx.str_symbol("2_to_4"));
 
         
-        z3::func_decl q1= z3::function("q1", 0, NULL, ctx.bool_sort());
+        // z3::func_decl q1= z3::function("q1", 0, NULL, ctx.bool_sort());
         // zfp.register_relation(q1);
-        // z3::expr q1 = ctx.bool_const("q1");
-        cout << q1.to_string() << "\n";
-        z3::expr query1 = z3::implies(path(n3,n4), q1);
-        zsolver.add(query1);
-        // Z3_fixedpoint_add_rule(ctx, zfp, query1, NULL);
-        cout << "\nZ3 Solver: \n" << zsolver.to_smt2() << "\n";
-        // cout << "\nFixed point: \n" << zfp.to_string() << "\n";
+        z3::expr q1 = ctx.bool_const("q1");
+        // cout << q1.to_string() << "\n";
+        z3::expr query1 = z3::implies(edge(n1,n2), q1);
+        // zfp.add_rule(query1, ctx.str_symbol("query1"));
+        // zsolver.add(query1);
+        // Z3_fixedpoint_add_rule(ctx, zfp, z3::exists(q1, query1), NULL);
+        // cout << "\nZ3 Solver: \n" << zsolver.to_smt2() << "\n";
+        cout << "\nFixed point: \n" << zfp.to_string() << "\n";
         
-        
-        // z3::expr q1 = ctx.bool_const("q1");
-        // // Z3_fixedpoint_add_rule(ctx, zfp, z3::implies(path(n1,n4)==t, q1), NULL);
-        // // Z3_fixedpoint_add_rule(ctx, zfp, (path(n1,n4)==q1), NULL);
-        // cout << "\nFixed point: \n" << zfp.to_string() << "\n";
-        // enum z3::check_result res = zfp.query(q1);
-        z3::expr tmp[] = {q1(),};
-        enum z3::check_result res = zsolver.check(1, tmp);
+        // z3::expr tmp = q1;
+        // z3::expr tmp[] = {q1(),};
+        z3::expr tmp = path(n4,n1);
+        enum z3::check_result res = zfp.query(tmp);
+        // enum z3::check_result res = zsolver.check(1, tmp);
         cout << res << "\n";
         
         // Z3_lbool result = Z3_fixedpoint_query(ctx, zfp, q1);
