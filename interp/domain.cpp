@@ -218,7 +218,7 @@ void Domain::performCmpOp(operation oper, string strOp1, int intOp2) {
     printDomain();
 }
 
-void Domain::performCmpOp(operation oper,int intOp1, string strOp2) {
+void Domain::performCmpOp(operation oper, int intOp1, string strOp2) {
     if (oper==LT) {
         // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
         performCmpOp(GT, strOp2, intOp1);
