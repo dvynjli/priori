@@ -51,6 +51,7 @@ TODO:
         dominate rules
         termination and conditional branching
         comaprision a==b is (a meet b != bottom) or eq? a!=b is neq or ...
+        NE is not working correctly in apron
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
