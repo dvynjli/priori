@@ -164,22 +164,38 @@ class VerifierPass : public ModulePass {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
                                     // need to add dominates rules
-                                    // Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
-                                    // Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
-                                    // // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
-                                    // // no global instr before thread create in current function (or in newly created thread)
-                                    // if (lastGlobalInstBeforeCall) {
-                                    //     zHelper.addMHB(lastGlobalInstBeforeCall, call);
-                                    // }
-                                    // if (firstGlobalInstInCalled) {
-                                    //     zHelper.addMHB(call, firstGlobalInstInCalled);
-                                    // }
+                                    Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
+                                    Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
+                                    Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
+                                    // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
+                                    // no global instr before thread create in current function (or in newly created thread)
+                                    if (lastGlobalInstBeforeCall) {
+                                        zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                    }
+                                    if (nextGlobalInstAfterCall) {
+                                        zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                    }
+                                    if (firstGlobalInstInCalled) {
+                                        zHelper.addMHB(call, firstGlobalInstInCalled);
+                                    }
                                 }
 
                             }
                         }
                         else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
                             // TODO: need to add dominates rules
+                            Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
+                            Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
+                            vector<Instruction*> lastGlobalInstInCalled = getLastInstOfJoin(call);
+                            if (nextGlobalInstAfterCall) {
+                                zHelper.addMHB(call, nextGlobalInstAfterCall);
+                            }
+                            if (lastGlobalInstBeforeCall) {
+                                zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                            }
+                            for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
+                                zHelper.addMHB(*it, call);
+                            }
                         }
                         else {
                             errs() << "unknown function call:\n";
@@ -198,7 +214,7 @@ class VerifierPass : public ModulePass {
                             // errs() << "****adding store instr for: ";
                             // storeInst->print(errs());
                             // errs() << "\n";
-                            // zHelper.addStoreInstr(storeInst);
+                            zHelper.addStoreInstr(storeInst);
                         }
                     }
                     else if (it->isTerminator()) {
@@ -223,9 +239,8 @@ class VerifierPass : public ModulePass {
                             if (dyn_cast<GlobalVariable>(fromVar)) {
                                 varToLoads.emplace(loadInst, fromVarName);
                                 // errs() << "****adding load instr for: ";
-                                // loadInst->print(errs());
-                                // errs() << "\n";
-                                // zHelper.addLoadInstr(loadInst);
+                                // printValue(loadInst);
+                                zHelper.addLoadInstr(loadInst);
                             }
                         }
                     }
@@ -872,6 +887,39 @@ class VerifierPass : public ModulePass {
             nextInst = nextInst->getNextNode ();
         }
         return nextInst;
+    }
+
+    Function* findFunctionFromJoin(Instruction* call) {
+        Value* threadOp = call->getOperand(0);
+        if (LoadInst *loadInst = dyn_cast<LoadInst>(threadOp))
+            threadOp = loadInst->getPointerOperand();
+        for (auto it=threadOp->user_begin(); it!=threadOp->user_end(); ++it) {
+            if (CallInst *callInst = dyn_cast<CallInst>(*it)) {
+                if (callInst->getCalledFunction()->getName() == "pthread_create") {
+                    if (Function* func = dyn_cast<Function>(callInst->getArgOperand(2)))
+                        return func;
+                }
+            }
+        }
+        return nullptr;
+    }
+
+
+    vector<Instruction*> getLastInstOfJoin(Instruction *call) {
+        vector<Instruction*> lastInstr;
+        Function *func = findFunctionFromJoin(call);
+        for (auto bbItr=func->begin(); bbItr!=func->end(); ++bbItr) {
+            TerminatorInst *term = bbItr->getTerminator();
+            if (ReturnInst *ret = dyn_cast<ReturnInst>(term)) {
+                lastInstr.push_back(getLastGlobalInst(ret));
+            }
+        }
+        return lastInstr;
+    }
+
+    void printValue(Value *val) {
+        val->print(errs());
+        errs() << "\n";
     }
 
     public:
