@@ -32,6 +32,9 @@ int main() {
         // zfp.add_rule(rule2, ctx.str_symbol("transitivity"));
         Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b,c, rule2), ctx.str_symbol("transitivity"));
 
+        z3::expr rule3 =z3::implies(edge(a,b), edge(b,a)==f);
+        Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b, rule3), ctx.str_symbol("anti-reflexive"));
+
         z3::expr n1 = ctx.bv_val(1,3);
         z3::expr n2 = ctx.bv_val(2,3);
         z3::expr n3 = ctx.bv_val(3,3);
@@ -40,6 +43,7 @@ int main() {
         z3::expr e1 = edge(n1,n2);
         z3::expr e2 = edge(n1,n3);
         z3::expr e3 = edge(n2,n4);
+        z3::expr e4 = edge(n4,n1);
 
         // zsolver.add(edge(n1,n2));
         // zsolver.add(edge(n1,n3));
@@ -52,13 +56,14 @@ int main() {
         Z3_fixedpoint_add_rule(ctx, zfp, e1, ctx.str_symbol("1_to_2"));
         Z3_fixedpoint_add_rule(ctx, zfp, e2, ctx.str_symbol("1_to_3"));
         Z3_fixedpoint_add_rule(ctx, zfp, e3, ctx.str_symbol("2_to_4"));
+        Z3_fixedpoint_add_rule(ctx, zfp, e4, ctx.str_symbol("4_to_2"));
 
         
         // z3::func_decl q1= z3::function("q1", 0, NULL, ctx.bool_sort());
         // zfp.register_relation(q1);
-        z3::expr q1 = ctx.bool_const("q1");
+        // z3::expr q1 = ctx.bool_const("q1");
         // cout << q1.to_string() << "\n";
-        z3::expr query1 = z3::implies(edge(n1,n2), q1);
+        // z3::expr query1 = z3::implies(edge(n1,n2), q1);
         // zfp.add_rule(query1, ctx.str_symbol("query1"));
         // zsolver.add(query1);
         // Z3_fixedpoint_add_rule(ctx, zfp, z3::exists(q1, query1), NULL);
@@ -67,7 +72,7 @@ int main() {
         
         // z3::expr tmp = q1;
         // z3::expr tmp[] = {q1(),};
-        z3::expr tmp = path(n4,n1);
+        z3::expr tmp = path(n3,n2);
         enum z3::check_result res = zfp.query(tmp);
         // enum z3::check_result res = zsolver.check(1, tmp);
         cout << res << "\n";

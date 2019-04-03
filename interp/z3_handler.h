@@ -35,7 +35,8 @@ class Z3Helper {
 	
 	z3::func_decl mhb;
 	z3::func_decl rf;
-	z3::func_decl noReorder;
+	z3::func_decl po;
+	z3::func_decl mcb;
 
 	z3::expr getBitVec (void *op);
 	z3::expr getMemOrd(llvm::AtomicOrdering ord);
@@ -61,12 +62,23 @@ class Z3Helper {
     	mhb (z3::function("MHB", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
     	// RF: does a RF b? (instr, instr) -> bool
     	rf (z3::function("RF", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
-		// NoReorder: a can't reorder with b. (instr, instr) -> bool
-    	noReorder (z3::function("NoReorder", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort()))
+		// PO: Program Order. (instr, instr) -> bool
+		po (z3::function("PO", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
+		// memoryConstraintBefore: can't reorder as per c11 memory ordering constraints
+		// (instr, instr) -> bool
+		mcb (z3::function("MemOrdConstraint", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort()))
 		{
 			// Z3_fixedpoint_set_params(zcontext, zfp, "datalog");
 			z3::params params(zcontext);
 			params.set("engine", zcontext.str_symbol("datalog"));
+			zfp.register_relation(isLoad);
+			zfp.register_relation(isStore);
+			zfp.register_relation(isVarOf);
+			zfp.register_relation(memOrderOf);
+			zfp.register_relation(mhb);
+			zfp.register_relation(rf);
+			zfp.register_relation(po);
+			zfp.register_relation(mcb);
 		}
 	
 	void initZ3(vector<string> globalVars);

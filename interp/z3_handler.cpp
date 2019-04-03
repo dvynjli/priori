@@ -19,31 +19,82 @@ void Z3Helper::initZ3(vector<string> globalVars) {
     // z3::func_decl_vector varsEnumConsts(zcontext);
     // z3::func_decl_vector varsEnumTesters(zcontext);
     // z3::sort vars = zcontext.enumeration_sort("vars", noOfVars, varNames, varsEnumConsts, varsEnumTesters);
-    z3::expr inst1 = zcontext.bv_const("inst1", BV_SIZE);
-    z3::expr inst2 = zcontext.bv_const("inst2", BV_SIZE);
-    z3::expr inst3 = zcontext.bv_const("inst3", BV_SIZE);
-    z3::expr var1  = zcontext.bv_const("var1", BV_SIZE);
-    z3::expr var2  = zcontext.bv_const("var2", BV_SIZE);
-    // z3::expr app = mhb(inst1, inst2) && mhb(inst2, inst3);
-    z3::expr transitive_mhb = z3::implies((mhb(inst1, inst2) && mhb(inst2, inst3)), mhb(inst1, inst3) );
-    z3::expr fr = z3::implies(( isLoad(inst1) && isVarOf(inst1, var1) && 
-                                isStore(inst2) && isVarOf(inst2, var1) &&
-                                isStore(inst3) && isVarOf(inst3, var1) &&
-                                rf(inst2, inst1) && mhb(inst2, inst3)), 
-                                mhb(inst1, inst3));
-    z3::expr nrf = z3::implies( (isLoad(inst1) && isStore(inst2) && mhb(inst1, inst2)), not(rf(inst1, inst2)));
-    z3::expr test = z3::implies(rf(inst1, inst2), not(rf(inst1, inst2)));
+    try {
+        z3::expr inst1 = zcontext.bv_const("inst1", BV_SIZE);
+        z3::expr inst2 = zcontext.bv_const("inst2", BV_SIZE);
+        z3::expr inst3 = zcontext.bv_const("inst3", BV_SIZE);
+        z3::expr inst4 = zcontext.bv_const("inst4", BV_SIZE);
+        z3::expr var1  = zcontext.bv_const("var1", BV_SIZE);
+        z3::expr var2  = zcontext.bv_const("var2", BV_SIZE);
+        z3::expr ord1  = zcontext.int_const("ord1");
+        // z3::expr app = mhb(inst1, inst2) && mhb(inst2, inst3);
 
-    Z3_fixedpoint_add_rule(zcontext, zfp, transitive_mhb, NULL);
-    Z3_fixedpoint_add_rule(zcontext, zfp, fr, NULL);
-    Z3_fixedpoint_add_rule(zcontext, zfp, nrf, NULL);
-    Z3_fixedpoint_add_rule(zcontext, zfp, test, NULL);
+        // (s1,s2) in MHB && (s2,s3) in MHB => (s1,s3) in MHB
+        z3::expr transitive_mhb = z3::forall(inst1, inst2, inst3, 
+                z3::implies((mhb(inst1, inst2) && mhb(inst2, inst3)), 
+                mhb(inst1, inst3) ));
+        // (l,v) \in isLoad && (s1,v) \in isStore && (s2,v) \in isStore &&
+        //  (s1,l) \in rf && (s1,s2) \in MHB
+        // => (l,s2) \in MHB
+        z3::expr fr = z3::forall(inst1, inst2, inst3, var1, 
+                z3::implies(( isLoad(inst1) && isVarOf(inst1, var1) && 
+                    isStore(inst2) && isVarOf(inst2, var1) &&
+                    isStore(inst3) && isVarOf(inst3, var1) &&
+                    rf(inst2, inst1) && mhb(inst2, inst3)), 
+                mhb(inst1, inst3)));
+        // z3::expr nrf = z3::forall(inst1, inst2, 
+        //         z3::implies( (isLoad(inst1) && isStore(inst2) && mhb(inst1, inst2)), 
+        //         not(rf(inst1, inst2))));
+        
+        Z3_fixedpoint_add_rule(zcontext, zfp, transitive_mhb, zcontext.str_symbol("Transitive-MHB"));
+        Z3_fixedpoint_add_rule(zcontext, zfp, fr, zcontext.str_symbol("FR"));
+        // Z3_fixedpoint_add_rule(zcontext, zfp, nrf, zcontext.str_symbol("nrf"));
 
+        // ( (l,op) \in PO && l \in AcqOp) => (l,op) \in MCB
+        z3::expr acqReordering = z3::forall(inst1, inst2, 
+                z3::implies(po(inst1, inst2) && isLoad(inst1) && 
+                    z3::exists(ord1, memOrderOf(inst1, ord1) && ord1>=ACQ),
+                mcb(inst1, inst2)));
+        Z3_fixedpoint_add_rule(zcontext, zfp, acqReordering, zcontext.str_symbol("Acq-Reordering"));
+        // ( (op,s) \in PO && l \in RelOp) => (op,s) \in MCB
+        z3::expr relReordering = z3::forall(inst1, inst2,
+                z3::implies(po(inst1, inst2) && isStore(inst2) && 
+                    z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=REL),
+                mcb(inst1, inst2)));
+        Z3_fixedpoint_add_rule(zcontext, zfp, relReordering, zcontext.str_symbol("Rel-Reordering"));
 
-    cout << zfp.to_string() << "\n";
-    cout << zfp.get_answer() << "\n";
-    cout << "\n\nZ3 result so far:";
-    cout << zsolver.check() << "\n";
+        // ( s \in RelOp && l \in AcqOp && 
+        //   (l,v1) \in IsLoad && (s,v1) \in IsStore && 
+        //   (s,l) \in RF &&
+        //   (op1,s) \in MCB && (l,op2) \in MCB)
+        // => (op1,op2) \in MCB
+        z3::expr_vector xs(zcontext);
+        xs.push_back(inst1);
+        xs.push_back(inst2);
+        xs.push_back(inst3);
+        xs.push_back(inst4);
+        xs.push_back(var1);
+        z3::expr relAcqSeq = z3::forall(xs, 
+                z3::implies(isStore(inst1) && isLoad(inst2) && 
+                    z3::exists(ord1, memOrderOf(inst1, ord1) && ord1>=REL) &&
+                    z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=ACQ) && 
+                    isVarOf(inst1, var1) && isVarOf(inst2, var1) &&
+                    rf(inst1, inst2) &&
+                    mcb(inst3, inst1) && mcb(inst2, inst4),                            
+                mcb(inst3, inst4)));
+        Z3_fixedpoint_add_rule(zcontext, zfp, relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq"));
+        cout << zfp.to_string() << "\n";
+
+        z3::expr a = zcontext.bv_val(2, BV_SIZE);
+        z3::expr b = zcontext.bv_val(5, BV_SIZE);
+        Z3_fixedpoint_add_rule(zcontext, zfp, isVarOf(a,b), zcontext.str_symbol("test"));
+
+        z3::expr query1 = isVarOf(a,a);
+        z3::expr query2 = isVarOf(a,b);
+        cout << zfp.query(query1) << "\n";
+        cout << zfp.query(query2) << "\n";
+        
+    } catch (z3::exception e) {cout << "Exception: " << e << "\n";}
 }
 
 void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {

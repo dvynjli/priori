@@ -21,7 +21,7 @@ A. We can work with computing feasible interfernces ones before starting thread-
     Feasiblity of these interferences depends upon memory order, program order and happens before relations, which can not change mid-analysis.
 
 Q. The query to sat solver should be in it's negation form?
-A. ??
+A. No Need.
 
 Q. MHB of thread create and join should be with first/last global load/store? 
 A. Have to be careful when doing this. Another option is to add the dominated rule of all the instructions,
@@ -30,6 +30,8 @@ Q. If there is a thread with no global operations, will this approach suffice?
 A. We can consider pthread create/join instructions as global instructions and add MHB of first/last global load/store  with these.
     Also need to set last global for same environment in l-s pair
 
+Q. How to encode MustNotReadFrom? RF->false won't work, since it is not horn clause.
+A. If I create a new relation MNRF, how to specify it's relation with RF? Can it work without that???
 
 
 Instructions that need Apron interface-
