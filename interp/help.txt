@@ -31,7 +31,13 @@ A. We can consider pthread create/join instructions as global instructions and a
     Also need to set last global for same environment in l-s pair
 
 Q. How to encode MustNotReadFrom? RF->false won't work, since it is not horn clause.
-A. If I create a new relation MNRF, how to specify it's relation with RF? Can it work without that???
+A. If I create a new relation NRF, how to specify it's relation with RF? Can it work without that???
+    Yes. We have to add RFs and then query for or of NRFs. If it is sat, the interference is infeasible
+
+Q. Query has to be read-from of all threads. How to encode interferences? 
+    If query is RFs of all thread, and then thread-modular analysis is done, result will be too overapprozimated.
+A. Don't need it anymore
+
 
 
 Instructions that need Apron interface-
@@ -54,6 +60,7 @@ TODO:
         termination and conditional branching
         comaprision a==b is (a meet b != bottom) or eq? a!=b is neq or ...
         NE is not working correctly in apron
+    Query has to be read-from of all threads. How to encode interferences?
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
