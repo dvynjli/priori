@@ -33,7 +33,7 @@ int main() {
         Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b,c, rule2), ctx.str_symbol("transitivity"));
 
         z3::expr rule3 =z3::implies(edge(a,b), edge(b,a)==f);
-        Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b, rule3), ctx.str_symbol("anti-reflexive"));
+        // Z3_fixedpoint_add_rule(ctx, zfp, z3::forall(a,b, rule3), ctx.str_symbol("anti-reflexive"));
 
         z3::expr n1 = ctx.bv_val(1,3);
         z3::expr n2 = ctx.bv_val(2,3);

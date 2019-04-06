@@ -56,7 +56,7 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     z3::exists(ord1, memOrderOf(inst1, ord1) && ord1>=ACQ),
                 mcb(inst1, inst2)));
         Z3_fixedpoint_add_rule(zcontext, zfp, acqReordering, zcontext.str_symbol("Acq-Reordering"));
-        // ( (op,s) \in PO && l \in RelOp) => (op,s) \in MCB
+        // ( (op,s) \in PO && s \in RelOp) => (op,s) \in MCB
         z3::expr relReordering = z3::forall(inst1, inst2,
                 z3::implies(po(inst1, inst2) && isStore(inst2) && 
                     z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=REL),

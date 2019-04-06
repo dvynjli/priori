@@ -69,6 +69,7 @@ Possible Optimizations:
     while checking if fixed point is reached, we are comparing somain of all the Instructions. It will be sufficient to compare domain of only stores
         But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr
     change size of linexpr_make
+    combine some of the interfernce based on flow
     
     Z3Helper:
         use bit vectors of smalled size
@@ -76,6 +77,7 @@ Possible Optimizations:
     parallelization
         checking feasiblity of interfernces with analysis of other thread
         analysis of all threads for 1 iteration
+    
     
 export CPLUS_INCLUDE_PATH=/home/divyanjali/.opam/system/share/apron/include/
 export LIBRARY_PATH=/home/divyanjali/.opam/system/share/apron/lib/
