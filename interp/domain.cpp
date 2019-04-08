@@ -23,7 +23,7 @@ void Domain::init(string domainType, vector<string> globalVars, vector<string> f
     absValue = ap_abstract1_top(man, env);
     assignZerosToAllVars();
     initRSHead(globalVars);
-    initHadEvent(globalVars);
+    initHasChanged(globalVars);
     // printDomain();
 
     // DEBUG && fprintf(stderr, "performing transforms\n");
@@ -36,9 +36,16 @@ void Domain::initRSHead(vector<string> globalVars) {
     }
 }
 
-void Domain::initHadEvent(vector<string> globalVars) {
+void Domain::initHasChanged(vector<string> globalVars) {
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        hadEvent[(*it)] = true;
+        hasChanged[(*it)] = false;
+    }
+}
+
+void Domain::setHasChanged(string var) {
+    auto searchHasChanged = hasChanged.find(var);
+    if (searchHasChanged != hasChanged.end() && !searchHasChanged->second) {
+        hasChanged[var] = true;
     }
 }
 
@@ -81,6 +88,7 @@ void Domain::copyDomain(Domain copyFrom) {
     man = copyFrom.man;
     env = ap_environment_copy(copyFrom.env);
     absValue = ap_abstract1_copy(man, &copyFrom.absValue);
+
 }
 
 void Domain::joinDomain(Domain other) {
@@ -119,6 +127,7 @@ void Domain::performUnaryOp(operation oper, string strTo, int intOp) {
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    setHasChanged(strTo);
 }
 
 void Domain::performUnaryOp(operation oper, string strTo, string strOp) {
@@ -133,6 +142,7 @@ void Domain::performUnaryOp(operation oper, string strTo, string strOp) {
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    setHasChanged(strTo);
 }
 
 void Domain::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
@@ -150,6 +160,7 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, string
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    setHasChanged(strTo);
 }
 
 void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
@@ -168,6 +179,7 @@ void Domain::performBinaryOp(operation oper, string strTo, string strOp1, int in
     // ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    setHasChanged(strTo);
 }
 
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
@@ -186,6 +198,7 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, string st
     // ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    setHasChanged(strTo);
 }
 
 void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
@@ -203,6 +216,7 @@ void Domain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    setHasChanged(strTo);
 }
 
 void Domain::performCmpOp(operation oper, string strOp1, int intOp2) {
@@ -281,7 +295,7 @@ void Domain::applyInterference(string interfVar, Domain fromDomain, bool isRelAc
     // else only the variable for which interference is 
     ap_var_t apInterVar;
     if (isRelAcqSeq) {
-        for (auto it=hadEvent.begin(); it!=hadEvent.end(); ++it) {
+        for (auto it=hasChanged.begin(); it!=hasChanged.end(); ++it) {
             apInterVar = (ap_var_t) it->first.c_str();
             if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
                 fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
@@ -307,6 +321,7 @@ void Domain::applyInterference(string interfVar, Domain fromDomain, bool isRelAc
                 ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
                 ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
                 absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
+                setHasChanged(it->first);
             }
         }
     }
@@ -332,6 +347,7 @@ void Domain::applyInterference(string interfVar, Domain fromDomain, bool isRelAc
         ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
         ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
         absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
+        setHasChanged(interfVar);
     }
 
     // fprintf(stderr, "Domain after interf:\n");

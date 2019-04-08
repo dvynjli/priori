@@ -58,8 +58,10 @@ TODO:
     control structure dependent static analysis
         dominate rules
         termination and conditional branching
-        NE is not working correctly in apron\
+        NE is not working correctly in apron
     change pthread to thread
+    change all functions of domain to add rshead and changed
+    change join domain
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes

@@ -19,14 +19,15 @@ class Domain {
     ap_environment_t* initEnvironment(vector<string> globalVars, vector<string> functionVars);
     void assignZerosToAllVars();
     void initRSHead(vector<string> globalVars);
-    void initHadEvent(vector<string> globalVars);
+    void initHasChanged(vector<string> globalVars);
     ap_constyp_t getApConsType(operation oper);
+    void setHasChanged(string var);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
 
 public:
     map<string, llvm::Instruction*> rSHead;
-    map<string, bool> hadEvent;
+    map<string, bool> hasChanged;
 
     bool operator== (const Domain &other) const;
     // bool operator!= (Domain other);

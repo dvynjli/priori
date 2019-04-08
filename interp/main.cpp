@@ -29,11 +29,11 @@ class VerifierPass : public ModulePass {
         vector<string> globalVars = getGlobalIntVars(M);
         initThreadDetails(M, globalVars, domainType);
 
-        testApplyInterf();
+        // testApplyInterf();
 
-        // zHelper.initZ3(globalVars);
+        zHelper.initZ3(globalVars);
 
-        // analyzeProgram(M);
+        analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -324,7 +324,7 @@ class VerifierPass : public ModulePass {
         errs() << "_________________________________________________\n";
         errs() << "Fized point reached in " << iterations << " iteratons\n";
         errs() << "Final domain:\n";
-        // printProgramState();
+        printProgramState();
 
     }
 
