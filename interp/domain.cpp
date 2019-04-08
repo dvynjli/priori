@@ -38,7 +38,7 @@ void Domain::initRSHead(vector<string> globalVars) {
 
 void Domain::initHadEvent(vector<string> globalVars) {
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        hadEvent[(*it)] = false;
+        hadEvent[(*it)] = true;
     }
 }
 
@@ -278,27 +278,64 @@ void Domain::printDomain() {
 
 void Domain::applyInterference(string interfVar, Domain fromDomain, bool isRelAcqSeq) {
     // If this is a part of release-acquire sequence, copy the values of all the global vars,
-    // else only the variable for which interference is
-    ap_var_t apInterVar = (ap_var_t) interfVar.c_str();
-    if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
-        fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
-        exit(0);
+    // else only the variable for which interference is 
+    ap_var_t apInterVar;
+    if (isRelAcqSeq) {
+        for (auto it=hadEvent.begin(); it!=hadEvent.end(); ++it) {
+            apInterVar = (ap_var_t) it->first.c_str();
+            if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
+                fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
+                exit(0);
+            }
+            if (it->second) {
+                // there has been some event that has initialized the variable. Need to join the environment of this variable
+                fprintf(stderr,"\n\nfor var %s\n", it->first.c_str());
+                ap_abstract1_t tmpValue = ap_abstract1_copy(man, &absValue);
+                
+                // initialize it with the value of variable to be joined
+                ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromDomain.man, &fromDomain.absValue, apInterVar);
+                ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+                ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
+                tmpValue = ap_abstract1_assign_linexpr(man, true, &tmpValue, apInterVar, &expr, NULL);
+                
+                // join the two abstract values
+                absValue =  ap_abstract1_join(man, true, &tmpValue, &absValue);
+            }
+            else {
+                // the variable is unintialized. Copy from the fromDomain
+                ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromDomain.man, &fromDomain.absValue, apInterVar);
+                ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+                ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
+                absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
+            }
+        }
     }
 
-    // fprintf(stderr, "Appling insterf from domain: \n");
-    // fromDomain.printDomain();
-    // fprintf(stderr, "To domain: \n");
-    // printDomain();
-    // fprintf(stderr, "On var %s\n", interfVar.c_str());
+    else {
+        apInterVar = (ap_var_t) interfVar.c_str();
+        if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
+            fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
+            exit(0);
+        }
+        // ap_lincons1_array_t arr = ap_abstract1_to_lincons_array(fromDomain.man, &fromDomain.absValue);
+        // fprintf(stderr, "array: ");
+        // ap_lincons1_array_fprint(stderr, &arr);
+        // absValue = ap_abstract1_of_lincons_array(man, env, &arr);
 
-    ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromDomain.man, &fromDomain.absValue, apInterVar);
-    // ap_interval_fprint(stderr, fromInterval);
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
-    ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
-    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
+        // fprintf(stderr, "Appling insterf from domain: \n");
+        // fromDomain.printDomain();
+        // fprintf(stderr, "To domain: \n");
+        // printDomain();
+        // fprintf(stderr, "On var %s\n", interfVar.c_str());
+        ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromDomain.man, &fromDomain.absValue, apInterVar);
+        // ap_interval_fprint(stderr, fromInterval);
+        ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+        ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
+        absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
+    }
 
     // fprintf(stderr, "Domain after interf:\n");
-    // printDomain();
+    printDomain();
 }
 
 ap_constyp_t Domain::getApConsType(operation oper) {

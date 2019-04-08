@@ -29,7 +29,7 @@ class VerifierPass : public ModulePass {
         vector<string> globalVars = getGlobalIntVars(M);
         initThreadDetails(M, globalVars, domainType);
 
-        // testApplyInterf();
+        testApplyInterf();
 
         // zHelper.initZ3(globalVars);
 
