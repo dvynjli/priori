@@ -11,22 +11,35 @@ bool Domain::operator== (const Domain &other) const {
 //     return !(operator==(other));
 // }
 
-void Domain::init(string domainType, vector<string> intVars){
+void Domain::init(string domainType, vector<string> globalVars, vector<string> functionVars){
     fprintf(stderr, "initializing ap_man\n");
     man = initApManager(domainType);
     DEBUG && fprintf(stderr, "Init Env\n");
-    env = initEnvironment(intVars);
+    env = initEnvironment(globalVars, functionVars);
     ap_environment_fdump(stderr, env);
     // ap_var_t var = ap_environment_var_of_dim(env, 0);
     // fprintf(stderr, "var: %s\n", var);
     // DEBUG && fprintf(stderr, "creating top\n");
     absValue = ap_abstract1_top(man, env);
     assignZerosToAllVars();
+    initRSHead(globalVars);
+    initHadEvent(globalVars);
     // printDomain();
-
 
     // DEBUG && fprintf(stderr, "performing transforms\n");
     // performTrasfer(man, env, absValue);
+}
+
+void Domain::initRSHead(vector<string> globalVars) {
+    for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
+        rSHead[(*it)] = nullptr;
+    }
+}
+
+void Domain::initHadEvent(vector<string> globalVars) {
+    for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
+        hadEvent[(*it)] = false;
+    }
 }
 
 void Domain::assignZerosToAllVars() {
@@ -48,17 +61,20 @@ ap_manager_t* Domain::initApManager(string domainType) {
     }
 }
 
-ap_environment_t* Domain::initEnvironment(vector<string> intVars){
-    ap_var_t intAp[intVars.size()];
+ap_environment_t* Domain::initEnvironment(vector<string> globalVars, vector<string> functionVars){
+    ap_var_t intAp[globalVars.size() + functionVars.size()];
     int i = 0;
-    for (auto it = intVars.begin(); it != intVars.end(); it++, i++){
+    for (auto it=globalVars.begin(); it!=globalVars.end(); ++it, ++i) {
         intAp[i] = (ap_var_t)(it->c_str());
     }
-    //TODO: use if providing support for floats
+    for (auto it=functionVars.begin(); it!=functionVars.end(); ++it, ++i){
+        intAp[i] = (ap_var_t)(it->c_str());
+    }
+    // TODO: use if providing support for floats
     ap_var_t floatAp[0];
     
     //return nullptr;
-    return ap_environment_alloc(intAp, intVars.size(), floatAp, 0);
+    return ap_environment_alloc(intAp, globalVars.size()+functionVars.size(), floatAp, 0);
 }
 
 void Domain::copyDomain(Domain copyFrom) {
@@ -260,7 +276,9 @@ void Domain::printDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
 }
 
-void Domain::applyInterference(string interfVar, Domain fromDomain) {
+void Domain::applyInterference(string interfVar, Domain fromDomain, bool isRelAcqSeq) {
+    // If this is a part of release-acquire sequence, copy the values of all the global vars,
+    // else only the variable for which interference is
     ap_var_t apInterVar = (ap_var_t) interfVar.c_str();
     if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
         fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");

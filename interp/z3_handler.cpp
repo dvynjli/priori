@@ -33,6 +33,8 @@ void Z3Helper::initZ3(vector<string> globalVars) {
         z3::expr transitive_mhb = z3::forall(inst1, inst2, inst3, 
                 z3::implies((mhb(inst1, inst2) && mhb(inst2, inst3)), 
                 mhb(inst1, inst3) ));
+        Z3_fixedpoint_add_rule(zcontext, zfp, transitive_mhb, zcontext.str_symbol("Transitive-MHB"));
+
         // (l,v) \in isLoad && (s1,v) \in isStore && (s2,v) \in isStore &&
         //  (s1,l) \in rf && (s1,s2) \in MHB
         // => (l,s2) \in MHB
@@ -42,12 +44,11 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     isStore(inst3) && isVarOf(inst3, var1) &&
                     rf(inst2, inst1) && mhb(inst2, inst3)), 
                 mhb(inst1, inst3)));
+        Z3_fixedpoint_add_rule(zcontext, zfp, fr, zcontext.str_symbol("FR"));
+
         // z3::expr nrf = z3::forall(inst1, inst2, 
         //         z3::implies( (isLoad(inst1) && isStore(inst2) && mhb(inst1, inst2)), 
         //         not(rf(inst1, inst2))));
-        
-        Z3_fixedpoint_add_rule(zcontext, zfp, transitive_mhb, zcontext.str_symbol("Transitive-MHB"));
-        Z3_fixedpoint_add_rule(zcontext, zfp, fr, zcontext.str_symbol("FR"));
         // Z3_fixedpoint_add_rule(zcontext, zfp, nrf, zcontext.str_symbol("nrf"));
 
         // ( (l,op) \in PO && l \in AcqOp) => (l,op) \in MCB
@@ -56,6 +57,7 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     z3::exists(ord1, memOrderOf(inst1, ord1) && ord1>=ACQ),
                 mcb(inst1, inst2)));
         Z3_fixedpoint_add_rule(zcontext, zfp, acqReordering, zcontext.str_symbol("Acq-Reordering"));
+        
         // ( (op,s) \in PO && s \in RelOp) => (op,s) \in MCB
         z3::expr relReordering = z3::forall(inst1, inst2,
                 z3::implies(po(inst1, inst2) && isStore(inst2) && 

@@ -8,22 +8,29 @@
 #include "box.h"
 #include "ap_global1.h"
 
+#include "llvm/IR/Instructions.h"
+
 class Domain {
     ap_manager_t *man;
     ap_environment_t *env;
     ap_abstract1_t absValue;
     
     ap_manager_t* initApManager(string domainType);
-    ap_environment_t* initEnvironment(vector<string> intVars);
+    ap_environment_t* initEnvironment(vector<string> globalVars, vector<string> functionVars);
     void assignZerosToAllVars();
+    void initRSHead(vector<string> globalVars);
+    void initHadEvent(vector<string> globalVars);
     ap_constyp_t getApConsType(operation oper);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
 
-    public:
+public:
+    map<string, llvm::Instruction*> rSHead;
+    map<string, bool> hadEvent;
+
     bool operator== (const Domain &other) const;
     // bool operator!= (Domain other);
-    void init(string domainType, vector<string> intVars);
+    void init(string domainType, vector<string> globalVars, vector<string> functionVars);
     void copyDomain(Domain copyFrom);
 
     // Unary Operations
@@ -42,7 +49,7 @@ class Domain {
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    void applyInterference(string interfVar, Domain fromDomain);
+    void applyInterference(string interfVar, Domain fromDomain, bool isRelAcqSeq);
     void joinDomain(Domain other);
 
     void addVariable(string varName);

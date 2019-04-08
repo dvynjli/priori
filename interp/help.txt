@@ -58,9 +58,8 @@ TODO:
     control structure dependent static analysis
         dominate rules
         termination and conditional branching
-        comaprision a==b is (a meet b != bottom) or eq? a!=b is neq or ...
-        NE is not working correctly in apron
-    Query has to be read-from of all threads. How to encode interferences?
+        NE is not working correctly in apron\
+    change pthread to thread
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes

@@ -29,7 +29,9 @@ class VerifierPass : public ModulePass {
         vector<string> globalVars = getGlobalIntVars(M);
         initThreadDetails(M, globalVars, domainType);
 
-        zHelper.initZ3(globalVars);
+        // testApplyInterf();
+
+        // zHelper.initZ3(globalVars);
 
         // analyzeProgram(M);
 
@@ -148,7 +150,7 @@ class VerifierPass : public ModulePass {
         {
             Function *func = funcQ.front();
             funcQ.pop();
-            vector<string> funcVars(globalVars);
+            vector<string> funcVars;
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 unordered_map<string, unordered_set<Instruction*>> varToStores;
@@ -252,7 +254,7 @@ class VerifierPass : public ModulePass {
 
             }
             Domain curFuncDomain;
-            curFuncDomain.init(domainType, funcVars);
+            curFuncDomain.init(domainType, globalVars, funcVars);
             funcInitDomain.emplace(func, curFuncDomain);
         }
         getFeasibleInterferences(allLoads, allStores);
@@ -644,7 +646,8 @@ class VerifierPass : public ModulePass {
                     // errs() << "Before Interf:\n";
                     // curDomain.printDomain();
 
-                    curDomain.applyInterference(varName, searchInterfDomain->second);
+                    // TODO: need to set the bool value proplerly
+                    curDomain.applyInterference(varName, searchInterfDomain->second, false);
                     
                     // errs() << "***After Inter:\n";
                     // curDomain.printDomain();
@@ -774,10 +777,17 @@ class VerifierPass : public ModulePass {
         Function *fun1 = funIt->first;
         Domain fun1Domain = funIt->second;
         fun1Domain.performUnaryOp(STORE, "x", 1);
+        fun1Domain.performUnaryOp(STORE, "y", 10);
         funIt++;
         Function *fun2 = funIt->first;
         Domain fun2Domain = funIt->second;
-        fun2Domain.applyInterference("x", fun1Domain);
+        errs() << "Interf from domain:\n";
+        fun1Domain.printDomain();
+        errs() << "To domain:\n";
+        fun2Domain.printDomain();
+        fun2Domain.applyInterference("x", fun1Domain, true);
+        errs() << "After applying:\n";
+        fun2Domain.printDomain();
     }
 
     void printInstToDomainMap(unordered_map<Instruction*, Domain> instToDomainMap) {
