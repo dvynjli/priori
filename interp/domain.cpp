@@ -22,7 +22,7 @@ void Domain::init(string domainType, vector<string> globalVars, vector<string> f
     // DEBUG && fprintf(stderr, "creating top\n");
     absValue = ap_abstract1_top(man, env);
     assignZerosToAllVars();
-    initRSHead(globalVars);
+    initRelHead(globalVars);
     initHasChanged(globalVars);
     // printDomain();
 
@@ -30,9 +30,9 @@ void Domain::init(string domainType, vector<string> globalVars, vector<string> f
     // performTrasfer(man, env, absValue);
 }
 
-void Domain::initRSHead(vector<string> globalVars) {
+void Domain::initRelHead(vector<string> globalVars) {
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        rSHead[(*it)] = nullptr;
+        relHead[(*it)] = nullptr;
     }
 }
 
@@ -47,6 +47,14 @@ void Domain::setHasChanged(string var) {
     if (searchHasChanged != hasChanged.end() && !searchHasChanged->second) {
         hasChanged[var] = true;
     }
+}
+
+llvm::Instruction* Domain::getRelHead(string var) {
+    return relHead[var];
+}
+
+void Domain::setRelHead(string var, llvm::Instruction *head) {
+    relHead[var] = head;
 }
 
 void Domain::assignZerosToAllVars() {

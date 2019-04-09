@@ -624,8 +624,7 @@ class VerifierPass : public ModulePass {
         auto searchInterf = interf.find(unaryInst);
         if (searchInterf == interf.end()) {
             errs() << "ERROR: Interfernce for the load instrction not found\n";
-            unaryInst->print(errs());
-            errs() << "\n";
+            printValue(unaryInst);
             return curDomain;
         }
         Instruction *interfInst = searchInterf->second;
@@ -647,7 +646,24 @@ class VerifierPass : public ModulePass {
                     // curDomain.printDomain();
 
                     // TODO: need to set the bool value proplerly
-                    curDomain.applyInterference(varName, searchInterfDomain->second, false);
+                    Domain interfDomain = searchInterfDomain->second;
+                    bool isRelSeq = false;
+                    if (StoreInst *storeInst = dyn_cast<StoreInst>(interfInst)) {
+                        if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
+                            auto ordStore = storeInst->getOrdering();
+                            auto ordLoad  = loadInst->getOrdering();
+                            if (ordLoad==llvm::AtomicOrdering::Release || 
+                                    ordLoad==llvm::AtomicOrdering::SequentiallyConsistent ||
+                                    ordLoad==llvm::AtomicOrdering::AcquireRelease) {
+                                Instruction *relHead = interfDomain.getRelHead(varName);
+                                if (relHead != nullptr) {
+                                    curDomain.setRelHead(varName, relHead);
+                                    isRelSeq = true;
+                                }
+                            }
+                        }
+                    }
+                    curDomain.applyInterference(varName, interfDomain, isRelSeq);
                     
                     // errs() << "***After Inter:\n";
                     // curDomain.printDomain();
