@@ -561,6 +561,14 @@ class VerifierPass : public ModulePass {
         Value* destVar = storeInst->getPointerOperand();
         string destVarName = getNameFromValue(destVar);
 
+        auto ord = storeInst->getOrdering();
+        if (ord==llvm::AtomicOrdering::Release || 
+                ord==llvm::AtomicOrdering::SequentiallyConsistent ||
+                ord==llvm::AtomicOrdering::AcquireRelease) {
+            if (curDomain.getRelHead(destVarName) == nullptr)
+                curDomain.setRelHead(destVarName, storeInst);
+        }
+
         Value* fromVar = storeInst->getValueOperand();
         
         if (ConstantInt *constFromVar = dyn_cast<ConstantInt>(fromVar)) {
@@ -652,7 +660,7 @@ class VerifierPass : public ModulePass {
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
                             auto ordStore = storeInst->getOrdering();
                             auto ordLoad  = loadInst->getOrdering();
-                            if (ordLoad==llvm::AtomicOrdering::Release || 
+                            if (ordLoad==llvm::AtomicOrdering::Acquire || 
                                     ordLoad==llvm::AtomicOrdering::SequentiallyConsistent ||
                                     ordLoad==llvm::AtomicOrdering::AcquireRelease) {
                                 Instruction *relHead = interfDomain.getRelHead(varName);

@@ -9,6 +9,7 @@
 #include "ap_global1.h"
 
 #include "llvm/IR/Instructions.h"
+#include "llvm/Support/raw_ostream.h"
 
 class Domain {
     ap_manager_t *man;
@@ -52,7 +53,7 @@ public:
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
     void applyInterference(string interfVar, Domain fromDomain, bool isRelAcqSeq);
-    void joinDomain(Domain other);
+    bool joinDomain(Domain other);
 
     void addVariable(string varName);
     void printDomain();

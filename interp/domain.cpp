@@ -96,11 +96,18 @@ void Domain::copyDomain(Domain copyFrom) {
     man = copyFrom.man;
     env = ap_environment_copy(copyFrom.env);
     absValue = ap_abstract1_copy(man, &copyFrom.absValue);
-
+    relHead = copyFrom.relHead;
+    hasChanged = copyFrom.hasChanged;
 }
 
-void Domain::joinDomain(Domain other) {
-    ap_abstract1_join(man, true, &absValue, &other.absValue);
+bool Domain::joinDomain(Domain other) {
+    // returns true if domains are joined. false otherwise.
+    // domains can not be joined if RelHeads are different.
+    if (relHead == other.relHead) {
+        ap_abstract1_join(man, true, &absValue, &other.absValue);
+        return true;
+    }
+    return false;
 }
 
 void Domain::addVariable(string varName) {
@@ -296,6 +303,14 @@ void Domain::performCmpOp(operation oper, string strOp1, string strOp2) {
 
 void Domain::printDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
+    fprintf (stderr, "RelHeads:\n");
+    for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
+        fprintf(stderr, "%s: ", it->first.c_str());
+        if (it->second != nullptr)
+            it->second->print(llvm::errs());
+        else fprintf(stderr, "NULL");
+        fprintf(stderr, "\n");
+    }
 }
 
 void Domain::applyInterference(string interfVar, Domain fromDomain, bool isRelAcqSeq) {
