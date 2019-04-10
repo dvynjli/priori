@@ -12,11 +12,11 @@ bool ApDomain::operator== (const ApDomain &other) const {
 // }
 
 void ApDomain::init(string domainType, vector<string> globalVars, vector<string> functionVars){
-    fprintf(stderr, "initializing ap_man\n");
+    // fprintf(stderr, "initializing ap_man\n");
     man = initApManager(domainType);
-    DEBUG && fprintf(stderr, "Init Env\n");
+    // DEBUG && fprintf(stderr, "Init Env\n");
     env = initEnvironment(globalVars, functionVars);
-    ap_environment_fdump(stderr, env);
+    // ap_environment_fdump(stderr, env);
     // ap_var_t var = ap_environment_var_of_dim(env, 0);
     // fprintf(stderr, "var: %s\n", var);
     // DEBUG && fprintf(stderr, "creating top\n");
@@ -406,7 +406,13 @@ void Environment::init(string domainType, vector<string> globalVars, vector<stri
     REL_HEAD relHead = initRelHead(globalVars);
     ApDomain dom;
     dom.init(domainType, globalVars, functionVars);
+    // fprintf(stderr, "dom done. assign to env\n");
     environment[relHead] = dom;
+    // printEnvironment();
+}
+
+void Environment::copyEnvironment(Environment copyFrom){
+    environment = copyFrom.environment;
 }
 
 REL_HEAD Environment::initRelHead(vector<string> globalVars) {
@@ -414,6 +420,7 @@ REL_HEAD Environment::initRelHead(vector<string> globalVars) {
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
         relHead[(*it)] = nullptr;
     }
+    return relHead;
 }
 
 // llvm::Instruction* Environment::getRelHead(string var) {
@@ -447,7 +454,7 @@ void Environment::changeRelHead(string var, llvm::Instruction *head) {
 template <class TO, class OP>
 void Environment::performUnaryOp(operation oper, TO to, OP op) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performUnaryOp(oper, to, op);
+        // it->second.performUnaryOp(oper, to, op);
     }
 }
 
@@ -499,7 +506,7 @@ void Environment::joinEnvironment(Environment other) {
 }
 
 void Environment::printEnvironment() {
-    fprintf(stderr, "--Environment--");
+    fprintf(stderr, "--Environment--\n");
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         fprintf (stderr, "RelHead:\n");

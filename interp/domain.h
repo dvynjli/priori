@@ -76,7 +76,7 @@ public:
     void changeRelHead(string var, llvm::Instruction *head);
 
     // Unary Operation
-    template <class TO, class OP>
+    template <typename TO, typename OP>
     void performUnaryOp(operation oper, TO to, OP op);
     
     // Binary Operations

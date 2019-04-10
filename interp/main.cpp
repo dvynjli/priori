@@ -30,7 +30,7 @@ class VerifierPass : public ModulePass {
 
         // testApplyInterf();
 
-        zHelper.initZ3(globalVars);
+        // zHelper.initZ3(globalVars);
 
         analyzeProgram(M);
 
@@ -150,6 +150,9 @@ class VerifierPass : public ModulePass {
             Function *func = funcQ.front();
             funcQ.pop();
             vector<string> funcVars;
+            
+            // errs() << "----analyzing funtion: " << func->getName() << "\n";
+
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 unordered_map<string, unordered_set<Instruction*>> varToStores;
@@ -608,7 +611,7 @@ class VerifierPass : public ModulePass {
                 return curEnv;
         }
         
-        curEnv.performUnaryOp(oper, destVarName, fromVarName);
+        curEnv.performUnaryOp(oper, destVarName.c_str(), fromVarName.c_str());
 
         return curEnv;
     }
