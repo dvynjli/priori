@@ -467,14 +467,17 @@ void Environment::performCmpOp(operation oper, OP1 op1, OP2 op2) {
 
 void Environment::applyInterference(
     string interfVar, 
-    ApDomain fromApDomain, 
+    Environment fromEnv, 
     bool isRelAcqSeq, 
     llvm::Instruction *head=nullptr
 ) {
+    // TODO: this is wrong. nned to copy all rel heads and make domain accordingly
     if (isRelAcqSeq)
         changeRelHead(interfVar, head);
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.applyInterference(interfVar, fromApDomain, isRelAcqSeq);
+        for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
+            it->second.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+        }
     }
 }
 
@@ -495,7 +498,7 @@ void Environment::joinEnvironment(Environment other) {
     }
 }
 
-void Environment::printEnvionment() {
+void Environment::printEnvironment() {
     fprintf(stderr, "--Environment--");
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead = it->first;

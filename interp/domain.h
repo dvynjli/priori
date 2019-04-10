@@ -89,10 +89,10 @@ public:
     template <class OP1, class OP2>
     void performCmpOp(operation oper, OP1 op1, OP2 op2);
     
-    void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSeq, llvm::Instruction *head);
+    void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, llvm::Instruction *head=nullptr);
     void joinEnvironment(Environment other);
 
-    void printEnvionment();
+    void printEnvironment();
 
 
 };
