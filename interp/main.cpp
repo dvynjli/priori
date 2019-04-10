@@ -10,8 +10,8 @@ class VerifierPass : public ModulePass {
         Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
     */
     vector <Function*> threads;
-    unordered_map <Function*, unordered_map<Instruction*, Domain>> programState;
-    unordered_map <Function*, Domain> funcInitDomain;
+    unordered_map <Function*, unordered_map<Instruction*, ApDomain>> programState;
+    unordered_map <Function*, ApDomain> funcInitApDomain;
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
@@ -20,7 +20,7 @@ class VerifierPass : public ModulePass {
     
     bool runOnModule (Module &M) {
         errs() << "LLVM pass is running\n";
-        // Domain initDomain = Domain();
+        // ApDomain initApDomain = ApDomain();
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
         
@@ -253,9 +253,9 @@ class VerifierPass : public ModulePass {
                 allLoads.emplace(func, varToLoads);
 
             }
-            Domain curFuncDomain;
-            curFuncDomain.init(domainType, globalVars, funcVars);
-            funcInitDomain.emplace(func, curFuncDomain);
+            ApDomain curFuncApDomain;
+            curFuncApDomain.init(domainType, globalVars, funcVars);
+            funcInitApDomain.emplace(func, curFuncApDomain);
         }
         getFeasibleInterferences(allLoads, allStores);
     }
@@ -264,7 +264,7 @@ class VerifierPass : public ModulePass {
         // call analyzThread, get interf, check fix point
         // need to addRule, check feasible interfs
         unsigned int iterations = 0;
-        unordered_map <Function*, unordered_map<Instruction*, Domain>> programStateCurItr;
+        unordered_map <Function*, unordered_map<Instruction*, ApDomain>> programStateCurItr;
         bool isFixedPointReached = false;
 
         while (!isFixedPointReached) {
@@ -279,7 +279,7 @@ class VerifierPass : public ModulePass {
 
                 // find feasible interfernce for current function
                 vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
-                unordered_map<Instruction*, Domain> newFuncDomain;
+                unordered_map<Instruction*, ApDomain> newFuncApDomain;
 
                 auto searchInterf = feasibleInterfences.find(curFunc);
                 
@@ -289,8 +289,8 @@ class VerifierPass : public ModulePass {
                     errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
                         unordered_map <Instruction*, Instruction*> interf;
-                        newFuncDomain = analyzeThread(*funcItr, interf);
-                        programStateCurItr.emplace(curFunc, newFuncDomain);
+                        newFuncApDomain = analyzeThread(*funcItr, interf);
+                        programStateCurItr.emplace(curFunc, newFuncApDomain);
                     }
                 }
                 
@@ -299,20 +299,20 @@ class VerifierPass : public ModulePass {
                 for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                     // errs() << "\n***For new interf\n";
 
-                    newFuncDomain = analyzeThread(*funcItr, *interfItr);
+                    newFuncApDomain = analyzeThread(*funcItr, *interfItr);
 
-                    // errs() << "Domain after analysis:\n";
-                    // printInstToDomainMap(newFuncDomain);
+                    // errs() << "ApDomain after analysis:\n";
+                    // printInstToApDomainMap(newFuncApDomain);
 
-                    // join newFuncDomain of all feasibleInterfs and replace old one in state
-                    auto searchFunDomain = programStateCurItr.find(curFunc);
-                    if (searchFunDomain == programStateCurItr.end()) {
+                    // join newFuncApDomain of all feasibleInterfs and replace old one in state
+                    auto searchFunApDomain = programStateCurItr.find(curFunc);
+                    if (searchFunApDomain == programStateCurItr.end()) {
                         // errs() << "curfunc not found in program state\n";
-                        programStateCurItr.emplace(curFunc, newFuncDomain);
+                        programStateCurItr.emplace(curFunc, newFuncApDomain);
                     }
                     else {
                         // errs() << "curfunc already exist in program state. joining\n";
-                        programStateCurItr[curFunc] =  joinDomainByInstruction(searchFunDomain->second, newFuncDomain);
+                        programStateCurItr[curFunc] =  joinApDomainByInstruction(searchFunApDomain->second, newFuncApDomain);
                     }
                 }
             }
@@ -328,22 +328,22 @@ class VerifierPass : public ModulePass {
 
     }
 
-    unordered_map<Instruction*, Domain> analyzeThread (Function *F, unordered_map<Instruction*, Instruction*> interf) {
+    unordered_map<Instruction*, ApDomain> analyzeThread (Function *F, unordered_map<Instruction*, Instruction*> interf) {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
 
-        unordered_map <Instruction*, Domain> curFuncDomain;
+        unordered_map <Instruction*, ApDomain> curFuncApDomain;
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
 
-            Domain predDomain = funcInitDomain[F];
-            // predDomain.printDomain();
+            ApDomain predApDomain = funcInitApDomain[F];
+            // predApDomain.printApDomain();
             // initial domain of pred of cur bb to join of all it's pred
             for (BasicBlock *Pred : predecessors(currentBB)){
-                auto searchPredBBDomain = curFuncDomain.find(Pred->getTerminator());
-                if (searchPredBBDomain != curFuncDomain.end())
-                    predDomain.joinDomain(searchPredBBDomain->second);
+                auto searchPredBBApDomain = curFuncApDomain.find(Pred->getTerminator());
+                if (searchPredBBApDomain != curFuncApDomain.end())
+                    predApDomain.joinApDomain(searchPredBBApDomain->second);
                 // TODO: if the domain is empty? It means pred bb has not been analyzed so far
                 // we can't analyze current BB
             }
@@ -351,25 +351,25 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            predDomain = analyzeBasicBlock(currentBB, predDomain, curFuncDomain, interf);
+            predApDomain = analyzeBasicBlock(currentBB, predApDomain, curFuncApDomain, interf);
         }
 
-        // errs() << "\nDomain of function:\n";
-        // printInstToDomainMap(curFuncDomain);
+        // errs() << "\nApDomain of function:\n";
+        // printInstToApDomainMap(curFuncApDomain);
 
-        return curFuncDomain;
+        return curFuncApDomain;
     }
 
-    Domain analyzeBasicBlock (BasicBlock *B, 
-        Domain predDomain, 
-        unordered_map <Instruction*, Domain> &curFuncDomain,
+    ApDomain analyzeBasicBlock (BasicBlock *B, 
+        ApDomain predApDomain, 
+        unordered_map <Instruction*, ApDomain> &curFuncApDomain,
         unordered_map<Instruction*, Instruction*> interf
     ) {
         // check type of inst, and performTrasformations
-        Domain curDomain;
+        ApDomain curApDomain;
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
-            curDomain.copyDomain(predDomain);
+            curApDomain.copyApDomain(predApDomain);
         
             errs() << "DEBUG: Analyzing: ";
             currentInst->print(errs());
@@ -384,19 +384,19 @@ class VerifierPass : public ModulePass {
                 // }
             }
             else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(instItr)) {
-                curDomain = checkBinInstruction(binOp, curDomain);
+                curApDomain = checkBinInstruction(binOp, curApDomain);
             }
             else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
-                curDomain = checkStoreInst(storeInst, curDomain);
+                curApDomain = checkStoreInst(storeInst, curApDomain);
             }
             else if (UnaryInstruction *unaryInst = dyn_cast<UnaryInstruction>(instItr)) {
-                curDomain = checkUnaryInst(unaryInst, curDomain, interf);
+                curApDomain = checkUnaryInst(unaryInst, curApDomain, interf);
             }
             else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
                 errs() << "cmpInst: ";
                 cmpInst->print(errs());
                 errs() << "\n";
-                curDomain = checkCmpInst(cmpInst, curDomain);
+                curApDomain = checkCmpInst(cmpInst, curApDomain);
                 
             }
             else {
@@ -404,12 +404,12 @@ class VerifierPass : public ModulePass {
             }
             // RMW, CMPXCHG
 
-            curFuncDomain[currentInst] = curDomain;
-            predDomain.copyDomain(curDomain);
+            curFuncApDomain[currentInst] = curApDomain;
+            predApDomain.copyApDomain(curApDomain);
         }
         
         
-        return curDomain;
+        return curApDomain;
     }
 
     string getNameFromValue(Value *val) {
@@ -427,12 +427,12 @@ class VerifierPass : public ModulePass {
         return searchName->second;
     }
 
-    Domain checkCmpInst(CmpInst* cmpInst, Domain curDomain) { 
-        // need to computer Domain of both true and false branch
-        Domain trueBranchDomain;
-        Domain falseBranchDomain;
-        trueBranchDomain.copyDomain(curDomain);
-        falseBranchDomain.copyDomain(curDomain);
+    ApDomain checkCmpInst(CmpInst* cmpInst, ApDomain curApDomain) { 
+        // need to computer ApDomain of both true and false branch
+        ApDomain trueBranchApDomain;
+        ApDomain falseBranchApDomain;
+        trueBranchApDomain.copyApDomain(curApDomain);
+        falseBranchApDomain.copyApDomain(curApDomain);
 
         operation operTrueBranch;
         operation operFalseBranch;
@@ -466,7 +466,7 @@ class VerifierPass : public ModulePass {
                 errs() << "WARNING: Unknown cmp instruction: ";
                 cmpInst->print(errs());
                 errs() << "\n";
-                return curDomain;
+                return curApDomain;
         }
 
         string destVarName = getNameFromValue(cmpInst);
@@ -484,33 +484,33 @@ class VerifierPass : public ModulePass {
             int constFromIntVar1= constFromVar1->getValue().getSExtValue();
             if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
                 int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-                trueBranchDomain.performCmpOp(operTrueBranch, constFromIntVar1, constFromIntVar2);
-                falseBranchDomain.performCmpOp(operFalseBranch, constFromIntVar1, constFromIntVar2);
+                trueBranchApDomain.performCmpOp(operTrueBranch, constFromIntVar1, constFromIntVar2);
+                falseBranchApDomain.performCmpOp(operFalseBranch, constFromIntVar1, constFromIntVar2);
             }
             else { 
                 string fromVar2Name = getNameFromValue(fromVar2);
-                trueBranchDomain.performCmpOp(operTrueBranch, constFromIntVar1, fromVar2Name);
-                falseBranchDomain.performCmpOp(operFalseBranch, constFromIntVar1, fromVar2Name);
+                trueBranchApDomain.performCmpOp(operTrueBranch, constFromIntVar1, fromVar2Name);
+                falseBranchApDomain.performCmpOp(operFalseBranch, constFromIntVar1, fromVar2Name);
             }
         }
         else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
             int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-            trueBranchDomain.performCmpOp(operTrueBranch, fromVar1Name, constFromIntVar2);
-            falseBranchDomain.performCmpOp(operFalseBranch, fromVar1Name, constFromIntVar2);
+            trueBranchApDomain.performCmpOp(operTrueBranch, fromVar1Name, constFromIntVar2);
+            falseBranchApDomain.performCmpOp(operFalseBranch, fromVar1Name, constFromIntVar2);
         }
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
-            trueBranchDomain.performCmpOp(operTrueBranch, fromVar1Name, fromVar2Name);
-            falseBranchDomain.performCmpOp(operFalseBranch, fromVar1Name, fromVar2Name);
+            trueBranchApDomain.performCmpOp(operTrueBranch, fromVar1Name, fromVar2Name);
+            falseBranchApDomain.performCmpOp(operFalseBranch, fromVar1Name, fromVar2Name);
         }
 
-        return trueBranchDomain;
+        return trueBranchApDomain;
     }
 
     //  call approprproate function for the inst passed
-    Domain checkBinInstruction(BinaryOperator* binOp, Domain curDomain) {
+    ApDomain checkBinInstruction(BinaryOperator* binOp, ApDomain curApDomain) {
         operation oper;
         switch (binOp->getOpcode()) {
             case Instruction::Add:
@@ -526,7 +526,7 @@ class VerifierPass : public ModulePass {
             default:
                 fprintf(stderr, "WARNING: unknown operation: ");
                 binOp->print(errs());
-                return curDomain;
+                return curApDomain;
         }
 
         string destVarName = getNameFromValue(binOp);
@@ -536,28 +536,28 @@ class VerifierPass : public ModulePass {
             int constFromIntVar1= constFromVar1->getValue().getSExtValue();
             if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
                 int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
+                curApDomain.performBinaryOp(oper, destVarName, constFromIntVar1, constFromIntVar2);
             }
             else { 
                 string fromVar2Name = getNameFromValue(fromVar2);
-                curDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
+                curApDomain.performBinaryOp(oper, destVarName, constFromIntVar1, fromVar2Name);
             }
         }
         else if (ConstantInt *constFromVar2 = dyn_cast<ConstantInt>(fromVar2)) {
             string fromVar1Name = getNameFromValue(fromVar1);
             int constFromIntVar2 = constFromVar2->getValue().getSExtValue();
-            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
+            curApDomain.performBinaryOp(oper, destVarName, fromVar1Name, constFromIntVar2);
         }
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
-            curDomain.performBinaryOp(oper, destVarName, fromVar1Name, fromVar2Name);
+            curApDomain.performBinaryOp(oper, destVarName, fromVar1Name, fromVar2Name);
         }
 
-        return curDomain;
+        return curApDomain;
     }
 
-    Domain checkStoreInst(StoreInst* storeInst, Domain curDomain) {
+    ApDomain checkStoreInst(StoreInst* storeInst, ApDomain curApDomain) {
         Value* destVar = storeInst->getPointerOperand();
         string destVarName = getNameFromValue(destVar);
 
@@ -565,15 +565,15 @@ class VerifierPass : public ModulePass {
         if (ord==llvm::AtomicOrdering::Release || 
                 ord==llvm::AtomicOrdering::SequentiallyConsistent ||
                 ord==llvm::AtomicOrdering::AcquireRelease) {
-            if (curDomain.getRelHead(destVarName) == nullptr)
-                curDomain.setRelHead(destVarName, storeInst);
+            // if (curApDomain.getRelHead(destVarName) == nullptr)
+            //     curApDomain.setRelHead(destVarName, storeInst);
         }
 
         Value* fromVar = storeInst->getValueOperand();
         
         if (ConstantInt *constFromVar = dyn_cast<ConstantInt>(fromVar)) {
             int constFromIntVar = constFromVar->getValue().getSExtValue();
-            curDomain.performUnaryOp(STORE, destVarName, constFromIntVar);
+            curApDomain.performUnaryOp(STORE, destVarName, constFromIntVar);
         }
         else if (Argument *argFromVar = dyn_cast<Argument>(fromVar)) {
             // TODO: handle function arguments
@@ -581,15 +581,15 @@ class VerifierPass : public ModulePass {
         }
         else {
             string fromVarName = getNameFromValue(fromVar);
-            curDomain.performUnaryOp(STORE, destVarName, fromVarName);
+            curApDomain.performUnaryOp(STORE, destVarName, fromVarName);
         }
 
-        return curDomain;
+        return curApDomain;
     }
 
-    Domain checkUnaryInst(
+    ApDomain checkUnaryInst(
         UnaryInstruction* unaryInst, 
-        Domain curDomain, 
+        ApDomain curApDomain, 
         unordered_map<Instruction*, Instruction*> interf
     ) {
         Value* fromVar = unaryInst->getOperand(0);
@@ -606,24 +606,24 @@ class VerifierPass : public ModulePass {
                 }           
                 if (dyn_cast<GlobalVariable>(fromVar)) {
                     // errs() << "Load of global\n";
-                    curDomain = applyInterfToLoad(unaryInst, curDomain, interf, fromVarName);
+                    curApDomain = applyInterfToLoad(unaryInst, curApDomain, interf, fromVarName);
                 }
                 break;
             // TODO: add more cases
             default: 
                 fprintf(stderr, "ERROR: unknown operation: ");
                 unaryInst->print(errs());
-                return curDomain;
+                return curApDomain;
         }
         
-        curDomain.performUnaryOp(oper, destVarName, fromVarName);
+        curApDomain.performUnaryOp(oper, destVarName, fromVarName);
 
-        return curDomain;
+        return curApDomain;
     }
 
-    Domain applyInterfToLoad(
+    ApDomain applyInterfToLoad(
         UnaryInstruction* unaryInst, 
-        Domain curDomain, 
+        ApDomain curApDomain, 
         unordered_map<Instruction*, Instruction*> interf,
         string varName
     ) {
@@ -633,7 +633,7 @@ class VerifierPass : public ModulePass {
         if (searchInterf == interf.end()) {
             errs() << "ERROR: Interfernce for the load instrction not found\n";
             printValue(unaryInst);
-            return curDomain;
+            return curApDomain;
         }
         Instruction *interfInst = searchInterf->second;
         
@@ -642,19 +642,19 @@ class VerifierPass : public ModulePass {
             // find the domain of interfering instruction
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
-                auto searchInterfDomain = searchInterfFunc->second.find(interfInst);
+                auto searchInterfApDomain = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
                 // errs() << "\nInterf with Store: ";
                 // interfInst->print(errs());
                 // errs() << "\n";
-                if (searchInterfDomain != searchInterfFunc->second.end()) {
+                if (searchInterfApDomain != searchInterfFunc->second.end()) {
                     // apply the interference
                     // errs() << "Before Interf:\n";
-                    // curDomain.printDomain();
+                    // curApDomain.printApDomain();
 
                     // TODO: need to set the bool value proplerly
-                    Domain interfDomain = searchInterfDomain->second;
+                    ApDomain interfApDomain = searchInterfApDomain->second;
                     bool isRelSeq = false;
                     if (StoreInst *storeInst = dyn_cast<StoreInst>(interfInst)) {
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
@@ -663,22 +663,22 @@ class VerifierPass : public ModulePass {
                             if (ordLoad==llvm::AtomicOrdering::Acquire || 
                                     ordLoad==llvm::AtomicOrdering::SequentiallyConsistent ||
                                     ordLoad==llvm::AtomicOrdering::AcquireRelease) {
-                                Instruction *relHead = interfDomain.getRelHead(varName);
-                                if (relHead != nullptr) {
-                                    curDomain.setRelHead(varName, relHead);
-                                    isRelSeq = true;
-                                }
+                                // Instruction *relHead = interfApDomain.getRelHead(varName);
+                                // if (relHead != nullptr) {
+                                //     curApDomain.setRelHead(varName, relHead);
+                                //     isRelSeq = true;
+                                // }
                             }
                         }
                     }
-                    curDomain.applyInterference(varName, interfDomain, isRelSeq);
+                    curApDomain.applyInterference(varName, interfApDomain, isRelSeq);
                     
                     // errs() << "***After Inter:\n";
-                    // curDomain.printDomain();
+                    // curApDomain.printApDomain();
                 }
             }
         }
-        return curDomain;
+        return curApDomain;
     }
 
     unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getAllInterferences (
@@ -741,39 +741,39 @@ class VerifierPass : public ModulePass {
         return allInterfs;
     }
 
-    unordered_map<Instruction*, Domain> joinDomainByInstruction(
-        unordered_map<Instruction*, Domain> instrToDomainOld,
-        unordered_map<Instruction*, Domain> instrToDomainNew
+    unordered_map<Instruction*, ApDomain> joinApDomainByInstruction(
+        unordered_map<Instruction*, ApDomain> instrToApDomainOld,
+        unordered_map<Instruction*, ApDomain> instrToApDomainNew
     ) {
-        // errs() << "joining domains. Incoming Domain:\n";
-        // errs() << "siez of OLD= " << instrToDomainOld.size() << "\n";
-        // errs() << "size of NEW= " << instrToDomainNew.size() << "\n";
+        // errs() << "joining domains. Incoming ApDomain:\n";
+        // errs() << "siez of OLD= " << instrToApDomainOld.size() << "\n";
+        // errs() << "size of NEW= " << instrToApDomainNew.size() << "\n";
 
         
         // new = old join new
-        for (auto itOld=instrToDomainOld.begin(); itOld!=instrToDomainOld.end(); ++itOld) {
+        for (auto itOld=instrToApDomainOld.begin(); itOld!=instrToApDomainOld.end(); ++itOld) {
             // errs() << "joining for instruction: ";
             // itOld->first->print(errs());
             // errs() << "\n";
-            auto searchNewMap = instrToDomainNew.find(itOld->first);
-            if (searchNewMap == instrToDomainNew.end()) {
-                instrToDomainNew[itOld->first] = itOld->second;
+            auto searchNewMap = instrToApDomainNew.find(itOld->first);
+            if (searchNewMap == instrToApDomainNew.end()) {
+                instrToApDomainNew[itOld->first] = itOld->second;
             } else {
-                Domain newDomain = searchNewMap->second;
+                ApDomain newApDomain = searchNewMap->second;
                 // errs() << "OLD:\n";
-                // itOld->second.printDomain();
+                // itOld->second.printApDomain();
                 // errs() << "NEW:\n";
-                // newDomain.printDomain();
-                newDomain.joinDomain(itOld->second);
+                // newApDomain.printApDomain();
+                newApDomain.joinApDomain(itOld->second);
                 // errs() << "Joined domain:\n";
-                // newDomain.printDomain();
-                instrToDomainNew[itOld->first] = newDomain;
+                // newApDomain.printApDomain();
+                instrToApDomainNew[itOld->first] = newApDomain;
             }
         }
         // errs() << "***In join domain. Before return:\n";
-        // printInstToDomainMap(instrToDomainNew);
+        // printInstToApDomainMap(instrToApDomainNew);
 
-        return instrToDomainNew;
+        return instrToApDomainNew;
     }
 
     void printLoadsToAllStores(unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores){
@@ -797,27 +797,27 @@ class VerifierPass : public ModulePass {
 
     void testApplyInterf() {
         // Sample code to test applyInterference()
-        auto funIt = funcInitDomain.begin();
+        auto funIt = funcInitApDomain.begin();
         Function *fun1 = funIt->first;
-        Domain fun1Domain = funIt->second;
-        fun1Domain.performUnaryOp(STORE, "x", 1);
-        fun1Domain.performUnaryOp(STORE, "y", 10);
+        ApDomain fun1ApDomain = funIt->second;
+        fun1ApDomain.performUnaryOp(STORE, "x", 1);
+        fun1ApDomain.performUnaryOp(STORE, "y", 10);
         funIt++;
         Function *fun2 = funIt->first;
-        Domain fun2Domain = funIt->second;
+        ApDomain fun2ApDomain = funIt->second;
         errs() << "Interf from domain:\n";
-        fun1Domain.printDomain();
+        fun1ApDomain.printApDomain();
         errs() << "To domain:\n";
-        fun2Domain.printDomain();
-        fun2Domain.applyInterference("x", fun1Domain, true);
+        fun2ApDomain.printApDomain();
+        fun2ApDomain.applyInterference("x", fun1ApDomain, true);
         errs() << "After applying:\n";
-        fun2Domain.printDomain();
+        fun2ApDomain.printApDomain();
     }
 
-    void printInstToDomainMap(unordered_map<Instruction*, Domain> instToDomainMap) {
-        for (auto it=instToDomainMap.begin(); it!=instToDomainMap.end(); ++it) {
+    void printInstToApDomainMap(unordered_map<Instruction*, ApDomain> instToApDomainMap) {
+        for (auto it=instToApDomainMap.begin(); it!=instToApDomainMap.end(); ++it) {
             it->first->print(errs());
-            it->second.printDomain();
+            it->second.printApDomain();
         }
     }
 
@@ -826,11 +826,11 @@ class VerifierPass : public ModulePass {
             errs() << "\n-----------------------------------------------\n";
             errs() << "Function " << it1->first->getName() << ":\n";
             errs() << "-----------------------------------------------\n";
-            printInstToDomainMap(it1->second);
+            printInstToApDomainMap(it1->second);
         }
     }
 
-    bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Domain>> newProgramState) {
+    bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, ApDomain>> newProgramState) {
         // errs() << "Program state size: " << programState.size();
         // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
         return (newProgramState == programState);

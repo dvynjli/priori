@@ -11,17 +11,19 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 
-class Domain {
+typedef map <string, llvm::Instruction*> REL_HEAD;
+
+class ApDomain {
     ap_manager_t *man;
     ap_environment_t *env;
     ap_abstract1_t absValue;
-    map<string, llvm::Instruction*> relHead;
+    // map<string, llvm::Instruction*> relHead;
     map<string, bool> hasChanged;
     
     ap_manager_t* initApManager(string domainType);
     ap_environment_t* initEnvironment(vector<string> globalVars, vector<string> functionVars);
     void assignZerosToAllVars();
-    void initRelHead(vector<string> globalVars);
+    // void initRelHead(vector<string> globalVars);
     void initHasChanged(vector<string> globalVars);
     ap_constyp_t getApConsType(operation oper);
     void setHasChanged(string var);
@@ -29,12 +31,12 @@ class Domain {
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
 
 public:
-    bool operator== (const Domain &other) const;
-    // bool operator!= (Domain other);
+    bool operator== (const ApDomain &other) const;
+    // bool operator!= (ApDomain other);
     void init(string domainType, vector<string> globalVars, vector<string> functionVars);
-    void copyDomain(Domain copyFrom);
-    llvm::Instruction* getRelHead(string var);
-    void setRelHead(string var, llvm::Instruction *head);
+    void copyApDomain(ApDomain copyFrom);
+    // llvm::Instruction* getRelHead(string var);
+    // void setRelHead(string var, llvm::Instruction *head);
 
     // Unary Operations
     void performUnaryOp(operation oper, string strTo, string strOp);
@@ -52,12 +54,47 @@ public:
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    void applyInterference(string interfVar, Domain fromDomain, bool isRelAcqSeq);
-    bool joinDomain(Domain other);
+    void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSeq);
+    void joinApDomain(ApDomain other);
 
     void addVariable(string varName);
-    void printDomain();
+    void printApDomain();
 };
 
+class Environment {
+    REL_HEAD Environment::initRelHead(vector<string> globalVars);
+public:
+    // relHead: var -> relHeadInstruction
+    // environment: relHead -> ApDomain
+    map <REL_HEAD, ApDomain> environment;
+    
+    bool operator== (const Environment &other) const;
+
+    void init(string domainType, vector<string> globalVars, vector<string> functionVars);
+    void copyEnvironment(Environment copyFrom);
+    void addRelHead(string var, llvm::Instruction *head);
+    void changeRelHead(string var, llvm::Instruction *head);
+
+    // Unary Operation
+    template <class TO, class OP>
+    void performUnaryOp(operation oper, TO to, OP op);
+    
+    // Binary Operations
+    template <class TO, class OP1, class OP2>
+    void performBinaryOp(operation oper, TO to, OP1 op1, OP2 op2);
+    // Other Operations
+    // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
+
+    // Cmp Operations
+    template <class OP1, class OP2>
+    void performCmpOp(operation oper, OP1 op1, OP2 op2);
+    
+    void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSeq, llvm::Instruction *head);
+    void joinEnvironment(Environment other);
+
+    void printEnvionment();
+
+
+};
 
 #endif
