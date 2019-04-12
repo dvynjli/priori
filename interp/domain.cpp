@@ -298,7 +298,6 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
             }
             if (it->second) {
                 // there has been some event that has initialized the variable. Need to join the environment of this variable
-                fprintf(stderr,"\n\nfor var %s\n", it->first.c_str());
                 ap_abstract1_t tmpValue = ap_abstract1_copy(man, &absValue);
                 
                 // initialize it with the value of variable to be joined
@@ -346,7 +345,7 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
     }
 
     // fprintf(stderr, "ApDomain after interf:\n");
-    printApDomain();
+    // printApDomain();
 }
 
 ap_constyp_t ApDomain::getApConsType(operation oper) {
@@ -401,6 +400,14 @@ void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstr
 bool Environment::operator== (const Environment &other) const {
     return environment==other.environment;
 }
+
+// map <REL_HEAD, ApDomain>::iterator Environment::begin() {
+//     return begin();
+// }
+
+// map <REL_HEAD, ApDomain>::iterator Environment::end() {
+//     return end();
+// }
 
 void Environment::init(string domainType, vector<string> globalVars, vector<string> functionVars){
     REL_HEAD relHead = initRelHead(globalVars);
@@ -546,14 +553,38 @@ void Environment::applyInterference(
     bool isRelAcqSeq, 
     llvm::Instruction *head=nullptr
 ) {
-    // TODO: this is wrong. nned to copy all rel heads and make domain accordingly
-    if (isRelAcqSeq)
-        changeRelHead(interfVar, head);
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+    // TODO: this is wrong. need to copy all rel heads and make domain accordingly
+    fprintf(stderr, "Before applying interf:\n");
+    printEnvironment();
+
+    if (isRelAcqSeq) {
+        map <REL_HEAD, ApDomain> newEnvironment;
         for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-            it->second.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+            for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
+                REL_HEAD curRelHead(curItr->first);
+                REL_HEAD interfRelHead(interfItr->first);
+                curRelHead[interfVar] = interfRelHead[interfVar];
+                ApDomain newDomain;
+                newDomain.copyApDomain(curItr->second);
+                newDomain.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+                auto searchRelHead = environment.find(curRelHead);
+                if (searchRelHead != environment.end()) {
+                    newDomain.joinApDomain(searchRelHead->second);
+                }
+                newEnvironment[curRelHead] = newDomain;
+            }
+        }
+        environment = newEnvironment;
+    }
+    else {
+        for (auto it=environment.begin(); it!=environment.end(); ++it) {
+            for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
+                it->second.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+            }
         }
     }
+    fprintf(stderr, "After applying interf:\n");
+    printEnvironment();
 }
 
 void Environment::joinEnvironment(Environment other) {
@@ -589,4 +620,3 @@ void Environment::printEnvironment() {
         fprintf(stderr, "\n");
     }
 }
-

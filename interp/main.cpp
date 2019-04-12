@@ -644,9 +644,9 @@ class VerifierPass : public ModulePass {
                 auto searchInterfEnv = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
-                // errs() << "\nInterf with Store: ";
-                // interfInst->print(errs());
-                // errs() << "\n";
+                errs() << "\nInterf with Store: ";
+                interfInst->print(errs());
+                errs() << "\n";
                 if (searchInterfEnv != searchInterfFunc->second.end()) {
                     // apply the interference
                     // errs() << "Before Interf:\n";
@@ -665,7 +665,7 @@ class VerifierPass : public ModulePass {
                                 // Instruction *relHead = interfApDomain.getRelHead(varName);
                                 // if (relHead != nullptr) {
                                 //     curEnv.setRelHead(varName, relHead);
-                                //     isRelSeq = true;
+                                    isRelSeq = true;
                                 // }
                             }
                         }

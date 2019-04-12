@@ -65,6 +65,7 @@ TODO:
         termination and conditional branching
         NE is not working correctly in apron
     change pthread to thread
+    store relxed from other thread is not breaking the release sequence
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes

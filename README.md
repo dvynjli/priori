@@ -12,7 +12,7 @@ Might need to run ```make``` as sudo
 
 # Running the pass
 ```
-opt -load build/interp/VerifierPass.so -verifier tests/test1_O1.ll
+opt -load build/interp/VerifierPass.so -verifier tests/test1.ll
 ```
 
 # Compile a source file

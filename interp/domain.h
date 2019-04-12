@@ -69,6 +69,8 @@ public:
     map <REL_HEAD, ApDomain> environment;
     
     bool operator== (const Environment &other) const;
+    // map <REL_HEAD, ApDomain>::iterator begin();
+    // map <REL_HEAD, ApDomain>::iterator end();
 
     void init(string domainType, vector<string> globalVars, vector<string> functionVars);
     void copyEnvironment(Environment copyFrom);
