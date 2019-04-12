@@ -558,10 +558,14 @@ class VerifierPass : public ModulePass {
 
         auto ord = storeInst->getOrdering();
         if (ord==llvm::AtomicOrdering::Release || 
-                ord==llvm::AtomicOrdering::SequentiallyConsistent ||
-                ord==llvm::AtomicOrdering::AcquireRelease) {
+            ord==llvm::AtomicOrdering::SequentiallyConsistent ||
+            ord==llvm::AtomicOrdering::AcquireRelease) {
             // if (curEnv.getRelHead(destVarName) == nullptr)
             //     curEnv.setRelHead(destVarName, storeInst);
+            curEnv.changeRelHeadIfNull(destVarName, storeInst);
+        }
+        else {
+            curEnv.changeRelHeadToNull(destVarName, storeInst);
         }
 
         Value* fromVar = storeInst->getValueOperand();

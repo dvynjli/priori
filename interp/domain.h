@@ -73,7 +73,9 @@ public:
     void init(string domainType, vector<string> globalVars, vector<string> functionVars);
     void copyEnvironment(Environment copyFrom);
     void addRelHead(string var, llvm::Instruction *head);
+    void changeRelHeadIfNull(string var, llvm::Instruction *head);
     void changeRelHead(string var, llvm::Instruction *head);
+    void changeRelHeadToNull(string var, llvm::Instruction *inst);
 
     // Unary Operation
     void performUnaryOp(operation oper, string strTo, string strOp);

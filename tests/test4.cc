@@ -21,7 +21,7 @@ void fun1(){
 int main () {
 	thread a(fun1);
 	thread b(fun2);
-	a.join(); b.join()
+	a.join(); b.join();
 	
 	return 0;
 }

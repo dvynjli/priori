@@ -441,11 +441,33 @@ void Environment::addRelHead(string var, llvm::Instruction *head) {
     }
 }
 
+void Environment::changeRelHeadIfNull(string var, llvm::Instruction *head) {
+    map <REL_HEAD, ApDomain> newEnvironment;
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        REL_HEAD relHead(it->first);
+        if (relHead[var] == nullptr)
+            relHead[var] = head;
+        newEnvironment[relHead] = it->second;
+    }
+    environment = newEnvironment;
+}
+
 void Environment::changeRelHead(string var, llvm::Instruction *head) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
         relHead[var] = head;
+        newEnvironment[relHead] = it->second;
+    }
+    environment = newEnvironment;
+}
+
+void Environment::changeRelHeadToNull(string var, llvm::Instruction *inst) {
+    map <REL_HEAD, ApDomain> newEnvironment;
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        REL_HEAD relHead(it->first);
+        if (relHead[var]!=nullptr && inst->getFunction() == relHead[var]->getFunction())
+            relHead[var] = nullptr;
         newEnvironment[relHead] = it->second;
     }
     environment = newEnvironment;
@@ -552,7 +574,7 @@ void Environment::joinEnvironment(Environment other) {
 }
 
 void Environment::printEnvironment() {
-    fprintf(stderr, "--Environment--\n");
+    fprintf(stderr, "\n--Environment--\n");
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         fprintf (stderr, "RelHead:\n");

@@ -65,11 +65,6 @@ TODO:
         termination and conditional branching
         NE is not working correctly in apron
     change pthread to thread
-    change all functions of domain to add relHead and changed
-    change join domain 
-        making program state from instr->vec<domain> to instr->relHead->Domain 
-            will be good for join
-            same in apply interf - loop through relHead->Domain
 
 
 Race detection on non-atomics - if a non aomic load can read from more than one writes
