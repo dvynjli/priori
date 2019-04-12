@@ -420,6 +420,7 @@ void Environment::init(string domainType, vector<string> globalVars, vector<stri
 
 void Environment::copyEnvironment(Environment copyFrom){
     environment = copyFrom.environment;
+    // environment.  (copyFrom.environment);
 }
 
 REL_HEAD Environment::initRelHead(vector<string> globalVars) {
@@ -473,7 +474,7 @@ void Environment::changeRelHeadToNull(string var, llvm::Instruction *inst) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
-        if (relHead[var]!=nullptr && inst->getFunction() == relHead[var]->getFunction())
+        if (relHead[var]!=nullptr && inst->getFunction() != relHead[var]->getFunction())
             relHead[var] = nullptr;
         newEnvironment[relHead] = it->second;
     }
