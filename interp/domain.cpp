@@ -419,8 +419,13 @@ void Environment::init(string domainType, vector<string> globalVars, vector<stri
 }
 
 void Environment::copyEnvironment(Environment copyFrom){
-    environment = copyFrom.environment;
-    // environment.  (copyFrom.environment);
+    // environment = copyFrom.environment;
+    environment.clear();
+    for (auto it=copyFrom.environment.begin(); it!=copyFrom.environment.end(); ++it) {
+        ApDomain newDomain;
+        newDomain.copyApDomain(it->second);
+        environment[it->first]=newDomain;
+    }
 }
 
 REL_HEAD Environment::initRelHead(vector<string> globalVars) {
