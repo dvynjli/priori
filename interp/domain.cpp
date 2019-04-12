@@ -451,24 +451,70 @@ void Environment::changeRelHead(string var, llvm::Instruction *head) {
     environment = newEnvironment;
 }
 
-template <class TO, class OP>
-void Environment::performUnaryOp(operation oper, TO to, OP op) {
+void Environment::performUnaryOp(operation oper, string strTo, string strOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        // it->second.performUnaryOp(oper, to, op);
+        it->second.performUnaryOp(oper, strTo, strOp);
     }
 }
 
-template <class TO, class OP1, class OP2>
-void Environment::performBinaryOp(operation oper, TO to, OP1 op1, OP2 op2) {
+void Environment::performUnaryOp(operation oper, string strTo, int intOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performBinaryOp(oper, to, op1, op2);
+        it->second.performUnaryOp(oper, strTo, intOp);
     }
 }
 
-template <class OP1, class OP2>
-void Environment::performCmpOp(operation oper, OP1 op1, OP2 op2) {
+void Environment::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performCmpOp(oper, op1, op2);
+        it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
+    }
+}
+
+void Environment::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
+    }
+}
+
+void Environment::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
+    }
+}
+
+void Environment::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
+    }
+}
+
+// template <class OP1, class OP2>
+// void Environment::performCmpOp(operation oper, OP1 op1, OP2 op2) {
+//     for (auto it=environment.begin(); it!=environment.end(); ++it) {
+//         it->second.performCmpOp(oper, op1, op2);
+//     }
+// }
+
+void Environment::performCmpOp(operation oper, string strOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, strOp1, intOp2);
+    }
+}
+
+void Environment::performCmpOp(operation oper, int intOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, intOp1, strOp2);
+    }
+}
+
+void Environment::performCmpOp(operation oper, int intOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, intOp1, intOp2);
+    }
+}
+
+void Environment::performCmpOp(operation oper, string strOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, strOp1, strOp2);
     }
 }
 

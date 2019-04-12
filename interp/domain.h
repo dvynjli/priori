@@ -76,18 +76,23 @@ public:
     void changeRelHead(string var, llvm::Instruction *head);
 
     // Unary Operation
-    template <typename TO, typename OP>
-    void performUnaryOp(operation oper, TO to, OP op);
+    void performUnaryOp(operation oper, string strTo, string strOp);
+    void performUnaryOp(operation oper, string strTo, int intOp);
     
     // Binary Operations
-    template <class TO, class OP1, class OP2>
-    void performBinaryOp(operation oper, TO to, OP1 op1, OP2 op2);
+    void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
+    void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
+    void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
+    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    
     // Other Operations
     // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
 
     // Cmp Operations
-    template <class OP1, class OP2>
-    void performCmpOp(operation oper, OP1 op1, OP2 op2);
+    void performCmpOp(operation oper, string strOp1, int intOp2);
+    void performCmpOp(operation oper, int intOp1,    string strOp2);
+    void performCmpOp(operation oper, int intOp1,    int intOp2);
+    void performCmpOp(operation oper, string strOp1, string strOp2);
     
     void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, llvm::Instruction *head=nullptr);
     void joinEnvironment(Environment other);
