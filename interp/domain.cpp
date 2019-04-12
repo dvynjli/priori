@@ -560,8 +560,8 @@ void Environment::applyInterference(
     llvm::Instruction *head=nullptr
 ) {
     // TODO: this is wrong. need to copy all rel heads and make domain accordingly
-    fprintf(stderr, "Before applying interf:\n");
-    printEnvironment();
+    // fprintf(stderr, "Before applying interf:\n");
+    // printEnvironment();
 
     if (isRelAcqSeq) {
         map <REL_HEAD, ApDomain> newEnvironment;
@@ -589,8 +589,8 @@ void Environment::applyInterference(
             }
         }
     }
-    fprintf(stderr, "After applying interf:\n");
-    printEnvironment();
+    // fprintf(stderr, "After applying interf:\n");
+    // printEnvironment();
 }
 
 void Environment::joinEnvironment(Environment other) {

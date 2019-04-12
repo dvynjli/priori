@@ -5,17 +5,18 @@
 
 using namespace std;
 
-atomic<int> x,y;
+atomic<int> x,y,b;
 
 void* fun2(void * arg){
-	int b;
+	// int b;
 	x.store(10, memory_order_relaxed);
 	int a = x.load(memory_order_relaxed);
 	if (a >= 50)
 		y.store(a, memory_order_relaxed);
 	else 
 		y.store(a+10, memory_order_relaxed);
-	// b = y.load(memory_order_relaxed);
+	a = y.load(memory_order_relaxed);
+	// x.store(memory_order_relaxed);	// this instruction is wrong in O1 IR
 	// if (b > a)
 	// 	x.store(15, memory_order_relaxed);
 	

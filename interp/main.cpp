@@ -190,7 +190,7 @@ class VerifierPass : public ModulePass {
                             // TODO: need to add dominates rules
                             Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
                             Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
-                            vector<Instruction*> lastGlobalInstInCalled = getLastInstOfJoin(call);
+                            vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
                             if (nextGlobalInstAfterCall) {
                                 zHelper.addMHB(call, nextGlobalInstAfterCall);
                             }
@@ -332,6 +332,7 @@ class VerifierPass : public ModulePass {
         //init for next BB with assume
 
         unordered_map <Instruction*, Environment> curFuncEnv;
+        curFuncEnv[&(*(F->begin()->begin()))] = funcInitEnv[F];
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
@@ -350,19 +351,23 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            predEnv = analyzeBasicBlock(currentBB, predEnv, curFuncEnv, interf);
+            analyzeBasicBlock(currentBB, curFuncEnv, interf);
         }
 
         return curFuncEnv;
     }
 
     Environment analyzeBasicBlock (BasicBlock *B, 
-        Environment predEnv, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
         unordered_map<Instruction*, Instruction*> interf
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
+        Environment predEnv = curFuncEnv[&(*(B->begin()))];
+        // cmp instr will add the corresponding true and false branch environment to branchEnv. 
+        // cmpVar -> (true branch env, false branch env)
+        map<Instruction*, pair<Environment, Environment>> branchEnv;
+        
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
             curEnv.copyEnvironment(predEnv);
@@ -389,11 +394,37 @@ class VerifierPass : public ModulePass {
                 curEnv = checkUnaryInst(unaryInst, curEnv, interf);
             }
             else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
-                errs() << "cmpInst: ";
-                cmpInst->print(errs());
-                errs() << "\n";
-                curEnv = checkCmpInst(cmpInst, curEnv);
-                
+                // errs() << "cmpInst: ";
+                // cmpInst->print(errs());
+                // errs() << "\n";
+                curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
+                // errs() << "\nCmp result:\n";
+                // curEnv.printEnvironment();
+                // errs() <<"True Branch:\n";
+                // branchEnv[cmpInst].first.printEnvironment();
+                // errs() <<"Flase Branch:\n";
+                // branchEnv[cmpInst].second.printEnvironment();
+            }
+            else if (BranchInst *branchInst = dyn_cast<BranchInst>(instItr)) {
+                if (branchInst->isConditional()) {
+                    Instruction *branchCondition = dyn_cast<Instruction>(branchInst->getCondition());
+                    Instruction *trueBranch = &(*(branchInst->getSuccessor(0)->begin()));
+                    curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
+                    Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
+                    curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
+                    // errs() << "\nTrue Branch:\n";
+                    // printValue(trueBranch);
+                    // errs() << "True branch Env:\n";
+                    // curFuncEnv[trueBranch].printEnvironment();
+                    // errs() << "\nFalse Branch:\n";
+                    // printValue(falseBranch);
+                    // errs() << "False branch Env:\n";
+                    // curFuncEnv[falseBranch].printEnvironment();
+                }
+                else {
+                    Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
+                    curFuncEnv[successors].joinEnvironment(curEnv);
+                }
             }
             else {
                 
@@ -422,7 +453,11 @@ class VerifierPass : public ModulePass {
         return searchName->second;
     }
 
-    Environment checkCmpInst(CmpInst* cmpInst, Environment curEnv) { 
+    Environment checkCmpInst(
+        CmpInst* cmpInst, 
+        Environment curEnv, 
+        map<Instruction*, pair<Environment, Environment>> &branchEnv
+    ) { 
         // need to computer Environment of both true and false branch
         Environment trueBranchEnv;
         Environment falseBranchEnv;
@@ -500,8 +535,9 @@ class VerifierPass : public ModulePass {
             trueBranchEnv.performCmpOp(operTrueBranch, fromVar1Name, fromVar2Name);
             falseBranchEnv.performCmpOp(operFalseBranch, fromVar1Name, fromVar2Name);
         }
-
-        return trueBranchEnv;
+        
+        branchEnv[cmpInst] = make_pair(trueBranchEnv, falseBranchEnv);
+        return curEnv;
     }
 
     //  call approprproate function for the inst passed
@@ -626,7 +662,7 @@ class VerifierPass : public ModulePass {
         unordered_map<Instruction*, Instruction*> interf,
         string varName
     ) {
-        errs() << "Applying interf\n";
+        // errs() << "Applying interf\n";
         // find interfering instruction
         auto searchInterf = interf.find(unaryInst);
         if (searchInterf == interf.end()) {
@@ -644,9 +680,9 @@ class VerifierPass : public ModulePass {
                 auto searchInterfEnv = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
-                errs() << "\nInterf with Store: ";
-                interfInst->print(errs());
-                errs() << "\n";
+                // errs() << "\nInterf with Store: ";
+                // interfInst->print(errs());
+                // errs() << "\n";
                 if (searchInterfEnv != searchInterfFunc->second.end()) {
                     // apply the interference
                     // errs() << "Before Interf:\n";
@@ -906,7 +942,7 @@ class VerifierPass : public ModulePass {
         return nextInst;
     }
 
-    Function* findFunctionFromJoin(Instruction* call) {
+    Function* findFunctionFromPthreadJoin(Instruction* call) {
         Value* threadOp = call->getOperand(0);
         if (LoadInst *loadInst = dyn_cast<LoadInst>(threadOp))
             threadOp = loadInst->getPointerOperand();
@@ -922,9 +958,9 @@ class VerifierPass : public ModulePass {
     }
 
 
-    vector<Instruction*> getLastInstOfJoin(Instruction *call) {
+    vector<Instruction*> getLastInstOfPthreadJoin(Instruction *call) {
         vector<Instruction*> lastInstr;
-        Function *func = findFunctionFromJoin(call);
+        Function *func = findFunctionFromPthreadJoin(call);
         for (auto bbItr=func->begin(); bbItr!=func->end(); ++bbItr) {
             TerminatorInst *term = bbItr->getTerminator();
             if (ReturnInst *ret = dyn_cast<ReturnInst>(term)) {
