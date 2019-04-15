@@ -67,14 +67,19 @@ TODO:
     change pthread to thread
     assertion checking
 
+Other functionality that might be added
+    Race detection on non-atomics - 
+        if a non aomic load can read from more than one writes
+        can be done at the time of interference feasibl=ility checking
+    creation of more than one thread of a function
+        need to change the MHB adding for thread create
 
-Race detection on non-atomics - if a non aomic load can read from more than one writes
 
 
 
 Possible Optimizations:
     don't support thread creation from functions other than main()
-        reduced one pass over program
+        reduced one pass over program - not anymore
     LoadStore map
     while checking if fixed point is reached, we are comparing somain of all the Instructions. It will be sufficient to compare domain of only stores
         But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr

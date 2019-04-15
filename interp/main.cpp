@@ -30,9 +30,9 @@ class VerifierPass : public ModulePass {
 
         // testApplyInterf();
 
-        // zHelper.initZ3(globalVars);
+        zHelper.initZ3(globalVars);
 
-        analyzeProgram(M);
+        // analyzeProgram(M);
 
         // unsat_core_example1();
     }
@@ -155,6 +155,7 @@ class VerifierPass : public ModulePass {
 
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
+                Instruction *lastGlobalInst;
                 unordered_map<string, unordered_set<Instruction*>> varToStores;
                 unordered_map<Instruction*, string> varToLoads;
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
@@ -182,6 +183,9 @@ class VerifierPass : public ModulePass {
                                     if (firstGlobalInstInCalled) {
                                         zHelper.addMHB(call, firstGlobalInstInCalled);
                                     }
+                                    if (lastGlobalInst) {
+                                        zHelper.addPO(lastGlobalInst, call);
+                                    }
                                 }
 
                             }
@@ -199,6 +203,9 @@ class VerifierPass : public ModulePass {
                             }
                             for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
                                 zHelper.addMHB(*it, call);
+                            }
+                            if (lastGlobalInst) {
+                                zHelper.addPO(lastGlobalInst, call);
                             }
                         }
                         else {
@@ -219,12 +226,12 @@ class VerifierPass : public ModulePass {
                             // storeInst->print(errs());
                             // errs() << "\n";
                             zHelper.addStoreInstr(storeInst);
+                            if (lastGlobalInst) {
+                                zHelper.addPO(lastGlobalInst, call);
+                            }
+                            lastGlobalInst = storeInst;
                         }
                     }
-                    else if (it->isTerminator()) {
-
-                    }
-
                     else {
                         Instruction *inst = dyn_cast<Instruction>(it);
                         string varName = "var" + to_string(ssaVarCounter);
@@ -245,6 +252,10 @@ class VerifierPass : public ModulePass {
                                 // errs() << "****adding load instr for: ";
                                 // printValue(loadInst);
                                 zHelper.addLoadInstr(loadInst);
+                                if (lastGlobalInst) {
+                                    zHelper.addPO(lastGlobalInst, call);
+                                }
+                                lastGlobalInst = loadInst;
                             }
                         }
                     }
@@ -767,13 +778,26 @@ class VerifierPass : public ModulePass {
         allInterfs = getAllInterferences(loadsToAllStores);
 
         // TODO: Check feasibility of permutations and save them in feasibleInterfences
-        feasibleInterfences = allInterfs;
-        // printFeasibleInterf();
+        for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
+            vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
+            for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
+                if (isFeasible(*interfItr)) {
+                    curFuncInterfs.push_back(*interfItr);
+                }
+            }
+        }
+        // feasibleInterfences = allInterfs;
+        printFeasibleInterf();
 
         return allInterfs;
     }
 
-    unordered_map<Instruction*, Environment> joinEnvByInstruction(
+    bool isFeasible (unordered_map<Instruction*, Instruction*> interfs) {
+        zHelper.checkInterference(interfs);
+        return true;
+    }
+
+    unordered_map<Instruction*, Environment> joinEnvByInstruction (
         unordered_map<Instruction*, Environment> instrToEnvOld,
         unordered_map<Instruction*, Environment> instrToEnvNew
     ) {

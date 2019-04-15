@@ -35,6 +35,7 @@ class Z3Helper {
 	
 	z3::func_decl mhb;
 	z3::func_decl rf;
+	z3::func_decl nrf;
 	z3::func_decl po;
 	z3::func_decl mcb;
 
@@ -42,6 +43,10 @@ class Z3Helper {
 	z3::expr getMemOrd(llvm::AtomicOrdering ord);
 	void addInstToVar(z3::expr inst, llvm::Value *var);
 	void addInstToMemOrd(z3::expr inst, llvm::AtomicOrdering ord);
+
+	void addInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
+	z3::expr makeQueryOfInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
+	void removeInterference ();
 
 	public:
 	Z3Helper() : 
@@ -62,6 +67,8 @@ class Z3Helper {
     	mhb (z3::function("MHB", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
     	// RF: does a RF b? (instr, instr) -> bool
     	rf (z3::function("RF", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
+		// NRF: does a NRF b? (instr, instr) -> bool
+    	nrf (z3::function("NRF", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
 		// PO: Program Order. (instr, instr) -> bool
 		po (z3::function("PO", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
 		// memoryConstraintBefore: can't reorder as per c11 memory ordering constraints
@@ -77,14 +84,18 @@ class Z3Helper {
 			zfp.register_relation(memOrderOf);
 			zfp.register_relation(mhb);
 			zfp.register_relation(rf);
+			zfp.register_relation(nrf);
 			zfp.register_relation(po);
 			zfp.register_relation(mcb);
 		}
 	
 	void initZ3(vector<string> globalVars);
+	void addPO(llvm::Instruction *from, llvm::Instruction *to);
 	void addMHB(llvm::Instruction *from, llvm::Instruction *to);
 	void addLoadInstr  (llvm::LoadInst *inst);
 	void addStoreInstr (llvm::StoreInst *inst);
+
+	bool checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 
 	void testFixedPoint();
 };
