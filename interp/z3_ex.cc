@@ -8,7 +8,7 @@ int main() {
 	z3::fixedpoint zfp(ctx);
 
 	z3::params params(ctx);
-	params.set("engine", ctx.str_symbol("datalog"));
+	params.set("engine", ctx.str_symbol("duality"));
 
 	z3::sort s = ctx.bv_sort(3);
     z3::sort B = ctx.bool_sort();
@@ -52,13 +52,13 @@ int main() {
         // zfp.add_rule(e1, ctx.str_symbol("1_to_2"));
         // zfp.add_rule(e2, ctx.str_symbol("1_to_3"));
         // zfp.add_rule(e3, ctx.str_symbol("2_to_4"));
+        zfp.push();
 
         Z3_fixedpoint_add_rule(ctx, zfp, e1, ctx.str_symbol("1_to_2"));
         Z3_fixedpoint_add_rule(ctx, zfp, e2, ctx.str_symbol("1_to_3"));
         Z3_fixedpoint_add_rule(ctx, zfp, e3, ctx.str_symbol("2_to_4"));
-        Z3_fixedpoint_add_rule(ctx, zfp, e4, ctx.str_symbol("4_to_2"));
+        Z3_fixedpoint_add_rule(ctx, zfp, e4, ctx.str_symbol("4_to_1"));
 
-        
         // z3::func_decl q1= z3::function("q1", 0, NULL, ctx.bool_sort());
         // zfp.register_relation(q1);
         // z3::expr q1 = ctx.bool_const("q1");
@@ -72,7 +72,7 @@ int main() {
         
         // z3::expr tmp = q1;
         // z3::expr tmp[] = {q1(),};
-        z3::expr tmp = path(n3,n2);
+        z3::expr tmp = path(n1,n4);
         enum z3::check_result res = zfp.query(tmp);
         // enum z3::check_result res = zsolver.check(1, tmp);
         cout << res << "\n";
@@ -84,7 +84,8 @@ int main() {
         //     cout << "unsat\n";
         // else if (result == Z3_L_TRUE)
         //     cout << "sat\n";
-
+        zfp.pop();
+        cout << "\nFixed point: \n" << zfp.to_string() << "\n";
     } catch (z3::exception e) { cout << "Exception: " << e << "\n";}
 
 

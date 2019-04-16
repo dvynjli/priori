@@ -77,7 +77,12 @@ class Z3Helper {
 		{
 			// Z3_fixedpoint_set_params(zcontext, zfp, "datalog");
 			z3::params params(zcontext);
-			params.set("engine", zcontext.str_symbol("datalog"));
+			try {
+				params.set("engine", zcontext.str_symbol("duality"));
+			} catch (z3::exception e) { cout << "Exception: " << e << "\n"; exit(0);}
+			// params.set("datalog.default_table", zcontext.str_symbol("hashtable"));
+			// params.set("datalog.magic_sets_for_queries", true);
+			cout << params << "\n";
 			zfp.register_relation(isLoad);
 			zfp.register_relation(isStore);
 			zfp.register_relation(isVarOf);

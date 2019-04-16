@@ -26,11 +26,12 @@ class VerifierPass : public ModulePass {
         // zHelper.testFixedPoint();
 
         vector<string> globalVars = getGlobalIntVars(M);
+        
+        zHelper.initZ3(globalVars);
+
         initThreadDetails(M, globalVars, domainType);
 
         // testApplyInterf();
-
-        zHelper.initZ3(globalVars);
 
         // analyzeProgram(M);
 
@@ -787,7 +788,7 @@ class VerifierPass : public ModulePass {
             }
         }
         // feasibleInterfences = allInterfs;
-        printFeasibleInterf();
+        // printFeasibleInterf();
 
         return allInterfs;
     }
