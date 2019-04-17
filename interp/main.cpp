@@ -27,7 +27,7 @@ class VerifierPass : public ModulePass {
 
         vector<string> globalVars = getGlobalIntVars(M);
         
-        zHelper.initZ3(globalVars);
+        // zHelper.initZ3(globalVars);
 
         initThreadDetails(M, globalVars, domainType);
 
@@ -786,11 +786,12 @@ class VerifierPass : public ModulePass {
                     curFuncInterfs.push_back(*interfItr);
                 }
             }
+            feasibleInterfences[funcItr->first] = curFuncInterfs;
         }
         // feasibleInterfences = allInterfs;
         // printFeasibleInterf();
 
-        return allInterfs;
+        return feasibleInterfences;
     }
 
     bool isFeasible (unordered_map<Instruction*, Instruction*> interfs) {

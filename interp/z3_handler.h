@@ -23,8 +23,9 @@ enum mem_order {NA, RLX, ACQ, REL, ACQ_REL, SEQ_CST};
 
 class Z3Helper {
 	z3::context zcontext;
-	z3::solver zsolver;
+	// z3::solver zsolver;
 	z3::fixedpoint zfp;
+	string rules;
 
 	// z3::func_decl memOrder;
 	// z3::func_decl vars;
@@ -47,10 +48,11 @@ class Z3Helper {
 	void addInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 	z3::expr makeQueryOfInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 	void removeInterference ();
+	void addInferenceRules();
 
-	public:
+public:
 	Z3Helper() : 
-    	zsolver (z3::solver(zcontext)),
+    	// zsolver (z3::solver(zcontext)),
 		zfp (z3::fixedpoint(zcontext)),
     	// vars (z3::function("vars", zcontext.string_sort(), zcontext.int_sort())),
     	// functions
@@ -92,6 +94,7 @@ class Z3Helper {
 			zfp.register_relation(nrf);
 			zfp.register_relation(po);
 			zfp.register_relation(mcb);
+			addInferenceRules();
 		}
 	
 	void initZ3(vector<string> globalVars);

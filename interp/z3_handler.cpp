@@ -19,7 +19,12 @@ void Z3Helper::initZ3(vector<string> globalVars) {
     // z3::func_decl_vector varsEnumConsts(zcontext);
     // z3::func_decl_vector varsEnumTesters(zcontext);
     // z3::sort vars = zcontext.enumeration_sort("vars", noOfVars, varNames, varsEnumConsts, varsEnumTesters);
+}
+
+void Z3Helper::addInferenceRules() {
     try {
+        cout << "init" << endl;
+
         z3::expr inst1 = zcontext.bv_const("inst1", BV_SIZE);
         z3::expr inst2 = zcontext.bv_const("inst2", BV_SIZE);
         z3::expr inst3 = zcontext.bv_const("inst3", BV_SIZE);
@@ -34,6 +39,7 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                 z3::implies((mhb(inst1, inst2) && mhb(inst2, inst3)), 
                 mhb(inst1, inst3) ));
         zfp.add_rule(transitive_mhb, zcontext.str_symbol("Transitive-MHB"));
+        cout << "Transitive MHB added" << endl;
 
         // (l,v) \in isLoad && (s1,v) \in isStore && (s2,v) \in isStore &&
         //  (s1,l) \in rf && (s1,s2) \in MHB
@@ -45,6 +51,7 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     rf(inst2, inst1) && mhb(inst2, inst3)), 
                 mhb(inst1, inst3)));
         zfp.add_rule(fr, zcontext.str_symbol("FR"));
+        cout << "FR" <<endl;
 
         // z3::expr nrf = z3::forall(inst1, inst2, 
         //         z3::implies( (isLoad(inst1) && isStore(inst2) && mhb(inst1, inst2)), 
@@ -57,6 +64,7 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     z3::exists(ord1, memOrderOf(inst1, ord1) && ord1>=ACQ),
                 mcb(inst1, inst2)));
         zfp.add_rule(acqReordering, zcontext.str_symbol("Acq-Reordering"));
+        cout << "Acq" << endl;
         
         // ( (op,s) \in PO && s \in RelOp) => (op,s) \in MCB
         z3::expr relReordering = z3::forall(inst1, inst2,
@@ -64,6 +72,8 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=REL),
                 mcb(inst1, inst2)));
         zfp.add_rule(relReordering, zcontext.str_symbol("Rel-Reordering"));
+        cout << "Rel" << endl;
+
 
         // ( s \in RelOp && l \in AcqOp && 
         //   (l,v1) \in IsLoad && (s,v1) \in IsStore && 
@@ -85,6 +95,8 @@ void Z3Helper::initZ3(vector<string> globalVars) {
                     mcb(inst3, inst1) && mcb(inst2, inst4),                            
                 mcb(inst3, inst4)));
         zfp.add_rule(relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq"));
+        cout << "Rel-acq" << endl;
+
 
         // cout << "from init:\n" << zfp.to_string() << "\n";
 
@@ -97,7 +109,7 @@ void Z3Helper::initZ3(vector<string> globalVars) {
         // cout << zfp.query(query1) << "\n";
         // cout << zfp.query(query2) << "\n";
         
-    } catch (z3::exception e) {cout << "Exception: " << e << "\n";}
+    } catch (z3::exception e) {cout << "Exception: " << e << endl;}
 }
 
 void Z3Helper::addPO (llvm::Instruction *from, llvm::Instruction *to) {
@@ -129,10 +141,11 @@ void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
 
 bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs) {
     // addInterf, makeQuery, checkSat, removeInterf
-    
+    cout << "cheching interf" << endl;
     try {
         addInterference(interfs);
-        cout << "After adding:\n" << zfp.to_string() << "\n";
+        cout << "added interf" << endl;
+        cout << "After adding:\n" << zfp.to_string() << endl;
 
         z3::expr query = makeQueryOfInterference(interfs);
     
@@ -141,11 +154,14 @@ bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instru
     // cout << "Interf is: " << isFeasible << "res: " << res << "\n";
 
         removeInterference();
+        cout << "After Removing:" << endl;
+        cout << zfp.check_error() << endl;
+        // cout << zfp.to_string() << endl;
     } catch (z3::exception e) {
-        cout << "Exception: " << e << "\n";
+        cout << "Exception: " << e << endl;
         exit(0);
     }
-    cout << "After Removing:\n" <<zfp.to_string() <<"\n*****\n";
+    
     return true;
 }
 
@@ -220,9 +236,11 @@ z3::expr Z3Helper::getMemOrd(llvm::AtomicOrdering ord) {
 }
 
 void Z3Helper::addInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs) {
-    zfp.push();
+    // zfp.push();
+    // rules = zfp.to_string();
     int interfCount = 0;
     for (auto it=interfs.begin(); it!=interfs.end(); ++it) {
+        cout << "adding interf" << interfCount << endl;
         z3::expr rfExpr = rf(getBitVec(it->first), getBitVec(it->second));
         zfp.add_rule(rfExpr, zcontext.str_symbol(("Interf"+std::to_string(interfCount)).c_str()));
         interfCount++;
@@ -241,9 +259,29 @@ z3::expr Z3Helper::makeQueryOfInterference (unordered_map<llvm::Instruction*, ll
 }
 
 void Z3Helper::removeInterference () {
-    // cout << "pop\n" <<endl;
-    zfp.pop();
+    cout << "pop" <<endl;
+    // zfp.pop();
+    zfp.~fixedpoint();
+    zfp = z3::fixedpoint(zcontext);
+    cout << "removal done" << endl;
+    
+    // int pos=0;
+    // for (int i=0; i<8; i++) {
+    //     pos = rules.find('\n', pos);
+    //     cout << pos << " ";
+    //     pos++;
+    // }
+    // cout << "\n";
+    // // rules = rules.substr(pos);
 
+    cout << "rules from str" << endl;
+
+    // cout << rules << endl;
+    try {
+        addInferenceRules();
+        // zfp.from_string(rules.c_str());
+    } catch (z3::exception e) {cout << "Exception: " << e << endl;}
+    cout << "Added rules to new zfp" << endl;
 }
 
 /* void Z3Helper::test_bv_fun() {
