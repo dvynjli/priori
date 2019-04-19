@@ -120,8 +120,8 @@ class VerifierPass : public ModulePass {
                         }
                     }
                 }
-                // Push the prev instruction to read from self envionment
-                allStoresForCurLoad.push_back(load->getPrevNode());
+                // Push the init to read from self envionment
+                allStoresForCurLoad.push_back(nullptr);
                 loadsToAllStores[curFunc][load] = allStoresForCurLoad;
             }
         }
@@ -178,19 +178,19 @@ class VerifierPass : public ModulePass {
                                     // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
                                     // no global instr before thread create in current function (or in newly created thread)
                                     if (lastGlobalInstBeforeCall) {
-                                        // zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                        zHelper.addMHB(lastGlobalInstBeforeCall, call);
                                         relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                                     }
                                     if (nextGlobalInstAfterCall) {
-                                        // zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                        zHelper.addMHB(call, nextGlobalInstAfterCall);
                                         relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                                     }
                                     if (firstGlobalInstInCalled) {
-                                        // zHelper.addMHB(call, firstGlobalInstInCalled);
+                                        zHelper.addMHB(call, firstGlobalInstInCalled);
                                         relations.push_back(make_pair("mhb", make_pair(call, firstGlobalInstInCalled)));
                                     }
                                     if (lastGlobalInst) {
-                                        // zHelper.addPO(lastGlobalInst, call);
+                                        zHelper.addPO(lastGlobalInst, call);
                                         relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                                     }
                                 }
@@ -203,19 +203,19 @@ class VerifierPass : public ModulePass {
                             Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
                             vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
                             if (nextGlobalInstAfterCall) {
-                                // zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                zHelper.addMHB(call, nextGlobalInstAfterCall);
                                 relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                             }
                             if (lastGlobalInstBeforeCall) {
-                                // zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                zHelper.addMHB(lastGlobalInstBeforeCall, call);
                                 relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                             }
                             for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
-                                // zHelper.addMHB(*it, call);
+                                zHelper.addMHB(*it, call);
                                 relations.push_back(make_pair("mhb", make_pair(*it, call)));
                             }
                             if (lastGlobalInst) {
-                                // zHelper.addPO(lastGlobalInst, call);
+                                zHelper.addPO(lastGlobalInst, call);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                             }
                         }
@@ -238,7 +238,7 @@ class VerifierPass : public ModulePass {
                             // errs() << "\n";
                             zHelper.addStoreInstr(storeInst);
                             if (lastGlobalInst) {
-                                // zHelper.addPO(lastGlobalInst, call);
+                                zHelper.addPO(lastGlobalInst, call);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                             }
                             lastGlobalInst = storeInst;
@@ -265,7 +265,7 @@ class VerifierPass : public ModulePass {
                                 // printValue(loadInst);
                                 zHelper.addLoadInstr(loadInst);
                                 if (lastGlobalInst) {
-                                    // zHelper.addPO(lastGlobalInst, call);
+                                    zHelper.addPO(lastGlobalInst, call);
                                     relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                                 }
                                 lastGlobalInst = loadInst;
@@ -813,14 +813,21 @@ class VerifierPass : public ModulePass {
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores,
         vector< pair <string, pair<Instruction*, Instruction*>>> relations
     ) {
-        cout << "isFeasible" << endl;
+        errs() << "isFeasible - checking interf:\n";
+        for (auto it=interfs.begin(); it!=interfs.end(); ++it) {
+            it->first->print(errs());
+            errs() << "\t\t--Reads from-->\t";
+            if (it->second == nullptr) errs() << "init";
+            else it->second->print(errs());
+            errs() << "\n";
+        }
+        
         Z3Helper checker;
         checker.addInferenceRules();
         checker.addMHBandPORules(relations);
         checker.addAllLoads(allLoads);
         checker.addAllStores(allStores);
         checker.checkInterference(interfs);
-        // checker.~Z3Helper();
         return true;
     }
 

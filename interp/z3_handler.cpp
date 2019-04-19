@@ -54,19 +54,19 @@ void Z3Helper::addInferenceRules() {
         // (l,v) \in isLoad && (s1,v) \in isStore && (s2,v) \in isStore &&
         //  (s1,l) \in rf && (s1,s2) \in MHB
         // => (l,s2) \in MHB
-        z3::expr fr = z3::forall(inst1, inst2, inst3, var1, 
+        z3::expr fr1 = z3::forall(inst1, inst2, inst3, var1, 
                 z3::implies(( isLoad(inst1) && isVarOf(inst1, var1) && 
                     isStore(inst2) && isVarOf(inst2, var1) &&
                     isStore(inst3) && isVarOf(inst3, var1) &&
                     rf(inst2, inst1) && mhb(inst2, inst3)), 
                 mhb(inst1, inst3)));
-        zfp.add_rule(fr, zcontext.str_symbol("FR"));
+        zfp.add_rule(fr1, zcontext.str_symbol("FR"));
         // cout << "FR" <<endl;
 
-        // z3::expr nrf = z3::forall(inst1, inst2, 
-        //         z3::implies( (isLoad(inst1) && isStore(inst2) && mhb(inst1, inst2)), 
-        //         not(rf(inst1, inst2))));
-        // Z3_fixedpoint_add_rule(zcontext, zfp, nrf, zcontext.str_symbol("nrf"));
+        z3::expr fr2 = z3::forall(inst1, inst2, 
+                z3::implies( (isLoad(inst1) && isStore(inst2) && mhb(inst1, inst2)), 
+                nrf(inst2, inst1)));
+        zfp.add_rule(fr2, zcontext.str_symbol("NRF"));
 
         // ( (l,op) \in PO && l \in AcqOp) => (l,op) \in MCB
         z3::expr acqReordering = z3::forall(inst1, inst2, 
@@ -103,7 +103,7 @@ void Z3Helper::addInferenceRules() {
                     isVarOf(inst1, var1) && isVarOf(inst2, var1) &&
                     rf(inst1, inst2) &&
                     mcb(inst3, inst1) && mcb(inst2, inst4),                            
-                mcb(inst3, inst4)));
+                mhb(inst3, inst4)));
         zfp.add_rule(relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq"));
         // cout << "Rel-acq" << endl;
 
@@ -127,7 +127,7 @@ void Z3Helper::addPO (llvm::Instruction *from, llvm::Instruction *to) {
     const z3::expr toExpr = getBitVec(to);
     z3::expr app = po(fromExpr, toExpr);
     zfp.add_rule(app, zcontext.str_symbol(""));
-    rules = rules + "\n" +  app.to_string();
+    // rules = rules + "\n" +  app.to_string();
 }
 
 void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
@@ -148,7 +148,7 @@ void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
     // cout << "bitvec from: " << fromExpr << ", to: " << toExpr << ", true: " << trueExpr << "\n";
     z3::expr app = mhb(fromExpr, toExpr);
     zfp.add_rule(app, zcontext.str_symbol(""));
-    rules = rules + "\n" +  app.to_string();
+    // rules = rules + "\n" +  app.to_string();
 }
 
 bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs) {
@@ -161,10 +161,11 @@ bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instru
         cout << "After adding:\n" << zfp.to_string() << endl;
 
         z3::expr query = makeQueryOfInterference(interfs);
+        cout << "Query: " << query << endl;
     
         bool isFeasible = zfp.query(query);
         enum z3::check_result res = zfp.query(query);
-        cout << "\nInterf is: " << isFeasible << "res: " << res << endl;
+        cout << "Interf is: " << isFeasible << "res: " << res << "\n" << endl;
     } catch (z3::exception e) {
         cout << "Exception: " << e << endl;
         exit(0);
@@ -235,7 +236,7 @@ void Z3Helper::addLoadInstr (llvm::LoadInst *inst) {
     const z3::expr instExpr = getBitVec(inst);
     z3::expr app = isLoad(instExpr);
     zfp.add_rule(app, zcontext.str_symbol(""));
-    rules = rules + "\n" +  app.to_string();
+    // rules = rules + "\n" +  app.to_string();
     
     llvm::Value* fromVar = inst->getOperand(0);
     addInstToVar(instExpr, fromVar);
@@ -248,7 +249,7 @@ void Z3Helper::addStoreInstr (llvm::StoreInst *inst) {
     const z3::expr instExpr = getBitVec(inst);
     z3::expr app = isStore(instExpr);
     zfp.add_rule(app, zcontext.str_symbol(""));
-    rules = rules + "\n" +  app.to_string();
+    // rules = rules + "\n" +  app.to_string();
     
     llvm::Value* fromVar = inst->getPointerOperand();
     addInstToVar(instExpr, fromVar);
@@ -261,14 +262,14 @@ void Z3Helper::addInstToVar(z3::expr inst, llvm::Value *var) {
     const z3::expr varExpr = getBitVec(var);
     z3::expr app = isVarOf(inst, varExpr);
     zfp.add_rule(app, zcontext.str_symbol(""));
-    rules = rules + "\n" +  app.to_string();
+    // rules = rules + "\n" +  app.to_string();
 }
 
 void Z3Helper::addInstToMemOrd(z3::expr inst, llvm::AtomicOrdering ord) {
     const z3::expr ordExpr = getMemOrd(ord);
     z3::expr app = memOrderOf(inst, ordExpr);
     zfp.add_rule(app, zcontext.str_symbol(""));
-    rules = rules + "\n" +  app.to_string();
+    // rules = rules + "\n" +  app.to_string();
 }
 
 z3::expr Z3Helper::getBitVec (void *op) {
@@ -311,7 +312,7 @@ void Z3Helper::addInterference (unordered_map<llvm::Instruction*, llvm::Instruct
     int interfCount = 0;
     for (auto it=interfs.begin(); it!=interfs.end(); ++it) {
         // cout << "adding interf" << interfCount << endl;
-        z3::expr rfExpr = rf(getBitVec(it->first), getBitVec(it->second));
+        z3::expr rfExpr = rf(getBitVec(it->second), getBitVec(it->first));
         zfp.add_rule(rfExpr, zcontext.str_symbol(("Interf"+std::to_string(interfCount)).c_str()));
         interfCount++;
     }
@@ -319,10 +320,10 @@ void Z3Helper::addInterference (unordered_map<llvm::Instruction*, llvm::Instruct
 
 z3::expr Z3Helper::makeQueryOfInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs) {
     auto it=interfs.begin();
-    z3::expr query = nrf(getBitVec(it->first), getBitVec(it->second));
+    z3::expr query = nrf(getBitVec(it->second), getBitVec(it->first));
     it++;
     for (; it!=interfs.end(); ++it) {
-        z3::expr tmp = nrf(getBitVec(it->first), getBitVec(it->second));
+        z3::expr tmp = nrf(getBitVec(it->second), getBitVec(it->first));
         query = query || tmp;
     }
     return query;
