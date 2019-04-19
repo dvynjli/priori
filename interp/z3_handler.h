@@ -48,7 +48,7 @@ class Z3Helper {
 	void addInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 	z3::expr makeQueryOfInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 	void removeInterference ();
-	void addInferenceRules();
+	
 
 public:
 	Z3Helper() : 
@@ -80,21 +80,20 @@ public:
 			// Z3_fixedpoint_set_params(zcontext, zfp, "datalog");
 			z3::params params(zcontext);
 			try {
-				params.set("engine", zcontext.str_symbol("duality"));
-			} catch (z3::exception e) { cout << "Exception: " << e << "\n"; exit(0);}
+				params.set("engine", zcontext.str_symbol("datalog"));
+			} catch (z3::exception e) { cout << "Exception: " << e << endl; exit(0);}
 			// params.set("datalog.default_table", zcontext.str_symbol("hashtable"));
 			// params.set("datalog.magic_sets_for_queries", true);
-			cout << params << "\n";
-			zfp.register_relation(isLoad);
-			zfp.register_relation(isStore);
-			zfp.register_relation(isVarOf);
-			zfp.register_relation(memOrderOf);
-			zfp.register_relation(mhb);
-			zfp.register_relation(rf);
-			zfp.register_relation(nrf);
-			zfp.register_relation(po);
-			zfp.register_relation(mcb);
-			addInferenceRules();
+			// cout << params << endl;
+			// zfp.register_relation(isLoad);
+			// zfp.register_relation(isStore);
+			// zfp.register_relation(isVarOf);
+			// zfp.register_relation(memOrderOf);
+			// zfp.register_relation(mhb);
+			// zfp.register_relation(rf);
+			// zfp.register_relation(nrf);
+			// zfp.register_relation(po);
+			// zfp.register_relation(mcb);
 		}
 	
 	void initZ3(vector<string> globalVars);
@@ -104,6 +103,9 @@ public:
 	void addStoreInstr (llvm::StoreInst *inst);
 
 	bool checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
+	string getRules();
+	void addRules(string rules);
+	void addInferenceRules();
 
 	void testFixedPoint();
 };

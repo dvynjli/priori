@@ -27,10 +27,11 @@ class VerifierPass : public ModulePass {
 
         vector<string> globalVars = getGlobalIntVars(M);
         
-        // zHelper.initZ3(globalVars);
+        zHelper.initZ3(globalVars);
 
         initThreadDetails(M, globalVars, domainType);
 
+        errs() << "----DONE----\n";
         // testApplyInterf();
 
         // analyzeProgram(M);
@@ -795,7 +796,12 @@ class VerifierPass : public ModulePass {
     }
 
     bool isFeasible (unordered_map<Instruction*, Instruction*> interfs) {
-        zHelper.checkInterference(interfs);
+        cout << "isFeasible" << endl;
+        Z3Helper checker;
+        checker.addInferenceRules();
+        checker.addRules(zHelper.getRules());
+        checker.checkInterference(interfs);
+        // checker.~Z3Helper();
         return true;
     }
 
