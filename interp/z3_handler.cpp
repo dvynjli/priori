@@ -186,6 +186,51 @@ void Z3Helper::addRules(string rulesToAdd) {
     cout << "After adding MHB:\n" << zfp.to_string() << endl;
 }
 
+void Z3Helper::addMHBandPORules(vector< pair <string, pair<llvm::Instruction*, llvm::Instruction*>>> relations) {
+    for (auto it=relations.begin(); it!=relations.end(); ++it) {
+        auto instPair = it->second;
+        if(it->first == "mhb") {
+            addMHB(instPair.first, instPair.second);
+        }
+        else if (it->first == "po") {
+            addPO(instPair.first, instPair.second);
+        }
+        else {
+            cout << "something wrong: " << it->first << endl;
+            exit(0);
+        }
+    }
+}
+
+void Z3Helper::addAllLoads(unordered_map<llvm::Function*, unordered_map<llvm::Instruction*, string>> allLoads) {
+    for (auto funcItr=allLoads.begin(); funcItr!=allLoads.end(); ++funcItr) {
+        auto loads = funcItr->second;
+        for (auto loadsItr=loads.begin(); loadsItr!=loads.end(); ++loadsItr) {
+            llvm::LoadInst *loadInst = llvm::dyn_cast<llvm::LoadInst>(loadsItr->first);
+            addLoadInstr(loadInst);
+        }
+    }
+}
+
+void Z3Helper::addAllStores(unordered_map<llvm::Function*, unordered_map<string, unordered_set<llvm::Instruction*>>> allStores) {
+    for (auto funcItr=allStores.begin(); funcItr!=allStores.end(); ++funcItr) {
+        auto varTostores = funcItr->second;
+        for (auto varItr=varTostores.begin(); varItr!=varTostores.end(); ++varItr) {
+            unordered_set<llvm::Instruction*> stores = varItr->second;
+            // while (!stores.empty()) {
+            //     llvm::Instruction *inst = stores.;
+            //     llvm::StoreInst *storeInst = llvm::dyn_cast<llvm::StoreInst>(inst);
+            //     addStoreInstr(storeInst);
+            // }
+            for (auto storesItr=stores.begin(); storesItr!=stores.end(); ++storesItr) {
+                auto inst = *storesItr;
+                llvm::StoreInst *storeInst = llvm::dyn_cast<llvm::StoreInst>(inst);
+                addStoreInstr(storeInst);
+            }
+        }
+    }
+}
+
 void Z3Helper::addLoadInstr (llvm::LoadInst *inst) {
     const z3::expr instExpr = getBitVec(inst);
     z3::expr app = isLoad(instExpr);

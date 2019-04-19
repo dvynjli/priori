@@ -105,6 +105,9 @@ public:
 	bool checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 	string getRules();
 	void addRules(string rules);
+	void addMHBandPORules(vector< pair <string, pair<llvm::Instruction*, llvm::Instruction*>>> relations);
+	void addAllLoads(unordered_map<llvm::Function*, unordered_map<llvm::Instruction*, string>> allLoads);
+	void addAllStores(unordered_map<llvm::Function*, unordered_map<string, unordered_set<llvm::Instruction*>>> allStores);
 	void addInferenceRules();
 
 	void testFixedPoint();
