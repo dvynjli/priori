@@ -809,7 +809,7 @@ class VerifierPass : public ModulePass {
             }
             feasibleInterfences[funcItr->first] = curFuncInterfs;
         }
-        printFeasibleInterf();
+        // printFeasibleInterf();
 
         return feasibleInterfences;
     }
@@ -820,15 +820,14 @@ class VerifierPass : public ModulePass {
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores,
         vector< pair <string, pair<Instruction*, Instruction*>>> relations
     ) {
-        errs() << "isFeasible - checking interf:\n";
-        for (auto it=interfs.begin(); it!=interfs.end(); ++it) {
-            it->first->print(errs());
-            errs() << "\t\t--Reads from-->\t";
-            if (it->second == nullptr) errs() << "init";
-            else it->second->print(errs());
-            errs() << "\n";
-        }
-        
+        // errs() << "isFeasible - checking interf:\n";
+        // for (auto it=interfs.begin(); it!=interfs.end(); ++it) {
+        //     it->first->print(errs());
+        //     errs() << "\t\t--Reads from-->\t";
+        //     if (it->second == nullptr) errs() << "init";
+        //     else it->second->print(errs());
+        //     errs() << "\n";
+        // }
         Z3Helper checker;
         checker.addInferenceRules();
         checker.addMHBandPORules(relations);
