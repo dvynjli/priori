@@ -47,7 +47,6 @@ class Z3Helper {
 
 	void addInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
 	z3::expr makeQueryOfInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs);
-	void removeInterference ();
 	
 
 public:
@@ -111,6 +110,7 @@ public:
 	void addInferenceRules();
 
 	void testFixedPoint();
+	void testQuery();
 };
 
 #endif

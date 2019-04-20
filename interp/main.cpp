@@ -33,7 +33,7 @@ class VerifierPass : public ModulePass {
 
         // testApplyInterf();
 
-        // analyzeProgram(M);
+        analyzeProgram(M);
 
         // unsat_core_example1();
         errs() << "----DONE----\n";
@@ -240,6 +240,10 @@ class VerifierPass : public ModulePass {
                             if (lastGlobalInst) {
                                 // zHelper.addPO(lastGlobalInst, storeInst);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, storeInst)));
+                            } 
+                            // no global operation yet. Add MHB with init
+                            else {
+                                relations.push_back(make_pair("mhb", make_pair(lastGlobalInst, storeInst)));
                             }
                             lastGlobalInst = storeInst;
                         }
@@ -267,6 +271,10 @@ class VerifierPass : public ModulePass {
                                 if (lastGlobalInst) {
                                     // Helper.addPO(lastGlobalInst, loadInst);
                                     relations.push_back(make_pair("po", make_pair(lastGlobalInst, loadInst)));
+                                }
+                                // no global operation yet. Add MHB with init
+                                else {
+                                    relations.push_back(make_pair("mhb", make_pair(lastGlobalInst, loadInst)));
                                 }
                                 lastGlobalInst = loadInst;
                             }
@@ -697,7 +705,7 @@ class VerifierPass : public ModulePass {
         Instruction *interfInst = searchInterf->second;
         
         // if interfernce is from some other thread
-        if (interfInst != unaryInst->getPrevNode()) {
+        if (interfInst && interfInst != unaryInst->getPrevNode()) {
             // find the domain of interfering instruction
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
@@ -801,8 +809,7 @@ class VerifierPass : public ModulePass {
             }
             feasibleInterfences[funcItr->first] = curFuncInterfs;
         }
-        // feasibleInterfences = allInterfs;
-        // printFeasibleInterf();
+        printFeasibleInterf();
 
         return feasibleInterfences;
     }
@@ -827,8 +834,9 @@ class VerifierPass : public ModulePass {
         checker.addMHBandPORules(relations);
         checker.addAllLoads(allLoads);
         checker.addAllStores(allStores);
-        checker.checkInterference(interfs);
-        return true;
+        return checker.checkInterference(interfs);
+        // checker.testQuery();
+        // return true;
     }
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
@@ -925,7 +933,8 @@ class VerifierPass : public ModulePass {
                     errs() << "\tLoad: ";
                     it3->first->print(errs());
                     errs() << "\n\tStore: ";
-                    it3->second->print(errs());
+                    if (it3->second) it3->second->print(errs());
+                    else errs() << "INIT";
                     errs() << "\n";
                 }
             }
