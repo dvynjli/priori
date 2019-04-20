@@ -31,12 +31,12 @@ class VerifierPass : public ModulePass {
 
         initThreadDetails(M, globalVars, domainType);
 
-        errs() << "----DONE----\n";
         // testApplyInterf();
 
         // analyzeProgram(M);
 
         // unsat_core_example1();
+        errs() << "----DONE----\n";
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -158,7 +158,7 @@ class VerifierPass : public ModulePass {
 
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
-                Instruction *lastGlobalInst;
+                Instruction *lastGlobalInst=nullptr;
                 unordered_map<string, unordered_set<Instruction*>> varToStores;
                 unordered_map<Instruction*, string> varToLoads;
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
@@ -238,8 +238,8 @@ class VerifierPass : public ModulePass {
                             // errs() << "\n";
                             zHelper.addStoreInstr(storeInst);
                             if (lastGlobalInst) {
-                                zHelper.addPO(lastGlobalInst, call);
-                                relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
+                                // zHelper.addPO(lastGlobalInst, storeInst);
+                                relations.push_back(make_pair("po", make_pair(lastGlobalInst, storeInst)));
                             }
                             lastGlobalInst = storeInst;
                         }
@@ -265,8 +265,8 @@ class VerifierPass : public ModulePass {
                                 // printValue(loadInst);
                                 zHelper.addLoadInstr(loadInst);
                                 if (lastGlobalInst) {
-                                    zHelper.addPO(lastGlobalInst, call);
-                                    relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
+                                    // Helper.addPO(lastGlobalInst, loadInst);
+                                    relations.push_back(make_pair("po", make_pair(lastGlobalInst, loadInst)));
                                 }
                                 lastGlobalInst = loadInst;
                             }
