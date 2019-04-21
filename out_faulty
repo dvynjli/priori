@@ -1,0 +1,599 @@
+opt -load build/interp/VerifierPass.so -verifier tests/test8.ll
+WARNING: You're attempting to print out a bitcode file.
+This is inadvisable as it may cause display problems. If
+you REALLY want to taste LLVM bitcode first-hand, you
+can force output with the `-f' option.
+
+LLVM pass is running
+WARNING: found global structure: class.std::ios_base::Init. It will not be analyzedDEBUG: Total global var = 3
+unknown function call:
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %3) #3
+unknown function call:
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %4) #3
+unknown function call:
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %4) #3
+unknown function call:
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %3) #3
+unknown function call:
+  %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+unknown function call:
+  %3 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 3, i32 65535) #3
+unknown function call:
+  %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+unknown function call:
+  %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+_________________________________________________
+Iteration: 0
+
+******DEBUG: Analyzing thread main*****
+WARNING: No interf found for Function. It will be analyzed only ones.
+DEBUG: Analyzing:   %1 = alloca i64, align 8
+DEBUG: Analyzing:   %2 = alloca i64, align 8
+DEBUG: Analyzing:   %3 = bitcast i64* %1 to i8*
+ERROR: unknown operation:   %3 = bitcast i64* %1 to i8*DEBUG: Analyzing:   call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %3) #3
+DEBUG: Analyzing:   %4 = bitcast i64* %2 to i8*
+ERROR: unknown operation:   %4 = bitcast i64* %2 to i8*DEBUG: Analyzing:   call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %4) #3
+DEBUG: Analyzing:   %5 = call i32 @pthread_create(i64* nonnull %1, %union.pthread_attr_t* null, i8* (i8*)* nonnull @_Z4fun1Pv, i8* null) #3
+DEBUG: Analyzing:   %6 = call i32 @pthread_create(i64* nonnull %2, %union.pthread_attr_t* null, i8* (i8*)* nonnull @_Z4fun2Pv, i8* null) #3
+DEBUG: Analyzing:   %7 = load i64, i64* %1, align 8, !tbaa !2
+DEBUG: Analyzing:   %8 = call i32 @pthread_join(i64 %7, i8** null)
+DEBUG: Analyzing:   %9 = load i64, i64* %2, align 8, !tbaa !2
+DEBUG: Analyzing:   %10 = call i32 @pthread_join(i64 %9, i8** null)
+DEBUG: Analyzing:   call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %4) #3
+DEBUG: Analyzing:   call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %3) #3
+DEBUG: Analyzing:   ret i32 0
+
+******DEBUG: Analyzing thread _Z4fun1Pv*****
+WARNING: No interf found for Function. It will be analyzed only ones.
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   store atomic i32 10, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   %3 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 3, i32 65535) #3
+DEBUG: Analyzing:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+DEBUG: Analyzing:   ret i8* null
+
+******DEBUG: Analyzing thread _Z4fun2Pv*****
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+_________________________________________________
+Iteration: 1
+
+******DEBUG: Analyzing thread main*****
+WARNING: No interf found for Function. It will be analyzed only ones.
+
+******DEBUG: Analyzing thread _Z4fun1Pv*****
+WARNING: No interf found for Function. It will be analyzed only ones.
+
+******DEBUG: Analyzing thread _Z4fun2Pv*****
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+_________________________________________________
+Iteration: 2
+
+******DEBUG: Analyzing thread main*****
+WARNING: No interf found for Function. It will be analyzed only ones.
+
+******DEBUG: Analyzing thread _Z4fun1Pv*****
+WARNING: No interf found for Function. It will be analyzed only ones.
+
+******DEBUG: Analyzing thread _Z4fun2Pv*****
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+DEBUG: Analyzing:   %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+DEBUG: Analyzing:   %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+DEBUG: Analyzing:   %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+DEBUG: Analyzing:   %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+DEBUG: Analyzing:   ret i8* null
+_________________________________________________
+Fized point reached in 3 iteratons
+Final domain:
+
+-----------------------------------------------
+Function _Z4fun2Pv:
+-----------------------------------------------
+  ret i8* null
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [0,0]
+    var9 in [0,10]
+       x in [0,0]
+       y in [0,10]
+
+RelHead:
+__dso_handle: NULL
+x:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [20,20]
+    var9 in [10,10]
+       x in [20,20]
+       y in [10,10]
+
+  %5 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [0,0]
+    var9 in [0,10]
+       x in [0,0]
+       y in [0,10]
+
+RelHead:
+__dso_handle: NULL
+x:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [20,20]
+    var9 in [10,10]
+       x in [20,20]
+       y in [10,10]
+
+  %4 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [0,0]
+    var9 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+RelHead:
+__dso_handle: NULL
+x:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [20,20]
+    var9 in [0,0]
+       x in [20,20]
+       y in [10,10]
+
+  %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 2, i32 65535) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [0,0]
+    var9 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %3 = load atomic i32, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) acquire, align 4
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [0,0]
+    var9 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+RelHead:
+__dso_handle: NULL
+x:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+y: NULL
+interval of dim (6,0):
+__dso_handle in [0,0]
+   var10 in [0,0]
+    var8 in [20,20]
+    var9 in [0,0]
+       x in [20,20]
+       y in [10,10]
+
+
+-----------------------------------------------
+Function main:
+-----------------------------------------------
+  %10 = call i32 @pthread_join(i64 %9, i8** null)
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %9 = load i64, i64* %2, align 8, !tbaa !2
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %8 = call i32 @pthread_join(i64 %7, i8** null)
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %7 = load i64, i64* %1, align 8, !tbaa !2
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  ret i32 0
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %6 = call i32 @pthread_create(i64* nonnull %2, %union.pthread_attr_t* null, i8* (i8*)* nonnull @_Z4fun2Pv, i8* null) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %5 = call i32 @pthread_create(i64* nonnull %1, %union.pthread_attr_t* null, i8* (i8*)* nonnull @_Z4fun1Pv, i8* null) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %1 = alloca i64, align 8
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %3 = bitcast i64* %1 to i8*
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %3) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %3) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %2 = alloca i64, align 8
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  %4 = bitcast i64* %2 to i8*
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %4) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %4) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (10,0):
+__dso_handle in [0,0]
+    var0 in [0,0]
+    var1 in [0,0]
+    var2 in [0,0]
+    var3 in [0,0]
+    var4 in [0,0]
+    var5 in [0,0]
+    var6 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+
+-----------------------------------------------
+Function _Z4fun1Pv:
+-----------------------------------------------
+  store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+--Environment--
+RelHead:
+__dso_handle: NULL
+x:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+y: NULL
+interval of dim (4,0):
+__dso_handle in [0,0]
+    var7 in [0,0]
+       x in [20,20]
+       y in [10,10]
+
+  ret i8* null
+--Environment--
+RelHead:
+__dso_handle: NULL
+x:   store atomic i32 20, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @x, i64 0, i32 0, i32 0) release, align 4
+y: NULL
+interval of dim (4,0):
+__dso_handle in [0,0]
+    var7 in [0,0]
+       x in [20,20]
+       y in [10,10]
+
+  %3 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 3, i32 65535) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (4,0):
+__dso_handle in [0,0]
+    var7 in [0,0]
+       x in [0,0]
+       y in [10,10]
+
+  %2 = tail call i32 @_ZStanSt12memory_orderSt23__memory_order_modifier(i32 0, i32 65535) #3
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (4,0):
+__dso_handle in [0,0]
+    var7 in [0,0]
+       x in [0,0]
+       y in [0,0]
+
+  store atomic i32 10, i32* getelementptr inbounds (%"struct.std::atomic", %"struct.std::atomic"* @y, i64 0, i32 0, i32 0) monotonic, align 4
+--Environment--
+RelHead:
+__dso_handle: NULL
+x: NULL
+y: NULL
+interval of dim (4,0):
+__dso_handle in [0,0]
+    var7 in [0,0]
+       x in [0,0]
+       y in [10,10]
+
+----DONE----
+Segmentation fault (core dumped)
