@@ -89,6 +89,7 @@ Possible Optimizations:
         But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr
     change size of linexpr_make
     combine some of the interfernce based on flow
+    delete from environment if domain is bottom - optimize isUnreachable()
     
     Z3Helper:
         use bit vectors of smalled size

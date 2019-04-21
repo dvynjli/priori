@@ -229,8 +229,12 @@ void ApDomain::performCmpOp(operation oper, string strOp1, int intOp2) {
         performCmpOp(GE, intOp2, strOp1);
         return;
     }
+    else if (oper == NE) {
+        performNECmp(strOp1, intOp2);
+        return;
+    }
     ap_constyp_t op = getApConsType(oper);
-    
+
     // fprintf(stderr, "%d %s %d\n", oper, strOp1.c_str(), intOp2);
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
@@ -258,6 +262,11 @@ void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
         performCmpOp(GE, strOp2, intOp1);
         return;
     }
+    else if (oper == NE) {
+        // NE is commutative
+        performNECmp(strOp2, intOp1);
+        return;
+    }
     ap_constyp_t op = getApConsType(oper);
     // fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
@@ -266,7 +275,7 @@ void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
     // fprintf(stderr, "ConsExpr: ");
     // ap_lincons1_fprint(stderr, &consExpr);
     ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 1);
-    fprintf(stderr, "\nconsArray: ");
+    // fprintf(stderr, "\nconsArray: ");
     ap_lincons1_array_set(&consArray, 0, &consExpr);
     // ap_lincons1_array_fprint(stderr, &consArray);
     // printApDomain();
@@ -282,7 +291,8 @@ void ApDomain::performCmpOp(operation oper, int intOp1, int intOp2) {
 }
 
 void ApDomain::performCmpOp(operation oper, string strOp1, string strOp2) {
-
+    fprintf(stderr, "performCmpOp() with both operand of condition as constant. This function is not implemented yet!!");
+    exit(0);
 }
 
 void ApDomain::printApDomain() {
@@ -381,6 +391,17 @@ ap_constyp_t ApDomain::getApConsType(operation oper) {
         case GE:
             return AP_CONS_SUPEQ;
     }
+}
+
+void ApDomain::performNECmp(string strOp1, int intOp2) {
+    // ltDomain = strOp1 < intOp2
+    ApDomain ltDomain;
+    ltDomain.copyApDomain(*this);
+    ltDomain.performCmpOp(LT, strOp1, intOp2);
+    // this = strOp1 > intOp1
+    performCmpOp(GT, strOp1, intOp2);
+    // this = ltDomain join this
+    joinApDomain(ltDomain);
 }
 
 void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {

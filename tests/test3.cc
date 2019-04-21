@@ -11,7 +11,7 @@ void* fun2(void * arg){
 	// int b;
 	x.store(10, memory_order_relaxed);
 	int a = x.load(memory_order_relaxed);
-	if (a >= 50)
+	if (a == 50)
 		y.store(a, memory_order_relaxed);
 	else 
 		y.store(a+10, memory_order_relaxed);

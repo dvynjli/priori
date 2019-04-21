@@ -23,10 +23,10 @@ class ApDomain {
     ap_manager_t* initApManager(string domainType);
     ap_environment_t* initEnvironment(vector<string> globalVars, vector<string> functionVars);
     void assignZerosToAllVars();
-    // void initRelHead(vector<string> globalVars);
     void initHasChanged(vector<string> globalVars);
     ap_constyp_t getApConsType(operation oper);
     void setHasChanged(string var);
+    void performNECmp(string strOp1, int intOp2);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
 
