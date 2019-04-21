@@ -352,6 +352,20 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
     // printApDomain();
 }
 
+void ApDomain::setVar(string strVar) {
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
+    ap_var_t var = (ap_var_t) strVar.c_str();
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+}
+
+void ApDomain::unsetVar(string strVar) {
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
+    ap_var_t var = (ap_var_t) strVar.c_str();
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+}
+
 bool ApDomain::isUnreachable() {
     return ap_abstract1_is_bottom(man, &absValue);
 }
@@ -632,6 +646,18 @@ void Environment::meetEnvironment(Environment other) {
             newDomain.meetApDomain(searchRelHead->second);
         }
         environment[relHead] = newDomain;
+    }
+}
+
+void Environment::setVar(string strVar) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.setVar(strVar);
+    }
+}
+
+void Environment::unsetVar(string strVar) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.unsetVar(strVar);
     }
 }
 

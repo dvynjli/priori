@@ -434,8 +434,8 @@ class VerifierPass : public ModulePass {
                 // cmpInst->print(errs());
                 // errs() << "\n";
                 curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
-                errs() << "\nCmp result:\n";
-                curEnv.printEnvironment();
+                // errs() << "\nCmp result:\n";
+                // curEnv.printEnvironment();
                 // errs() <<"True Branch:\n";
                 // branchEnv[cmpInst].first.printEnvironment();
                 // errs() <<"Flase Branch:\n";
@@ -448,14 +448,14 @@ class VerifierPass : public ModulePass {
                     curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
                     Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
                     curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
-                    errs() << "\nTrue Branch:\n";
-                    printValue(trueBranch);
-                    errs() << "True branch Env:\n";
-                    curFuncEnv[trueBranch].printEnvironment();
-                    errs() << "\nFalse Branch:\n";
-                    printValue(falseBranch);
-                    errs() << "False branch Env:\n";
-                    curFuncEnv[falseBranch].printEnvironment();
+                    // errs() << "\nTrue Branch:\n";
+                    // printValue(trueBranch);
+                    // errs() << "True branch Env:\n";
+                    // curFuncEnv[trueBranch].printEnvironment();
+                    // errs() << "\nFalse Branch:\n";
+                    // printValue(falseBranch);
+                    // errs() << "False branch Env:\n";
+                    // curFuncEnv[falseBranch].printEnvironment();
                 }
                 else {
                     Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
@@ -464,8 +464,8 @@ class VerifierPass : public ModulePass {
             }
             else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
                 if (callInst->getCalledFunction()->getName() == "__assert_fail") {
-                    errs() << "*** found assert" << "\n";
-                    printValue(callInst);
+                    // errs() << "*** found assert" << "\n";
+                    // printValue(callInst);
                     if (!curEnv.isUnreachable()) {
                         errs() << "ERROR: Assertion failed\n";
                         printValue(callInst);
@@ -583,7 +583,16 @@ class VerifierPass : public ModulePass {
             trueBranchEnv.performCmpOp(operTrueBranch, fromVar1Name, fromVar2Name);
             falseBranchEnv.performCmpOp(operFalseBranch, fromVar1Name, fromVar2Name);
         }
-        
+
+        // set the value of destination variable in Environment
+        // if (trueBranchEnv.isUnreachable()) {
+        //     curEnv.unsetVar(destVarName);
+        // } else {
+        //     curEnv.setVar(destVarName);
+        // }
+        // trueBranchEnv.setVar(destVarName);
+        // falseBranchEnv.unsetVar(destVarName);
+
         branchEnv[cmpInst] = make_pair(trueBranchEnv, falseBranchEnv);
         return curEnv;
     }
@@ -636,6 +645,15 @@ class VerifierPass : public ModulePass {
             printValue(logicalOp);
             return curEnv;
         }
+
+        // set the value of destination variable in Environment
+        // if (trueBranchEnv.isUnreachable()) {
+        //     curEnv.unsetVar(destVarName);
+        // } else {
+        //     curEnv.setVar(destVarName);
+        // }
+        // trueBranchEnv.setVar(destVarName);
+        // falseBranchEnv.unsetVar(destVarName);
 
         branchEnv[logicalOp] = make_pair(trueBranchEnv, falseBranchEnv);
         return curEnv;

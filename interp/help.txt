@@ -43,6 +43,13 @@ Q. In ex T1: x_rel=1; || T2: x_rel=2; || T3: a=Rx_acq; b=Rx_acq , if a reads fro
 A. The possible options are release head of {T1}, {T2} or {T1, T2}. But whatever option we choose, 
     the environment of both T1 and T2 will be carried to the thread T3. So the computation will be correct.
 
+Q. In cmp and logical instructions, what are the consequences of adding return variable value to environment?
+A. If we add these values in cmp instructions, which are used in some logical operation. the second variable values 
+    will be 0 in environment of first instruction and 1 in environment of second instruction. Since these values are disjoint,
+    meet of the true (or false) branchs will be bottom. So we will not be able to do the correct analysis.
+Q. In such a case, will it give us correct result to do the analysis without adding these values?
+A. In first look, it seems to be fine for the reason that soul purpose of these SSA variables is branching.
+    If these variables are used someplace else, we need a better approach.
 
 
 Instructions that need Apron interface-
@@ -67,7 +74,7 @@ TODO:
     change pthread to thread
     assertion checking
     logical operator
-        ---- add return variable value to environment
+        
 
 Other functionality that might be added
     Race detection on non-atomics - 
