@@ -21,8 +21,8 @@ void* fun2(void * arg){
 }
 
 void* fun3(void * arg){
-	x.load(memory_order_acquire);
-	y.load(memory_order_relaxed);
+	int a = x.load(memory_order_acquire);
+	int b = y.load(memory_order_relaxed);
 	return NULL;
 }
 

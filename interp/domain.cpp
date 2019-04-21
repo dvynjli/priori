@@ -154,7 +154,9 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, stri
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
             break;
         case MUL:
-            // TODO: can't do using linexpr
+            // for multiplication of two variables, need to intervalize one
+            ap_interval_t *fromInterval = ap_abstract1_bound_variable(man, &absValue, (ap_var_t)strOp2.c_str());
+            ap_linexpr1_set_list(&expr, AP_COEFF_I, fromInterval, strOp1.c_str(), AP_END);
             break;
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
