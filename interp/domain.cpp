@@ -90,6 +90,10 @@ void ApDomain::joinApDomain(ApDomain other) {
     ap_abstract1_join(man, true, &absValue, &other.absValue);
 }
 
+void ApDomain::meetApDomain(ApDomain other){
+    ap_abstract1_meet(man, true, &absValue, &other.absValue);
+}
+
 void ApDomain::addVariable(string varName) {
     int newSize = (env->intdim) + 1;
     ap_var_t intAp[newSize];
@@ -609,6 +613,23 @@ void Environment::joinEnvironment(Environment other) {
         auto searchRelHead = environment.find(relHead);
         if (searchRelHead != environment.end()) {
             newDomain.joinApDomain(searchRelHead->second);
+        }
+        environment[relHead] = newDomain;
+    }
+}
+
+void Environment::meetEnvironment(Environment other) {
+    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
+        REL_HEAD relHead = it->first;
+        ApDomain newDomain;
+        newDomain.copyApDomain(it->second);
+
+        // if the relHead already exist in the current enviornment,
+        // meet it with the existing one
+        // else add it to the current environment
+        auto searchRelHead = environment.find(relHead);
+        if (searchRelHead != environment.end()) {
+            newDomain.meetApDomain(searchRelHead->second);
         }
         environment[relHead] = newDomain;
     }

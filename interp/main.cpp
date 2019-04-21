@@ -417,7 +417,11 @@ class VerifierPass : public ModulePass {
                 // }
             }
             else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(instItr)) {
-                curEnv = checkBinInstruction(binOp, curEnv);
+                auto oper = binOp->getOpcode();
+                if (oper == Instruction::And || oper == Instruction::Or) {
+                    curEnv = checkLogicalInstruction(binOp, curEnv, branchEnv);
+                }
+                else curEnv = checkBinInstruction(binOp, curEnv);
             }
             else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
                 curEnv = checkStoreInst(storeInst, curEnv);
@@ -430,8 +434,8 @@ class VerifierPass : public ModulePass {
                 // cmpInst->print(errs());
                 // errs() << "\n";
                 curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
-                // errs() << "\nCmp result:\n";
-                // curEnv.printEnvironment();
+                errs() << "\nCmp result:\n";
+                curEnv.printEnvironment();
                 // errs() <<"True Branch:\n";
                 // branchEnv[cmpInst].first.printEnvironment();
                 // errs() <<"Flase Branch:\n";
@@ -476,12 +480,13 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
+            // curEnv.printEnvironment();
         }
            
         return curEnv;
     }
 
-    string getNameFromValue(Value *val) {
+    string getNameFromValue (Value *val) {
         if(GEPOperator *gepOp = dyn_cast<GEPOperator>(val)){
            val = gepOp->getPointerOperand();
         }
@@ -496,7 +501,7 @@ class VerifierPass : public ModulePass {
         return searchName->second;
     }
 
-    Environment checkCmpInst(
+    Environment checkCmpInst (
         CmpInst* cmpInst, 
         Environment curEnv, 
         map<Instruction*, pair<Environment, Environment>> &branchEnv
@@ -583,6 +588,59 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
+    Environment checkLogicalInstruction (
+        BinaryOperator* logicalOp, 
+        Environment curEnv, 
+        map<Instruction*, pair<Environment, Environment>> &branchEnv
+    ) {
+        string destVarName = getNameFromValue(logicalOp);
+        Value* fromVar1 = logicalOp->getOperand(0);
+        Value* fromVar2 = logicalOp->getOperand(1);
+        
+        Environment fromVar1TrueEnv;
+        Environment fromVar1FalseEnv;
+        Environment fromVar2TrueEnv;
+        Environment fromVar2FalseEnv;
+        if (CmpInst *op1 = dyn_cast<CmpInst>(fromVar1)) {
+            auto env = branchEnv[op1];
+            fromVar1TrueEnv = env.first;
+            fromVar1FalseEnv = env.second;
+        }
+        if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)) {
+            auto env = branchEnv[op2];
+            fromVar2TrueEnv = env.first;
+            fromVar2FalseEnv = env.second;
+        }
+
+        // since we are working on -O1, non of the operands can be constant.
+        string fromVar1Name = getNameFromValue(fromVar1);
+        string fromVar2Name = getNameFromValue(fromVar2);
+
+        auto oper = logicalOp->getOpcode();
+        Environment trueBranchEnv;
+        Environment falseBranchEnv;
+        trueBranchEnv.copyEnvironment(fromVar1TrueEnv);
+        falseBranchEnv.copyEnvironment(fromVar1FalseEnv);
+        if (oper == Instruction::And) {
+            trueBranchEnv.meetEnvironment(fromVar2TrueEnv);
+            falseBranchEnv.joinEnvironment(fromVar2FalseEnv);
+        }
+
+        else if (oper == Instruction::Or) {
+           trueBranchEnv.joinEnvironment(fromVar2TrueEnv);
+           falseBranchEnv.meetEnvironment(fromVar2FalseEnv);
+        }
+
+        else {
+            fprintf(stderr, "WARNING: unknown binary operation: ");
+            printValue(logicalOp);
+            return curEnv;
+        }
+
+        branchEnv[logicalOp] = make_pair(trueBranchEnv, falseBranchEnv);
+        return curEnv;
+    }
+
     //  call approprproate function for the inst passed
     Environment checkBinInstruction(BinaryOperator* binOp, Environment curEnv) {
         operation oper;
@@ -595,12 +653,6 @@ class VerifierPass : public ModulePass {
                 break;
             case Instruction::Mul:
                 oper = MUL;
-                break;
-            case Instruction::And:
-                oper = LAND;
-                break;
-            case Instruction::Or:
-                oper = LOR;
                 break;
             // TODO: add more cases
             default:

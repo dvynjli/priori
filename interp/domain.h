@@ -56,6 +56,7 @@ public:
     
     void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSeq);
     void joinApDomain(ApDomain other);
+    void meetApDomain(ApDomain other);
     bool isUnreachable();
 
     void addVariable(string varName);
@@ -101,6 +102,7 @@ public:
     
     void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, llvm::Instruction *head=nullptr);
     void joinEnvironment(Environment other);
+    void meetEnvironment(Environment other);
     bool isUnreachable();
 
     void printEnvironment();
