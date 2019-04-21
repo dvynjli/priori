@@ -882,19 +882,30 @@ class VerifierPass : public ModulePass {
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
         // Make all permutations
-        // TODO: add dummy env i.e. load from itself
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
         allInterfs = getAllInterferences(loadsToAllStores);
 
-        // TODO: Check feasibility of permutations and save them in feasibleInterfences
+        // Check feasibility of permutations and save them in feasibleInterfences
+        #pragma omp parallel
+        #pragma omp single 
+        {
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
             vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
             for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
-                if (isFeasible(*interfItr, allLoads, allStores, relations)) {
-                    curFuncInterfs.push_back(*interfItr);
+                auto interfs = *interfItr;
+                #pragma omp task private(interfs) shared(curFuncInterfs)
+                {
+                    int tid = omp_get_thread_num();
+                    bool feasible = true;
+                    feasible = isFeasible(*interfItr, allLoads, allStores, relations);
+                    if (feasible) {
+                        curFuncInterfs.push_back(*interfItr);
+                    }
                 }
             }
+            #pragma omp taskwait
             feasibleInterfences[funcItr->first] = curFuncInterfs;
+        }
         }
         // printFeasibleInterf();
 
@@ -916,15 +927,15 @@ class VerifierPass : public ModulePass {
         //     errs() << "\n";
         // }
 
-        // Z3Helper checker;
-        // checker.addInferenceRules();
-        // checker.addMHBandPORules(relations);
-        // checker.addAllLoads(allLoads);
-        // checker.addAllStores(allStores);
-        // return checker.checkInterference(interfs);
+        Z3Helper checker;
+        checker.addInferenceRules();
+        checker.addMHBandPORules(relations);
+        checker.addAllLoads(allLoads);
+        checker.addAllStores(allStores);
+        return checker.checkInterference(interfs);
         
         // checker.testQuery();
-        return true;
+        // return true;
     }
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
@@ -1010,7 +1021,7 @@ class VerifierPass : public ModulePass {
     }
 
     void printFeasibleInterf() {
-        errs() << "\nAll Interfs\n";
+        errs() << "\nFeasible Interfs\n";
         for (auto it1=feasibleInterfences.begin(); it1!=feasibleInterfences.end(); ++it1) {
             errs() << "Interfs for function: " << it1->first->getName();
             auto allInterfOfFun = it1->second;

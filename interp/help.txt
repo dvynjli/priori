@@ -70,10 +70,7 @@ TODO:
     control structure dependent static analysis
         dominate rules - not needed
         ---- NE is not working correctly in apron
-        ---- add return variable value to environment
     change pthread to thread
-    assertion checking
-    logical operator
         
 
 Other functionality that might be added
@@ -82,8 +79,6 @@ Other functionality that might be added
         can be done at the time of interference feasibl=ility checking
     creation of more than one thread of a function
         need to change the MHB adding for thread create
-
-
 
 
 Possible Optimizations:

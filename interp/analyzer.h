@@ -1,3 +1,6 @@
+#ifndef __ANALYZER__
+#define __ANALYZER__
+
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/raw_ostream.h"
@@ -7,4 +10,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 
+#include "omp.h"
+
 using namespace llvm;
+#endif
