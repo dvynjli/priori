@@ -16,9 +16,8 @@ void* fun1(void * arg){
 void* fun2(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = y.load(memory_order_relaxed);
-	if(a==20)
-		if(b==10)
-			assert(0);
+	assert(a<100);
+		// assert(0);
 	return NULL;
 }
 

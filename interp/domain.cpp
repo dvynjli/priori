@@ -348,6 +348,10 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
     // printApDomain();
 }
 
+bool ApDomain::isUnreachable() {
+    return ap_abstract1_is_bottom(man, &absValue);
+}
+
 ap_constyp_t ApDomain::getApConsType(operation oper) {
     switch (oper) {
         case EQ:
@@ -608,6 +612,17 @@ void Environment::joinEnvironment(Environment other) {
         }
         environment[relHead] = newDomain;
     }
+}
+
+bool Environment::isUnreachable() {
+    bool isUnreach = true;
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        if (!it->second.isUnreachable()) {
+            isUnreach = false;
+            break;
+        }
+    }
+    return isUnreach;
 }
 
 void Environment::printEnvironment() {

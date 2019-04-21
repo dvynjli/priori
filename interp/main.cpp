@@ -444,14 +444,14 @@ class VerifierPass : public ModulePass {
                     curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
                     Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
                     curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
-                    // errs() << "\nTrue Branch:\n";
-                    // printValue(trueBranch);
-                    // errs() << "True branch Env:\n";
-                    // curFuncEnv[trueBranch].printEnvironment();
-                    // errs() << "\nFalse Branch:\n";
-                    // printValue(falseBranch);
-                    // errs() << "False branch Env:\n";
-                    // curFuncEnv[falseBranch].printEnvironment();
+                    errs() << "\nTrue Branch:\n";
+                    printValue(trueBranch);
+                    errs() << "True branch Env:\n";
+                    curFuncEnv[trueBranch].printEnvironment();
+                    errs() << "\nFalse Branch:\n";
+                    printValue(falseBranch);
+                    errs() << "False branch Env:\n";
+                    curFuncEnv[falseBranch].printEnvironment();
                 }
                 else {
                     Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
@@ -459,9 +459,14 @@ class VerifierPass : public ModulePass {
                 }
             }
             else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
-                if (callInst->isTailCall()) {
+                if (callInst->getCalledFunction()->getName() == "__assert_fail") {
+                    errs() << "*** found assert" << "\n";
                     printValue(callInst);
-                    curEnv.printEnvironment();
+                    if (!curEnv.isUnreachable()) {
+                        errs() << "ERROR: Assertion failed\n";
+                        printValue(callInst);
+                        exit(0);
+                    }
                 }
             }
             else {
@@ -590,6 +595,12 @@ class VerifierPass : public ModulePass {
                 break;
             case Instruction::Mul:
                 oper = MUL;
+                break;
+            case Instruction::And:
+                oper = LAND;
+                break;
+            case Instruction::Or:
+                oper = LOR;
                 break;
             // TODO: add more cases
             default:
@@ -834,14 +845,16 @@ class VerifierPass : public ModulePass {
         //     else it->second->print(errs());
         //     errs() << "\n";
         // }
-        Z3Helper checker;
-        checker.addInferenceRules();
-        checker.addMHBandPORules(relations);
-        checker.addAllLoads(allLoads);
-        checker.addAllStores(allStores);
-        return checker.checkInterference(interfs);
+
+        // Z3Helper checker;
+        // checker.addInferenceRules();
+        // checker.addMHBandPORules(relations);
+        // checker.addAllLoads(allLoads);
+        // checker.addAllStores(allStores);
+        // return checker.checkInterference(interfs);
+        
         // checker.testQuery();
-        // return true;
+        return true;
     }
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
