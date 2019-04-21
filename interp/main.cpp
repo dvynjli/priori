@@ -458,6 +458,12 @@ class VerifierPass : public ModulePass {
                     curFuncEnv[successors].joinEnvironment(curEnv);
                 }
             }
+            else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
+                if (callInst->isTailCall()) {
+                    printValue(callInst);
+                    curEnv.printEnvironment();
+                }
+            }
             else {
                 
             }
@@ -587,8 +593,8 @@ class VerifierPass : public ModulePass {
                 break;
             // TODO: add more cases
             default:
-                fprintf(stderr, "WARNING: unknown operation: ");
-                binOp->print(errs());
+                fprintf(stderr, "WARNING: unknown binary operation: ");
+                printValue(binOp);
                 return curEnv;
         }
 

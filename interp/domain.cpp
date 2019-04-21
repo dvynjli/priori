@@ -227,20 +227,20 @@ void ApDomain::performCmpOp(operation oper, string strOp1, int intOp2) {
     }
     ap_constyp_t op = getApConsType(oper);
     
-    fprintf(stderr, "%d %s %d\n", oper, strOp1.c_str(), intOp2);
+    // fprintf(stderr, "%d %s %d\n", oper, strOp1.c_str(), intOp2);
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, (-1)*intOp2, AP_END);
-    fprintf(stderr, "ConsExpr: ");
-    ap_lincons1_fprint(stderr, &consExpr);
+    // fprintf(stderr, "ConsExpr: ");
+    // ap_lincons1_fprint(stderr, &consExpr);
     ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 1);
-    fprintf(stderr, "\nconsArray: ");
+    // fprintf(stderr, "\nconsArray: ");
     ap_lincons1_array_set(&consArray, 0, &consExpr);
-    ap_lincons1_array_fprint(stderr, &consArray);
-    printApDomain();
-    fprintf(stderr, "\nmeet:\n");
+    // ap_lincons1_array_fprint(stderr, &consArray);
+    // printApDomain();
+    // fprintf(stderr, "\nmeet:\n");
     absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
-    printApDomain();
+    // printApDomain();
 }
 
 void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
@@ -255,20 +255,20 @@ void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
         return;
     }
     ap_constyp_t op = getApConsType(oper);
-    fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
+    // fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, -1, strOp2.c_str(), AP_CST_S_INT, intOp1, AP_END);
-    fprintf(stderr, "ConsExpr: ");
-    ap_lincons1_fprint(stderr, &consExpr);
+    // fprintf(stderr, "ConsExpr: ");
+    // ap_lincons1_fprint(stderr, &consExpr);
     ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 1);
     fprintf(stderr, "\nconsArray: ");
     ap_lincons1_array_set(&consArray, 0, &consExpr);
-    ap_lincons1_array_fprint(stderr, &consArray);
-    printApDomain();
-    fprintf(stderr, "\nmeet:\n");
+    // ap_lincons1_array_fprint(stderr, &consArray);
+    // printApDomain();
+    // fprintf(stderr, "\nmeet:\n");
     absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
-    printApDomain();
+    // printApDomain();
 }
 
 void ApDomain::performCmpOp(operation oper, int intOp1, int intOp2) {
