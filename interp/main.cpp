@@ -31,6 +31,7 @@ class VerifierPass : public ModulePass {
         // testApplyInterf();
         // unsat_core_example1();
         errs() << "----DONE----\n";
+        errs() << "Check testcase 7 assertion 2\n"
     }
 
     vector<string> getGlobalIntVars(Module &M) {

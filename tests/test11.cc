@@ -31,7 +31,6 @@ void* fun4(void * arg){
 	int b = x.load(memory_order_acquire);
 	if (a==1 && b==0) {
 		done2.store(1, memory_order_relaxed);
-		
 	}
 	return NULL;
 }

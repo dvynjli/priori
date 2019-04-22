@@ -8,27 +8,24 @@ using namespace std;
 atomic<int> x,y,z;
 
 void* fun1(void * arg){
-	y.store(10, memory_order_relaxed);
-	// int a = x.load(memory_order_relaxed);
-	x.store(20, memory_order_release);
+	z.store(1, memory_order_relaxed);
+	y.store(1, memory_order_relaxed);
+	x.store(1, memory_order_release);
 	return NULL;
 }
 
 void* fun2(void * arg){
-	int a = x.load(memory_order_acquire);
-	z.store(a, memory_order_relaxed);
-	x.store(50, memory_order_release);
+	x.load(memory_order_acquire);
+	y.store(2, memory_order_relaxed);
+	z.store(2, memory_order_relaxed);
 	return NULL;
 }
 
 void* fun3(void * arg){
-	int a = x.load(memory_order_acquire);
+	int a = z.load(memory_order_acquire);
 	int b = y.load(memory_order_relaxed);
-	int c = z.load(memory_order_relaxed);
-	// (x==20) ==> (y==10)
-	assert(a!=20 || b==10);
-	// ((x!=0) && z!=0) ==> (y!=0)
-	assert(a==0 || c==0 || b!=0);
+	// z=2 => y!=0 assertion should fail
+	assert(a!=2 || b!=0);
 	return NULL;
 }
 
