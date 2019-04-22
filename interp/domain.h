@@ -66,7 +66,7 @@ public:
 };
 
 class Environment {
-    REL_HEAD Environment::initRelHead(vector<string> globalVars);
+    REL_HEAD initRelHead(vector<string> globalVars);
 public:
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain

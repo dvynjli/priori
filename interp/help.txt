@@ -69,8 +69,8 @@ TODO:
         can optimize this
     control structure dependent static analysis
         dominate rules - not needed
-        ---- NE is not working correctly in apron
     change pthread to thread
+    assertion should not be considered failed until fixedpoint is reached
         
 
 Other functionality that might be added

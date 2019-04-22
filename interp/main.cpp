@@ -22,19 +22,13 @@ class VerifierPass : public ModulePass {
         errs() << "LLVM pass is running\n";
         // TODO: get domain type based on comman line arguments
         string domainType = "box";
-        
-        // zHelper.testFixedPoint();
-
         vector<string> globalVars = getGlobalIntVars(M);
-        
         zHelper.initZ3(globalVars);
-
         initThreadDetails(M, globalVars, domainType);
+        analyzeProgram(M);
+        checkAssertions();
 
         // testApplyInterf();
-
-        analyzeProgram(M);
-
         // unsat_core_example1();
         errs() << "----DONE----\n";
     }
@@ -103,6 +97,7 @@ class VerifierPass : public ModulePass {
             for (auto curFuncLoadsItr=curFuncLoads.begin(); curFuncLoadsItr!=curFuncLoads.end(); ++curFuncLoadsItr) {
                 Instruction *load =curFuncLoadsItr->first;
                 string loadVar = curFuncLoadsItr->second;
+                // errs() << "coping loads of var " << loadVar << " of function " << curFunc->getName() << "\n";
                 vector<Instruction*> allStoresForCurLoad;
                 // loads of same var from all other functions
                 for (auto allStoresItr=allStores.begin(); allStoresItr!=allStores.end(); ++allStoresItr) {
@@ -113,6 +108,7 @@ class VerifierPass : public ModulePass {
                         auto searchStoresOfVar = otherFuncStores.find(loadVar);
                         if (searchStoresOfVar != otherFuncStores.end()) {
                             auto allStoresFromFun = searchStoresOfVar->second;
+                            // errs() << "#stores = " << allStoresFromFun.size() << "\n";
                             copy(allStoresFromFun.begin(), 
                                 allStoresFromFun.end(), 
                                 inserter(allStoresForCurLoad, 
@@ -155,12 +151,12 @@ class VerifierPass : public ModulePass {
             vector<string> funcVars;
             
             // errs() << "----analyzing funtion: " << func->getName() << "\n";
-
+            Instruction *lastGlobalInst=nullptr;
+            unordered_map<string, unordered_set<Instruction*>> varToStores;
+            unordered_map<Instruction*, string> varToLoads;
+                
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
-                Instruction *lastGlobalInst=nullptr;
-                unordered_map<string, unordered_set<Instruction*>> varToStores;
-                unordered_map<Instruction*, string> varToLoads;
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
                 {
                     if (CallInst *call = dyn_cast<CallInst>(it)) {
@@ -234,9 +230,8 @@ class VerifierPass : public ModulePass {
                         if (dyn_cast<GlobalVariable>(destVar)) {
                             varToStores[destVarName].insert(storeInst);
                             // errs() << "****adding store instr for: ";
-                            // storeInst->print(errs());
-                            // errs() << "\n";
-                            zHelper.addStoreInstr(storeInst);
+                            // printValue(storeInst);
+                            // zHelper.addStoreInstr(storeInst);
                             if (lastGlobalInst) {
                                 // zHelper.addPO(lastGlobalInst, storeInst);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, storeInst)));
@@ -264,10 +259,10 @@ class VerifierPass : public ModulePass {
                             }
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
-                                varToLoads.emplace(loadInst, fromVarName);
+                                varToLoads[loadInst]=fromVarName;
                                 // errs() << "****adding load instr for: ";
                                 // printValue(loadInst);
-                                zHelper.addLoadInstr(loadInst);
+                                // zHelper.addLoadInstr(loadInst);
                                 if (lastGlobalInst) {
                                     // Helper.addPO(lastGlobalInst, loadInst);
                                     relations.push_back(make_pair("po", make_pair(lastGlobalInst, loadInst)));
@@ -282,15 +277,29 @@ class VerifierPass : public ModulePass {
                     }
                 }
 
-                // Save loads stores function wise
-                allStores.emplace(func, varToStores);
-                allLoads.emplace(func, varToLoads);
-
             }
+            // Save loads stores function wise
+            allStores.emplace(func, varToStores);
+            allLoads.emplace(func, varToLoads);
+            
+            // errs() << "Loads of function " << func->getName() << "\n";
+            // for (auto it=varToLoads.begin(); it!=varToLoads.end(); ++it)
+            //     printValue(it->first);
+
             Environment curFuncEnv;
             curFuncEnv.init(domainType, globalVars, funcVars);
             funcInitEnv[func] = curFuncEnv;
         }
+
+        // errs() << "\nAll Loads:\n";
+        // for(auto it1=allLoads.begin(); it1!=allLoads.end(); ++it1) {
+        //     errs() << "Function " << it1->first->getName() << "\n";
+        //     auto loadsOfFun = it1->second;
+        //     for (auto it2=loadsOfFun.begin(); it2!=loadsOfFun.end(); ++it2) {
+        //         printValue(it2->first);
+        //     }
+        // }
+
         getFeasibleInterferences(allLoads, allStores, relations);
     }
 
@@ -462,17 +471,18 @@ class VerifierPass : public ModulePass {
                     curFuncEnv[successors].joinEnvironment(curEnv);
                 }
             }
-            else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
-                if (callInst->getCalledFunction()->getName() == "__assert_fail") {
-                    // errs() << "*** found assert" << "\n";
-                    // printValue(callInst);
-                    if (!curEnv.isUnreachable()) {
-                        errs() << "ERROR: Assertion failed\n";
-                        printValue(callInst);
-                        exit(0);
-                    }
-                }
-            }
+            // else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
+            //     if (callInst->getCalledFunction()->getName() == "__assert_fail") {
+            //         // errs() << "*** found assert" << "\n";
+            //         // printValue(callInst);
+            //         if (!curEnv.isUnreachable()) {
+            //             errs() << "ERROR: Assertion failed\n";
+            //             printValue(callInst);
+            //             curEnv.printEnvironment();
+            //             exit(0);
+            //         }
+            //     }
+            // }
             else {
                 
             }
@@ -480,7 +490,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            // curEnv.printEnvironment();
+            curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -886,7 +896,7 @@ class VerifierPass : public ModulePass {
         allInterfs = getAllInterferences(loadsToAllStores);
 
         // Check feasibility of permutations and save them in feasibleInterfences
-        #pragma omp parallel
+        #pragma omp parallel num_threads(omp_get_num_procs()*2)
         #pragma omp single 
         {
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
@@ -895,7 +905,8 @@ class VerifierPass : public ModulePass {
                 auto interfs = *interfItr;
                 #pragma omp task private(interfs) shared(curFuncInterfs)
                 {
-                    int tid = omp_get_thread_num();
+                    // int tid = omp_get_thread_num();
+                    // errs() << "from " << tid << "\n";
                     bool feasible = true;
                     feasible = isFeasible(*interfItr, allLoads, allStores, relations);
                     if (feasible) {
@@ -960,6 +971,29 @@ class VerifierPass : public ModulePass {
         return instrToEnvNew;
     }
 
+    void checkAssertions() {
+        int num_errors = 0;
+        for (auto it1=programState.begin(); it1!=programState.end(); ++it1) {
+            for (auto it=it1->second.begin(); it!=it1->second.end(); ++it) {
+                if (CallInst *callInst = dyn_cast<CallInst>(it->first)) {
+                    if (callInst->getCalledFunction()->getName() == "__assert_fail") {
+                        // errs() << "*** found assert" << "\n";
+                        // printValue(callInst);
+                        Environment curEnv = it->second;
+                        if (!curEnv.isUnreachable()) {
+                            errs() << "ERROR: Assertion failed\n";
+                            printValue(callInst);
+                            curEnv.printEnvironment();
+                            num_errors++;
+                        }
+                    }
+                }
+            }
+        }
+        errs() << "___________________________________________________\n";
+        errs() << "Errors Found: " << num_errors << "\n";
+    }
+
     void printLoadsToAllStores(unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores){
         errs() << "All load-store pair in the program\n";
         for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
@@ -967,13 +1001,12 @@ class VerifierPass : public ModulePass {
             auto l2s = it1->second;
             for (auto it2=l2s.begin(); it2!=l2s.end(); ++it2) {
                 errs() << "Stores for Load: ";
-                it2->first->print(errs());
-                errs() << "\n";
+                printValue(it2->first);
                 auto stores = it2->second;
                 for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
                     errs() << "\t";
-                    (*it3)->print(errs());
-                    errs() << "\n";
+                    if(*it3) printValue(*it3);
+                    else errs() << "INIT\n";
                 }
             }
         }
