@@ -22,8 +22,10 @@ void* fun2(void * arg){
 }
 
 void* fun3(void * arg){
-	z.load(memory_order_acquire);
-	y.load(memory_order_relaxed);
+	int a = z.load(memory_order_acquire);
+	int b = y.load(memory_order_relaxed);
+	// z=2 => y!=0
+	assert(a!=2 || b!=0);
 	return NULL;
 }
 

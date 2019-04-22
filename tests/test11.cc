@@ -5,7 +5,7 @@
 
 using namespace std;
 
-atomic<int> x,y,z;
+atomic<int> x,y,done1,done2;
 
 void* fun1(void * arg){
 	x.store(1, memory_order_release);
@@ -21,8 +21,7 @@ void* fun3(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = y.load(memory_order_acquire);
 	if (a==1 && b==0) {
-		int c = z.load(memory_order_relaxed);
-		z.store(c+1, memory_order_relaxed);
+		done1.store(1, memory_order_relaxed);
 	}
 	return NULL;
 }
@@ -31,11 +30,9 @@ void* fun4(void * arg){
 	int a = y.load(memory_order_acquire);
 	int b = x.load(memory_order_acquire);
 	if (a==1 && b==0) {
-		int c = z.load(memory_order_relaxed);
-		z.store(c+1, memory_order_relaxed);
+		done2.store(1, memory_order_relaxed);
+		
 	}
-	// no total ordering on writes of x and y. assertion should fail.
-	assert(z.load(memory_order_relaxed)!=2);
 	return NULL;
 }
 
@@ -49,7 +46,10 @@ int main () {
 	pthread_join(t2, NULL);
 	pthread_join(t3, NULL);
 	pthread_join(t4, NULL);
-	
+	int a = done1.load(memory_order_relaxed);
+	int b = done2.load(memory_order_relaxed);
+	// no total ordering on writes of x and y. assertion should fail.
+	assert(a!=1 || b!=1);
 	
 	return 0;
 }

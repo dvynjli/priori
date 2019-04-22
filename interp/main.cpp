@@ -490,7 +490,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            curEnv.printEnvironment();
+            // curEnv.printEnvironment();
         }
            
         return curEnv;
