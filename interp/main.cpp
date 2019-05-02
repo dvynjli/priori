@@ -31,7 +31,7 @@ class VerifierPass : public ModulePass {
         // testApplyInterf();
         // unsat_core_example1();
         errs() << "----DONE----\n";
-        errs() << "Check testcase 7 assertion 2\n"
+        errs() << "Check testcase 7 assertion 2\n";
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -341,7 +341,7 @@ class VerifierPass : public ModulePass {
                 // errs() << "Number of interf= " << curFuncInterfs.size();
                 // analyze the Thread for each interference
                 for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
-                    // errs() << "\n***For new interf\n";
+                    // errs() << "\n***Forinterf\n";
 
                     newFuncEnv = analyzeThread(*funcItr, *interfItr);
 
@@ -491,7 +491,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            // curEnv.printEnvironment();
+            curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -810,9 +810,9 @@ class VerifierPass : public ModulePass {
                 auto searchInterfEnv = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
-                // errs() << "\nInterf with Store: ";
-                // interfInst->print(errs());
-                // errs() << "\n";
+                errs() << "\nInterf with Store: ";
+                interfInst->print(errs());
+                errs() << "\n";
                 if (searchInterfEnv != searchInterfFunc->second.end()) {
                     // apply the interference
                     // errs() << "Before Interf:\n";
@@ -904,18 +904,18 @@ class VerifierPass : public ModulePass {
             vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
             for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
                 auto interfs = *interfItr;
-                #pragma omp task private(interfs) shared(curFuncInterfs)
-                {
-                    // int tid = omp_get_thread_num();
-                    // errs() << "from " << tid << "\n";
-                    bool feasible = true;
-                    feasible = isFeasible(*interfItr, allLoads, allStores, relations);
-                    if (feasible) {
+                // #pragma omp task private(interfs) shared(curFuncInterfs)
+                // {
+                //     // int tid = omp_get_thread_num();
+                //     // errs() << "from " << tid << "\n";
+                //     bool feasible = true;
+                //     feasible = isFeasible(*interfItr, allLoads, allStores, relations);
+                //     if (feasible) {
                         curFuncInterfs.push_back(*interfItr);
-                    }
-                }
+                //     }
+                // }
             }
-            #pragma omp taskwait
+            // #pragma omp taskwait
             feasibleInterfences[funcItr->first] = curFuncInterfs;
         }
         }

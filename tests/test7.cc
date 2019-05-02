@@ -26,9 +26,9 @@ void* fun3(void * arg){
 	int b = y.load(memory_order_relaxed);
 	int c = z.load(memory_order_relaxed);
 	// (x==20) ==> (y==10)
-	assert(a!=20 || b==10);
-	// ((x!=0) && z!=0) ==> (y!=0)
-	assert(a==0 || c==0 || b!=0);
+	// assert(a!=20 || b==10);
+	// (x==50 && z==20) ==> (y==10)
+	assert((a!=50 || c!=20) || b==10);
 	return NULL;
 }
 

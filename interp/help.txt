@@ -51,6 +51,16 @@ Q. In such a case, will it give us correct result to do the analysis without add
 A. In first look, it seems to be fine for the reason that soul purpose of these SSA variables is branching.
     If these variables are used someplace else, we need a better approach.
 
+Q. In case Rel-Acq-sync we are coping and domain of all the variables, do we need to prune out infeasible interferences?
+A. Pruning out these interfs is not required i.e. we can remove the rel-acq-seq rule from our inference rules.
+Q. Will removing this lead to faster performance of Z3? If yes, then how such an approach can be presented in paper?
+A. ???
+
+Q. Can we do something to remove the infeasible interferences coming from only two threads? i.e. invoke z3 only to 
+    prune away transitive dependecies and remove non-transitive one's using abstraction or some checking?
+A. It might be possible since a lot of interferences are effectively giving the same result even now
+    ???
+
 
 Instructions that need Apron interface-
     BinOp   +, -, *, /, %, &&, ||, rmw, 
@@ -66,11 +76,11 @@ TODO:
     init local vars with TOP, not zero
     get load store pairs only ones (from initThreadDetails) - 
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
+        with this assertion can be checked and stooped mid-analysis
         can optimize this
     control structure dependent static analysis
         dominate rules - not needed
     change pthread to thread
-    assertion should not be considered failed until fixedpoint is reached
         
 
 Other functionality that might be added
