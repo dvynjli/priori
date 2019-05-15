@@ -57,9 +57,14 @@ Q. Will removing this lead to faster performance of Z3? If yes, then how such an
 A. ???
 
 Q. Can we do something to remove the infeasible interferences coming from only two threads? i.e. invoke z3 only to 
-    prune away transitive dependecies and remove non-transitive one's using abstraction or some checking?
+    prune away transitive dependecies among threads and remove non-transitive one's using abstraction or some checking?
 A. It might be possible since a lot of interferences are effectively giving the same result even now
     ???
+
+Q. Can we use event structure style approach to prune interfernces? If needed notation of conflicting and invisible 
+    events can be used.
+A. No. That is a different analysis strategy altogether. Doesn't seem like they can be merged.
+
 
 
 Instructions that need Apron interface-
@@ -100,10 +105,11 @@ Possible Optimizations:
     change size of linexpr_make
     combine some of the interfernce based on flow
     delete from environment if domain is bottom - optimize isUnreachable()
+    create interfernce based on data and control dependecies. will result in less z3 queries
     
     Z3Helper:
         use bit vectors of smalled size
-        don't init again and again - 
+        don't init again and again - Won't work since every set of rules and hence their fixedpoints are different.
             need to figure out how to remove rules
             or can use different threads for different queries if z3 and cpp vectors are serializable
 
