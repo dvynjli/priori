@@ -430,6 +430,10 @@ class VerifierPass : public ModulePass {
                 auto oper = binOp->getOpcode();
                 if (oper == Instruction::And || oper == Instruction::Or) {
                     curEnv = checkLogicalInstruction(binOp, curEnv, branchEnv);
+                    // errs() << "True branch Env:\n";
+                    // branchEnv[&(*instItr)].first.printEnvironment();
+                    // errs() << "False branch Env:\n";
+                    // branchEnv[&(*instItr)].second.printEnvironment();
                 }
                 else curEnv = checkBinInstruction(binOp, curEnv);
             }
@@ -626,15 +630,43 @@ class VerifierPass : public ModulePass {
             fromVar1TrueEnv = env.first;
             fromVar1FalseEnv = env.second;
         }
-        if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)) {
+        if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)
+        ) {
             auto env = branchEnv[op2];
             fromVar2TrueEnv = env.first;
             fromVar2FalseEnv = env.second;
+            // auto searchOp2Branches = branchEnv.find(op2);
+            // if (searchOp2Branches == branchEnv.end()) {
+            //     errs() << "!!!! Something went wrong !!!!\n";
+            //     exit(0);
+            // }
+            // fromVar2TrueEnv = searchOp2Branches->second.first;
+            // errs() << "T2:\n";
+            // fromVar2TrueEnv.printEnvironment();
+            // fromVar2FalseEnv = searchOp2Branches->second.second;
+            // errs() << "F2:\n";
+            // fromVar2FalseEnv.printEnvironment();
+        }
+        if (BinaryOperator *op1 = dyn_cast<BinaryOperator>(fromVar1)) {
+            auto oper = op1->getOpcode();
+            if (oper == Instruction::And || oper == Instruction::Or) {
+                auto env = branchEnv[op1];
+                fromVar1TrueEnv = env.first;
+                fromVar1FalseEnv = env.second;
+            }
+        }
+        if (BinaryOperator *op2 = dyn_cast<BinaryOperator>(fromVar2)) {
+            auto oper = op2->getOpcode();
+            if (oper == Instruction::And || oper == Instruction::Or) {
+                auto env = branchEnv[op2];
+                fromVar2TrueEnv = env.first;
+                fromVar2FalseEnv = env.second;
+            }
         }
 
-        // since we are working on -O1, non of the operands can be constant.
-        string fromVar1Name = getNameFromValue(fromVar1);
-        string fromVar2Name = getNameFromValue(fromVar2);
+        // since we are working on -O1, none of the operands can be constant.
+        // string fromVar1Name = getNameFromValue(fromVar1);
+        // string fromVar2Name = getNameFromValue(fromVar2);
 
         auto oper = logicalOp->getOpcode();
         Environment trueBranchEnv;
@@ -647,8 +679,33 @@ class VerifierPass : public ModulePass {
         }
 
         else if (oper == Instruction::Or) {
-           trueBranchEnv.joinEnvironment(fromVar2TrueEnv);
-           falseBranchEnv.meetEnvironment(fromVar2FalseEnv);
+            //-
+            // errs() << "T1:\n";
+            // trueBranchEnv.printEnvironment();
+            // errs() << "T2:\n";
+            // fromVar2TrueEnv.printEnvironment();
+            //-//
+            trueBranchEnv.joinEnvironment(fromVar2TrueEnv);
+            // errs() << "T1 join T2:\n";
+            // trueBranchEnv.printEnvironment();
+
+            //-
+            // fromVar2TrueEnv.joinEnvironment(fromVar1TrueEnv);
+            // errs() << "T2 join T1:\n";
+            // fromVar2TrueEnv.printEnvironment();
+
+            // errs() << "F1:\n";
+            // falseBranchEnv.printEnvironment();
+            // errs() << "F2:\n";
+            // fromVar2FalseEnv.printEnvironment();
+
+            // fromVar2FalseEnv.meetEnvironment(fromVar1FalseEnv);
+            // errs() << "F2 meet F1:\n";
+            // fromVar2FalseEnv.printEnvironment();
+            //-//
+            falseBranchEnv.meetEnvironment(fromVar2FalseEnv);
+            // errs() << "F1 meet F2:\n";
+            // falseBranchEnv.printEnvironment();
         }
 
         else {
