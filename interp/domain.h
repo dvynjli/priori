@@ -6,6 +6,7 @@
 #include "ap_abstract1.h"
 #include "ap_manager.h"
 #include "box.h"
+#include "oct.h"
 #include "ap_global1.h"
 
 #include "llvm/IR/Instructions.h"

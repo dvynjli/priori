@@ -56,6 +56,8 @@ ap_manager_t* ApDomain::initApManager(string domainType) {
     //TODO: parameterize by command line arg
     if (domainType.compare("box") == 0)
         return box_manager_alloc();
+    else if(domainType.compare("oct") == 0)
+        return oct_manager_alloc();
     else {
         fprintf(stderr, "unkown domain %s\n", domainType.c_str());
         exit(0);
@@ -524,7 +526,9 @@ void Environment::changeRelHeadToNull(string var, llvm::Instruction *inst) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
-        if (relHead[var]!=nullptr && inst->getFunction() != relHead[var]->getFunction())
+        // RelSequence terminated when a relaxed write from different thread is occured
+        // relHead is changed to null only if existing relHead is from different thread
+        if (relHead[var] != nullptr && inst->getFunction() != relHead[var]->getFunction())
             relHead[var] = nullptr;
         newEnvironment[relHead] = it->second;
     }
@@ -604,7 +608,6 @@ void Environment::applyInterference(
     bool isRelAcqSeq, 
     llvm::Instruction *head=nullptr
 ) {
-    // TODO: this is wrong. need to copy all rel heads and make domain accordingly
     // fprintf(stderr, "Before applying interf:\n");
     // printEnvironment();
 

@@ -9,4 +9,4 @@ set_target_properties(VerifierPass PROPERTIES
     COMPILE_FLAGS "-fno-rtti -fpermissive -g -fopenmp"
 )
 
-target_link_libraries(VerifierPass -lapron -lboxD -litv -lgmp -lapron_debug -lboxMPQ_debug -lmpfr -lz3)
+target_link_libraries(VerifierPass -lapron -lboxD -loctD -litv -lgmp -lapron_debug -lboxMPQ_debug -loctMPQ_debug -lmpfr -lz3)

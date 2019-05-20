@@ -83,6 +83,7 @@ TODO:
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
         with this assertion can be checked and stooped mid-analysis
         can optimize this
+    fix changing relHead to null if relaxed write is from same thread
     control structure dependent static analysis
         dominate rules - not needed
     change pthread to thread
@@ -97,15 +98,15 @@ Other functionality that might be added
 
 
 Possible Optimizations:
-    don't support thread creation from functions other than main()
-        reduced one pass over program - not anymore
     LoadStore map
-    while checking if fixed point is reached, we are comparing somain of all the Instructions. It will be sufficient to compare domain of only stores
-        But efficiently  doing this will require changing the data structures and store lodas saperately from rest of the thread instr
+    while checking if fixed point is reached, we are comparing domain of all the Instructions. It will be sufficient to compare domain of only stores
+        But efficiently  doing this will require changing the data structures and store loads saperately from rest of the thread instr
     change size of linexpr_make
     combine some of the interfernce based on flow
     delete from environment if domain is bottom - optimize isUnreachable()
     create interfernce based on data and control dependecies. will result in less z3 queries
+    fix error in testcase 7 assertion 2 - 
+        reason is applying entire environment of interference without considering RelHead if no rel seq is started or continued.
     
     Z3Helper:
         use bit vectors of smalled size
