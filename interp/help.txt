@@ -107,6 +107,7 @@ Possible Optimizations:
     create interfernce based on data and control dependecies. will result in less z3 queries
     fix error in testcase 7 assertion 2 - 
         reason is applying entire environment of interference without considering RelHead if no rel seq is started or continued.
+    reduce number of variables
     
     Z3Helper:
         use bit vectors of smalled size

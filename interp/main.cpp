@@ -37,10 +37,10 @@ class VerifierPass : public ModulePass {
     vector<string> getGlobalIntVars(Module &M) {
         vector<string> intVars;
         for (auto it = M.global_begin(); it != M.global_end(); it++){
-            // cerr << "Global var: " << it->getName() << endl;
-            // fprintf(stderr, "Global var: %s of type: %d\n", it->getName(), it->getValueType()->getTypeID());
+            // errs() << "Global var: " << it->getName() << "\tType: ";
             // it->getValueType()->print(errs());
-            if (it->getValueType()->isIntegerTy()) {
+            // errs() << "\n";
+            if (it->getValueType()->isIntegerTy() && it->getName()!="__dso_handle") {
                 string varName = it->getName();
                 intVars.push_back(varName);
                 Value * varInst = &(*it);
@@ -56,8 +56,11 @@ class VerifierPass : public ModulePass {
                     valueToName.emplace(varInst, varName);
                 }
                 else {
-                    fprintf(stderr, "WARNING: found global structure: %s. It will not be analyzed", structTy->getName());
+                    // errs() << "WARNING: found global structure:" << structTy->getName() << ". It will not be analyzed\n";
                 }
+            }
+            else {
+                // errs() << "WARNING: It will not be analyzed\n";
             }
 
             // Needed for locks
@@ -70,7 +73,7 @@ class VerifierPass : public ModulePass {
             // }
 
         }
-        fprintf(stderr, "DEBUG: Total global var = %lu\n", intVars.size());
+        errs() << "DEBUG: Total global var = " << intVars.size() << "\n";
         return intVars;
     }
 
@@ -495,7 +498,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            curEnv.printEnvironment();
+            // curEnv.printEnvironment();
         }
            
         return curEnv;

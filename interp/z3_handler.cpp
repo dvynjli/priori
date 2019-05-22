@@ -96,7 +96,7 @@ void Z3Helper::addInferenceRules() {
         //   (l,v1) \in IsLoad && (s,v1) \in IsStore && 
         //   (s,l) \in RF &&
         //   (op1,s) \in MCB && (l,op2) \in MCB)
-        // => (op1,op2) \in MCB
+        // => (op1,op2) \in MHB
         z3::expr_vector xs(zcontext);
         xs.push_back(inst1);
         xs.push_back(inst2);
