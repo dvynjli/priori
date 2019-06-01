@@ -44,6 +44,12 @@ void Z3Helper::addInferenceRules() {
         z3::expr ord1  = zcontext.int_const("ord1");
         // z3::expr app = mhb(inst1, inst2) && mhb(inst2, inst3);
 
+        // (s1,s2) in PO && (s2,s3) in PO => (s1,s3) in PO
+        z3::expr transitive_po = z3::forall(inst1, inst2, inst3, 
+                z3::implies((po(inst1, inst2) && po(inst2, inst3)), 
+                po(inst1, inst3) ));
+        zfp.add_rule(transitive_po, zcontext.str_symbol("Transitive-PO"));
+        
         // (s1,s2) in MHB && (s2,s3) in MHB => (s1,s3) in MHB
         z3::expr transitive_mhb = z3::forall(inst1, inst2, inst3, 
                 z3::implies((mhb(inst1, inst2) && mhb(inst2, inst3)), 
@@ -114,15 +120,24 @@ void Z3Helper::addInferenceRules() {
         zfp.add_rule(relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq"));
         // cout << "Rel-acq" << endl;
 
+        // data dependence
+        // (inst1, var1) \in isVarOf && (inst2, var1) \in isVarOf 
+        //  && (inst1, inst2) \in po
+        // => (inst1, inst2) \in mhb
+        z3::expr dataDep = z3::forall(inst1, inst2, var1, 
+                z3::implies(isVarOf(inst1, var1) && isVarOf(inst2, var1) && 
+                    po(inst1, inst2),
+                mhb(inst1, inst2)));
+        zfp.add_rule(dataDep, zcontext.str_symbol("Data-Dependence"));
+
         // add init (null) as store instruction of all var of all mem-order
         const z3::expr instExpr = getBitVec(nullptr);
         z3::expr app = isStore(instExpr);
-        zfp.add_rule(app, zcontext.str_symbol("init"));
+        zfp.add_rule(app, zcontext.str_symbol("initIsStore"));
         app = z3::forall(var1, isVarOf(instExpr, var1));
-        zfp.add_rule(app, zcontext.str_symbol("init"));
+        zfp.add_rule(app, zcontext.str_symbol("initOfAllVar"));
         app = z3::forall(ord1, memOrderOf(instExpr, ord1));
-        zfp.add_rule(app, zcontext.str_symbol("init"));
-
+        zfp.add_rule(app, zcontext.str_symbol("initAllMemOrd"));
 
         // cout << "from init:\n" << zfp.to_string() << "\n";
 
@@ -168,6 +183,7 @@ void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
 }
 
 bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs) {
+    cout << "All rules:\n" << zfp.to_string() << "\n";
     bool isFeasible = true;
     try {
         addInterference(interfs);
@@ -177,7 +193,7 @@ bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instru
         cout << "Exception: " << e << endl;
         exit(0);
     }
-    
+    cout << "Feasible: " << isFeasible << "\n";
     return isFeasible;
 }
 
