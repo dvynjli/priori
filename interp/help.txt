@@ -105,9 +105,13 @@ Possible Optimizations:
     combine some of the interfernce based on flow
     delete from environment if domain is bottom - optimize isUnreachable()
     create interfernce based on data and control dependecies. will result in less z3 queries
+        might be also delete data dep rule from z3
     fix error in testcase 7 assertion 2 - 
         reason is applying entire environment of interference without considering RelHead if no rel seq is started or continued.
     reduce number of variables
+    try reducing number of rules
+        this will decrese time of fiexed point computation
+        but requires to add more rules to Z3
     
     Z3Helper:
         use bit vectors of smalled size

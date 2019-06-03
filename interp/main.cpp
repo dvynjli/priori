@@ -21,7 +21,7 @@ class VerifierPass : public ModulePass {
     bool runOnModule (Module &M) {
         errs() << "LLVM pass is running\n";
         // TODO: get domain type based on comman line arguments
-        string domainType = "box";
+        string domainType = "oct";
         vector<string> globalVars = getGlobalIntVars(M);
         zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars, domainType);
@@ -885,9 +885,12 @@ class VerifierPass : public ModulePass {
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
                             auto ordStore = storeInst->getOrdering();
                             auto ordLoad  = loadInst->getOrdering();
-                            if (ordLoad==llvm::AtomicOrdering::Acquire || 
+                            if ((ordLoad==llvm::AtomicOrdering::Acquire || 
                                     ordLoad==llvm::AtomicOrdering::SequentiallyConsistent ||
-                                    ordLoad==llvm::AtomicOrdering::AcquireRelease) {
+                                    ordLoad==llvm::AtomicOrdering::AcquireRelease) && 
+                                    (ordStore==llvm::AtomicOrdering::Release ||
+                                    ordStore==llvm::AtomicOrdering::SequentiallyConsistent ||
+                                    ordStore==llvm::AtomicOrdering::AcquireRelease)) {
                                 // Instruction *relHead = interfApDomain.getRelHead(varName);
                                 // if (relHead != nullptr) {
                                 //     curEnv.setRelHead(varName, relHead);
@@ -964,18 +967,18 @@ class VerifierPass : public ModulePass {
             vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
             for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
                 auto interfs = *interfItr;
-                // #pragma omp task private(interfs) shared(curFuncInterfs)
-                // {
-                //     // int tid = omp_get_thread_num();
-                //     // errs() << "from " << tid << "\n";
-                //     bool feasible = true;
-                //     feasible = isFeasible(*interfItr, allLoads, allStores, relations);
-                //     if (feasible) {
+                #pragma omp task private(interfs) shared(curFuncInterfs)
+                {
+                    // int tid = omp_get_thread_num();
+                    // errs() << "from " << tid << "\n";
+                    bool feasible = true;
+                    feasible = isFeasible(*interfItr, allLoads, allStores, relations);
+                    if (feasible) {
                         curFuncInterfs.push_back(*interfItr);
-                //     }
-                // }
+                    }
+                }
             }
-            // #pragma omp taskwait
+            #pragma omp taskwait
             feasibleInterfences[funcItr->first] = curFuncInterfs;
         }
         }
@@ -993,7 +996,7 @@ class VerifierPass : public ModulePass {
         // errs() << "isFeasible - checking interf:\n";
         // for (auto it=interfs.begin(); it!=interfs.end(); ++it) {
         //     it->first->print(errs());
-        //     errs() << "\t\t--Reads from-->\t";
+        //     errs() << "\n\t--Reads from-->\t";
         //     if (it->second == nullptr) errs() << "init";
         //     else it->second->print(errs());
         //     errs() << "\n";

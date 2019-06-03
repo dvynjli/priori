@@ -39,6 +39,7 @@ void Z3Helper::addInferenceRules() {
         z3::expr inst2 = zcontext.bv_const("inst2", BV_SIZE);
         z3::expr inst3 = zcontext.bv_const("inst3", BV_SIZE);
         z3::expr inst4 = zcontext.bv_const("inst4", BV_SIZE);
+        z3::expr inst5 = zcontext.bv_const("inst5", BV_SIZE);
         z3::expr var1  = zcontext.bv_const("var1", BV_SIZE);
         z3::expr var2  = zcontext.bv_const("var2", BV_SIZE);
         z3::expr ord1  = zcontext.int_const("ord1");
@@ -115,10 +116,28 @@ void Z3Helper::addInferenceRules() {
                     z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=ACQ) && 
                     isVarOf(inst1, var1) && isVarOf(inst2, var1) &&
                     rf(inst1, inst2) &&
-                    mcb(inst3, inst1) && mcb(inst2, inst4),                            
+                    mcb(inst3, inst1) && mcb(inst2, inst4), 
                 mhb(inst3, inst4)));
-        zfp.add_rule(relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq"));
+        zfp.add_rule(relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq1"));
         // cout << "Rel-acq" << endl;
+
+        
+        // (s2 \in RelOp && l \in AcqOp &&
+        //   (s2,v1) \in isStore && (l,v1) \in isStore && (s1,v1) \in isStore
+        //   (s1,l) \in RF && (s2,s1) \in PO &&
+        //   (op1,s2) \in MCB && (l,op2) \in MCB)
+        // => (op1,l) \in MHB
+        xs.push_back(inst5);
+        z3::expr relAcqSeq2 = z3::forall(xs, 
+                z3::implies(isStore(inst1) && isLoad(inst2) && isStore(inst3) && 
+                    z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=ACQ) && 
+                    z3::exists(ord1, memOrderOf(inst3, ord1) && ord1>=REL) &&
+                    isVarOf(inst1, var1) && isVarOf(inst2, var1) && isVarOf(inst3, var1) &&
+                    rf(inst1, inst2) && po(inst3, inst1) &&
+                    mcb(inst4, inst3) && mcb(inst2, inst5), 
+                mhb(inst4, inst5)));
+        zfp.add_rule(relAcqSeq2, zcontext.str_symbol("Rel-Acq-Seq2"));
+
 
         // data dependence
         // (inst1, var1) \in isVarOf && (inst2, var1) \in isVarOf 
@@ -183,7 +202,7 @@ void Z3Helper::addMHB (llvm::Instruction *from, llvm::Instruction *to) {
 }
 
 bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instruction*> interfs) {
-    cout << "All rules:\n" << zfp.to_string() << "\n";
+    // cout << "All rules:\n" << zfp.to_string() << "\n";
     bool isFeasible = true;
     try {
         addInterference(interfs);
@@ -193,7 +212,7 @@ bool Z3Helper::checkInterference (unordered_map<llvm::Instruction*, llvm::Instru
         cout << "Exception: " << e << endl;
         exit(0);
     }
-    cout << "Feasible: " << isFeasible << "\n";
+    // cout << "Feasible: " << isFeasible << "\n";
     return isFeasible;
 }
 

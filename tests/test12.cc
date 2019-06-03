@@ -12,14 +12,16 @@ void* fun1(void * arg){
 	x.store(1, memory_order_release);
 	y.store(2, memory_order_relaxed);
 	x.store(2, memory_order_release);
-	// y.store(3, memory_order_relaxed);
-	// x.store(3, memory_order_relaxed);
+	y.store(3, memory_order_relaxed);
+	x.store(3, memory_order_relaxed);
 	return NULL;
 }
 
 void* fun2(void * arg){
-	x.load(memory_order_acquire);
-	y.load(memory_order_relaxed);
+	int a = x.load(memory_order_acquire);
+	int b = y.load(memory_order_relaxed);
+	// a==3 => y!=0 should hold
+	assert((a!=3|| b!=0));
 	return NULL;
 }
 
