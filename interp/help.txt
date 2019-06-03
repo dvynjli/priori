@@ -112,6 +112,9 @@ Possible Optimizations:
     try reducing number of rules
         this will decrese time of fiexed point computation
         but requires to add more rules to Z3
+    try to remove rel-acq-seq2 rule from z3 by applying the interferce same as isRelSeq in case of relaxed write of same thread 
+        need to maintain most recent rel write of a thread as relHeads ???
+
     
     Z3Helper:
         use bit vectors of smalled size
