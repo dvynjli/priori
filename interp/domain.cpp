@@ -44,7 +44,7 @@ void ApDomain::setHasChanged(string var) {
 }
 
 void ApDomain::assignZerosToAllVars() {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     for(int i = 0; i< env->intdim; i++) {
         ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
         ap_var_t var = ap_environment_var_of_dim(env, i);
@@ -119,7 +119,7 @@ void ApDomain::addVariable(string varName) {
 }
 
 void ApDomain::performUnaryOp(operation oper, string strTo, int intOp) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     switch(oper) {
         // case LOAD is not possible
         case STORE:
@@ -132,7 +132,7 @@ void ApDomain::performUnaryOp(operation oper, string strTo, int intOp) {
 }
 
 void ApDomain::performUnaryOp(operation oper, string strTo, string strOp) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     switch(oper) {
         case LOAD:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp.c_str(), AP_END);
@@ -147,7 +147,7 @@ void ApDomain::performUnaryOp(operation oper, string strTo, string strOp) {
 }
 
 void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     switch(oper) {
         case ADD:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
@@ -186,7 +186,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, int 
 }
 
 void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     switch(oper) {
         case ADD:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp2, AP_CST_S_INT, intOp1, AP_END);
@@ -205,7 +205,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, string 
 }
 
 void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     switch(oper) {
         case ADD:
             ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp1+intOp2, AP_END);
@@ -240,7 +240,7 @@ void ApDomain::performCmpOp(operation oper, string strOp1, int intOp2) {
     ap_constyp_t op = getApConsType(oper);
 
     // fprintf(stderr, "%d %s %d\n", oper, strOp1.c_str(), intOp2);
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_CST_S_INT, (-1)*intOp2, AP_END);
     // fprintf(stderr, "ConsExpr: ");
@@ -273,7 +273,7 @@ void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
     }
     ap_constyp_t op = getApConsType(oper);
     // fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, -1, strOp2.c_str(), AP_CST_S_INT, intOp1, AP_END);
     // fprintf(stderr, "ConsExpr: ");
@@ -320,7 +320,7 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
                 
                 // initialize it with the value of variable to be joined
                 ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromApDomain.man, &fromApDomain.absValue, apInterVar);
-                ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+                ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
                 ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
                 tmpValue = ap_abstract1_assign_linexpr(man, true, &tmpValue, apInterVar, &expr, NULL);
                 
@@ -330,7 +330,7 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
             else {
                 // the variable is unintialized. Copy from the fromApDomain
                 ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromApDomain.man, &fromApDomain.absValue, apInterVar);
-                ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+                ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
                 ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
                 absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
                 setHasChanged(it->first);
@@ -356,7 +356,7 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
         // fprintf(stderr, "On var %s\n", interfVar.c_str());
         ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromApDomain.man, &fromApDomain.absValue, apInterVar);
         // ap_interval_fprint(stderr, fromInterval);
-        ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+        ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
         ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
         absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
         setHasChanged(interfVar);
@@ -367,14 +367,14 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
 }
 
 void ApDomain::setVar(string strVar) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
     ap_var_t var = (ap_var_t) strVar.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
 }
 
 void ApDomain::unsetVar(string strVar) {
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
     ap_var_t var = (ap_var_t) strVar.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
@@ -411,7 +411,7 @@ void ApDomain::performNECmp(string strOp1, int intOp2) {
 void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {
     /* assign x = 1 */
     fprintf(stderr, "Assigning x = 1\n");
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
     ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = ap_environment_var_of_dim(env, 0);
