@@ -3,6 +3,16 @@
 #include "analyzer.h"
 #include "z3_handler.h"
 
+
+// Processing command line arguments
+
+// command line argument for domain type
+cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
+    cl::values(
+        clEnumVal(interval , "use interval domain"),
+        clEnumVal(octagon, "use octagon domain")));
+cl::opt<bool> useZ3 ("z3", cl::desc("Enable interferce pruning using Z3"));
+
 class VerifierPass : public ModulePass {
 
     /* TODO: Should I create threads as a set or vector??
@@ -20,11 +30,14 @@ class VerifierPass : public ModulePass {
     
     bool runOnModule (Module &M) {
         errs() << "LLVM pass is running\n";
+
+        if (useZ3) errs() << "argument z3: yes\n";
+        else errs() << "argument z3: no\n";
+
         // TODO: get domain type based on comman line arguments
-        string domainType = "oct";
         vector<string> globalVars = getGlobalIntVars(M);
         zHelper.initZ3(globalVars);
-        initThreadDetails(M, globalVars, domainType);
+        initThreadDetails(M, globalVars);
         analyzeProgram(M);
         checkAssertions();
 
@@ -130,7 +143,7 @@ class VerifierPass : public ModulePass {
         return loadsToAllStores;
     }
 
-    void initThreadDetails(Module &M, vector<string> globalVars, string domainType) {
+    void initThreadDetails(Module &M, vector<string> globalVars) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
         vector< pair <string, pair<Instruction*, Instruction*>>> relations;
@@ -291,7 +304,7 @@ class VerifierPass : public ModulePass {
             //     printValue(it->first);
 
             Environment curFuncEnv;
-            curFuncEnv.init(domainType, globalVars, funcVars);
+            curFuncEnv.init(globalVars, funcVars);
             funcInitEnv[func] = curFuncEnv;
         }
 
@@ -305,6 +318,7 @@ class VerifierPass : public ModulePass {
         // }
 
         getFeasibleInterferences(allLoads, allStores, relations);
+        // printFeasibleInterf();
     }
 
     void analyzeProgram(Module &M) {
@@ -948,7 +962,7 @@ class VerifierPass : public ModulePass {
         return allInterfs;
     }
 
-    unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getFeasibleInterferences (
+    void getFeasibleInterferences (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores, 
         vector< pair <string, pair<Instruction*, Instruction*>>> relations
@@ -960,31 +974,35 @@ class VerifierPass : public ModulePass {
         allInterfs = getAllInterferences(loadsToAllStores);
 
         // Check feasibility of permutations and save them in feasibleInterfences
-        #pragma omp parallel num_threads(omp_get_num_procs()*2)
-        #pragma omp single 
-        {
-        for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
-            vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
-            for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
-                auto interfs = *interfItr;
-                #pragma omp task private(interfs) shared(curFuncInterfs)
-                {
-                    // int tid = omp_get_thread_num();
-                    // errs() << "from " << tid << "\n";
-                    bool feasible = true;
-                    feasible = isFeasible(*interfItr, allLoads, allStores, relations);
-                    if (feasible) {
-                        curFuncInterfs.push_back(*interfItr);
+        if (useZ3) {
+            #pragma omp parallel num_threads(omp_get_num_procs()*2)
+            #pragma omp single 
+            {
+            for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
+                vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
+                for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
+                    auto interfs = *interfItr;
+                    #pragma omp task private(interfs) shared(curFuncInterfs)
+                    {
+                        // int tid = omp_get_thread_num();
+                        // errs() << "from " << tid << "\n";
+                        bool feasible = true;
+                        feasible = isFeasible(*interfItr, allLoads, allStores, relations);
+                        if (feasible) {
+                            curFuncInterfs.push_back(*interfItr);
+                        }
                     }
                 }
+                #pragma omp taskwait
+                feasibleInterfences[funcItr->first] = curFuncInterfs;
             }
-            #pragma omp taskwait
-            feasibleInterfences[funcItr->first] = curFuncInterfs;
+            }
         }
+        
+        else {
+            feasibleInterfences = allInterfs;
         }
-        // printFeasibleInterf();
-
-        return feasibleInterfences;
+        
     }
 
     bool isFeasible (

@@ -10,6 +10,7 @@
 #include <vector>
 #include <unordered_map> 
 #include <map>
+#include "llvm/Support/CommandLine.h"
 
 #define DEBUG 1
 
@@ -20,6 +21,10 @@ enum operation { ADD, SUB, MUL, DIV, MOD,       // Arithemetic opertions
                 USUB,                           // Unary minus
                 ALOAD, ASTORE, CMPXCHG, RMW,    // Atomic opreations
                 LOAD, STORE                     // Non-atomic load and store
+};
+
+enum DomainTypes {
+  interval, octagon
 };
 using namespace std;
 

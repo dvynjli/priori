@@ -13,6 +13,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 typedef map <string, llvm::Instruction*> REL_HEAD;
+extern llvm::cl::opt<DomainTypes> AbsDomType;
 
 class ApDomain {
     ap_manager_t *man;
@@ -21,7 +22,7 @@ class ApDomain {
     // map<string, llvm::Instruction*> relHead;
     map<string, bool> hasChanged;
     
-    ap_manager_t* initApManager(string domainType);
+    ap_manager_t* initApManager();
     ap_environment_t* initEnvironment(vector<string> globalVars, vector<string> functionVars);
     void assignZerosToAllVars();
     void initHasChanged(vector<string> globalVars);
@@ -34,7 +35,7 @@ class ApDomain {
 public:
     bool operator== (const ApDomain &other) const;
     // bool operator!= (ApDomain other);
-    void init(string domainType, vector<string> globalVars, vector<string> functionVars);
+    void init(vector<string> globalVars, vector<string> functionVars);
     void copyApDomain(ApDomain copyFrom);
     // llvm::Instruction* getRelHead(string var);
     // void setRelHead(string var, llvm::Instruction *head);
@@ -77,7 +78,7 @@ public:
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
-    void init(string domainType, vector<string> globalVars, vector<string> functionVars);
+    void init(vector<string> globalVars, vector<string> functionVars);
     void copyEnvironment(Environment copyFrom);
     void addRelHead(string var, llvm::Instruction *head);
     void changeRelHeadIfNull(string var, llvm::Instruction *head);

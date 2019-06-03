@@ -11,9 +11,9 @@ bool ApDomain::operator== (const ApDomain &other) const {
 //     return !(operator==(other));
 // }
 
-void ApDomain::init(string domainType, vector<string> globalVars, vector<string> functionVars){
+void ApDomain::init(vector<string> globalVars, vector<string> functionVars){
     // fprintf(stderr, "initializing ap_man\n");
-    man = initApManager(domainType);
+    man = initApManager();
     // DEBUG && fprintf(stderr, "Init Env\n");
     env = initEnvironment(globalVars, functionVars);
     // ap_environment_fdump(stderr, env);
@@ -52,14 +52,14 @@ void ApDomain::assignZerosToAllVars() {
     }
 }
 
-ap_manager_t* ApDomain::initApManager(string domainType) {
+ap_manager_t* ApDomain::initApManager() {
     //TODO: parameterize by command line arg
-    if (domainType.compare("box") == 0)
+    if (AbsDomType == interval)
         return box_manager_alloc();
-    else if(domainType.compare("oct") == 0)
+    else if(AbsDomType == octagon)
         return oct_manager_alloc();
     else {
-        fprintf(stderr, "unkown domain %s\n", domainType.c_str());
+        fprintf(stderr, "unkown domain\n");
         exit(0);
     }
 }
@@ -456,10 +456,10 @@ bool Environment::operator== (const Environment &other) const {
 //     return end();
 // }
 
-void Environment::init(string domainType, vector<string> globalVars, vector<string> functionVars){
+void Environment::init(vector<string> globalVars, vector<string> functionVars){
     REL_HEAD relHead = initRelHead(globalVars);
     ApDomain dom;
-    dom.init(domainType, globalVars, functionVars);
+    dom.init(globalVars, functionVars);
     // fprintf(stderr, "dom done. assign to env\n");
     environment[relHead] = dom;
     // printEnvironment();
