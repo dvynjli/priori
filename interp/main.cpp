@@ -12,6 +12,7 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
         clEnumVal(interval , "use interval domain"),
         clEnumVal(octagon, "use octagon domain")));
 cl::opt<bool> useZ3 ("z3", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> noPrint ("no-print", cl::desc("Enable interferce pruning using Z3"));
 
 class VerifierPass : public ModulePass {
 
@@ -29,22 +30,20 @@ class VerifierPass : public ModulePass {
 
     
     bool runOnModule (Module &M) {
-        errs() << "LLVM pass is running\n";
-
-        if (useZ3) errs() << "argument z3: yes\n";
-        else errs() << "argument z3: no\n";
-
-        // TODO: get domain type based on comman line arguments
+        double start_time = omp_get_wtime();
         vector<string> globalVars = getGlobalIntVars(M);
         zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
         analyzeProgram(M);
         checkAssertions();
-
+        double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
-        errs() << "----DONE----\n";
-        errs() << "Check testcase 7 assertion 2\n";
+        if (!noPrint) {
+            errs() << "----DONE----\n";
+            errs() << "Check testcase 7 assertion 2\n";
+        }
+        fprintf(stderr, "Time taken: %f\n", time);
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -86,7 +85,8 @@ class VerifierPass : public ModulePass {
             // }
 
         }
-        errs() << "DEBUG: Total global var = " << intVars.size() << "\n";
+        if (!noPrint)
+            errs() << "DEBUG: Total global var = " << intVars.size() << "\n";
         return intVars;
     }
 
@@ -168,12 +168,13 @@ class VerifierPass : public ModulePass {
             vector<string> funcVars;
             
             // errs() << "----analyzing funtion: " << func->getName() << "\n";
-            Instruction *lastGlobalInst=nullptr;
             unordered_map<string, unordered_set<Instruction*>> varToStores;
             unordered_map<Instruction*, string> varToLoads;
                 
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
+                Instruction *lastGlobalInst=nullptr;
+                map<string, Instruction*> lastGlobalOfVar;
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
                 {
                     if (CallInst *call = dyn_cast<CallInst>(it)) {
@@ -233,9 +234,11 @@ class VerifierPass : public ModulePass {
                             }
                         }
                         else {
-                            errs() << "unknown function call:\n";
-                            it->print(errs());
-                            errs() <<"\n";
+                            if (!noPrint) {
+                                errs() << "unknown function call:\n";
+                                it->print(errs());
+                                errs() <<"\n";
+                            }
                         }
                     }
                     else if (StoreInst *storeInst = dyn_cast<StoreInst>(it)) {
@@ -257,6 +260,9 @@ class VerifierPass : public ModulePass {
                             else {
                                 relations.push_back(make_pair("mhb", make_pair(lastGlobalInst, storeInst)));
                             }
+                            if (lastGlobalOfVar[destVarName])
+                                relations.push_back(make_pair("mhb", make_pair(lastGlobalOfVar[destVarName], storeInst)));
+                            lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
                         }
                     }
@@ -288,6 +294,9 @@ class VerifierPass : public ModulePass {
                                 else {
                                     relations.push_back(make_pair("mhb", make_pair(lastGlobalInst, loadInst)));
                                 }
+                                if (lastGlobalOfVar[fromVarName])
+                                    relations.push_back(make_pair("mhb", make_pair(lastGlobalOfVar[fromVarName], loadInst)));
+                                lastGlobalOfVar[fromVarName] = loadInst;
                                 lastGlobalInst = loadInst;
                             }
                         }
@@ -331,12 +340,15 @@ class VerifierPass : public ModulePass {
         while (!isFixedPointReached) {
             programState = programStateCurItr;
             
-            errs() << "_________________________________________________\n";
-            errs() << "Iteration: " << iterations << "\n";
-
+            if (!noPrint) {
+                errs() << "_________________________________________________\n";
+                errs() << "Iteration: " << iterations << "\n";
+            }
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
-                fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
+                if (!noPrint) {
+                    fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
+                }
 
                 // find feasible interfernce for current function
                 vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
@@ -347,7 +359,7 @@ class VerifierPass : public ModulePass {
                 if (searchInterf != feasibleInterfences.end()) {
                     curFuncInterfs = (searchInterf->second);
                 } else {
-                    errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
+                    if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
                         unordered_map <Instruction*, Instruction*> interf;
                         newFuncEnv = analyzeThread(*funcItr, interf);
@@ -379,11 +391,12 @@ class VerifierPass : public ModulePass {
             iterations++;
             // printProgramState();
         }
-        errs() << "_________________________________________________\n";
-        errs() << "Fized point reached in " << iterations << " iteratons\n";
-        errs() << "Final domain:\n";
-        printProgramState();
-
+        if (!noPrint) {
+            errs() << "_________________________________________________\n";
+            errs() << "Fized point reached in " << iterations << " iteratons\n";
+            errs() << "Final domain:\n";
+            printProgramState();
+        }
     }
 
     unordered_map<Instruction*, Environment> analyzeThread (Function *F, unordered_map<Instruction*, Instruction*> interf) {
@@ -431,9 +444,10 @@ class VerifierPass : public ModulePass {
             Instruction *currentInst = &(*instItr);
             curEnv.copyEnvironment(predEnv);
         
-            errs() << "DEBUG: Analyzing: ";
-            currentInst->print(errs());
-            errs()<<"\n";
+            if (!noPrint) {
+                errs() << "DEBUG: Analyzing: ";
+                printValue(currentInst);
+            }
 
             if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
                 // auto searchName = valueToName.find(currentInst);
@@ -573,9 +587,11 @@ class VerifierPass : public ModulePass {
                 operFalseBranch = GT;
                 break;
             default:
-                errs() << "WARNING: Unknown cmp instruction: ";
-                cmpInst->print(errs());
-                errs() << "\n";
+                if (!noPrint) {
+                    errs() << "WARNING: Unknown cmp instruction: ";
+                    cmpInst->print(errs());
+                    errs() << "\n";
+                }
                 return curEnv;
         }
 
@@ -726,8 +742,10 @@ class VerifierPass : public ModulePass {
         }
 
         else {
-            fprintf(stderr, "WARNING: unknown binary operation: ");
-            printValue(logicalOp);
+            if (!noPrint) {
+                errs() << "WARNING: unknown binary operation: ";
+                printValue(logicalOp);
+            }
             return curEnv;
         }
 
@@ -759,8 +777,10 @@ class VerifierPass : public ModulePass {
                 break;
             // TODO: add more cases
             default:
-                fprintf(stderr, "WARNING: unknown binary operation: ");
-                printValue(binOp);
+                if (!noPrint) {
+                    errs() << "WARNING: unknown binary operation: ";
+                    printValue(binOp);
+                }
                 return curEnv;
         }
 
@@ -850,8 +870,10 @@ class VerifierPass : public ModulePass {
                 break;
             // TODO: add more cases
             default: 
-                fprintf(stderr, "ERROR: unknown operation: ");
-                unaryInst->print(errs());
+                if (!noPrint) {
+                    fprintf(stderr, "ERROR: unknown operation: ");
+                    unaryInst->print(errs());
+                }
                 return curEnv;
         }
         
@@ -884,9 +906,11 @@ class VerifierPass : public ModulePass {
                 auto searchInterfEnv = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
-                errs() << "\nInterf with Store: ";
-                interfInst->print(errs());
-                errs() << "\n";
+                if (!noPrint) {
+                    errs() << "\nInterf with Store: ";
+                    interfInst->print(errs());
+                    errs() << "\n";
+                }
                 if (searchInterfEnv != searchInterfFunc->second.end()) {
                     // apply the interference
                     // errs() << "Before Interf:\n";
@@ -1065,7 +1089,8 @@ class VerifierPass : public ModulePass {
                         if (!curEnv.isUnreachable()) {
                             errs() << "ERROR: Assertion failed\n";
                             printValue(callInst);
-                            curEnv.printEnvironment();
+                            if (!noPrint)
+                                curEnv.printEnvironment();
                             num_errors++;
                         }
                     }
@@ -1262,4 +1287,4 @@ class VerifierPass : public ModulePass {
 };
 
 char VerifierPass::ID = 0;
-static RegisterPass<VerifierPass> X("verifier", "Abstarct Interpretation Verifier Pass", false, true);
+static RegisterPass<VerifierPass> X("verifier", "Abstract Interpretation Verifier Pass", false, true);

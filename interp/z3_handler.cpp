@@ -61,13 +61,13 @@ void Z3Helper::addInferenceRules() {
         // (l,v) \in isLoad && (s1,v) \in isStore && (s2,v) \in isStore &&
         //  (s1,l) \in rf && (s1,s2) \in MHB
         // => (l,s2) \in MHB
-        z3::expr fr1 = z3::forall(inst1, inst2, inst3, var1, 
-                z3::implies(( isLoad(inst1) && isVarOf(inst1, var1) && 
-                    isStore(inst2) && isVarOf(inst2, var1) &&
-                    isStore(inst3) && isVarOf(inst3, var1) &&
-                    rf(inst2, inst1) && mhb(inst2, inst3)), 
-                mhb(inst1, inst3)));
-        zfp.add_rule(fr1, zcontext.str_symbol("FR"));
+        // z3::expr fr1 = z3::forall(inst1, inst2, inst3, var1, 
+        //         z3::implies(( isLoad(inst1) && isVarOf(inst1, var1) && 
+        //             isStore(inst2) && isVarOf(inst2, var1) &&
+        //             isStore(inst3) && isVarOf(inst3, var1) &&
+        //             rf(inst2, inst1) && mhb(inst2, inst3)), 
+        //         mhb(inst1, inst3)));
+        // zfp.add_rule(fr1, zcontext.str_symbol("FR"));
         // cout << "FR" <<endl;
 
         z3::expr nrf1 = z3::forall(inst1, inst2, 
@@ -143,11 +143,11 @@ void Z3Helper::addInferenceRules() {
         // (inst1, var1) \in isVarOf && (inst2, var1) \in isVarOf 
         //  && (inst1, inst2) \in po
         // => (inst1, inst2) \in mhb
-        z3::expr dataDep = z3::forall(inst1, inst2, var1, 
-                z3::implies(isVarOf(inst1, var1) && isVarOf(inst2, var1) && 
-                    po(inst1, inst2),
-                mhb(inst1, inst2)));
-        zfp.add_rule(dataDep, zcontext.str_symbol("Data-Dependence"));
+        // z3::expr dataDep = z3::forall(inst1, inst2, var1, 
+        //         z3::implies(isVarOf(inst1, var1) && isVarOf(inst2, var1) && 
+        //             po(inst1, inst2),
+        //         mhb(inst1, inst2)));
+        // zfp.add_rule(dataDep, zcontext.str_symbol("Data-Dependence"));
 
         // add init (null) as store instruction of all var of all mem-order
         const z3::expr instExpr = getBitVec(nullptr);
