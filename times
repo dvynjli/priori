@@ -1,0 +1,56 @@
+All times are in sec
+
+
+test3
+with added pd 
+
+without added pd (done through z3)
+
+
+
+test12
+with added pd 
+(omp_get_wtime)
+Time taken: 149.436808
+Time taken: 273.334522
+Time taken: 340.290483
+Time taken: 190.700074
+Time taken: 292.738202
+(no foregraound activity)
+Time taken: 199.732856
+Time taken: 233.334489
+Time taken: 317.007430
+Time taken: 189.407683
+Time taken: 188.383119
+without added pd (done through z3)
+Time taken: 262.019573
+Time taken: 362.097113
+Time taken: 268.453964
+Time taken: 298.088684
+Time taken: 298.458499
+without z3 (false positive)
+Time taken: 0.024743
+Time taken: 0.023872
+Time taken: 0.023928
+Time taken: 0.027980
+Time taken: 0.024031
+
+test1
+with added pd
+Time taken: 1.087712e+01
+Time taken: 7.221106e+00
+Time taken: 1.092943e+01
+Time taken: 6.700415e+00
+Time taken: 9.221023e+00
+without added pd (done through z3)
+Time taken: 1.830670e+02
+Time taken: 1.407408e+02
+Time taken: 1.725814e+02
+Time taken: 1.518320e+02
+Time taken: 1.315599e+02
+without z3
+Time taken: 0.026884
+Time taken: 0.024081
+Time taken: 0.024590
+Time taken: 0.024004
+Time taken: 0.027115
