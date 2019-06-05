@@ -38,7 +38,7 @@ class Z3Helper {
 	z3::func_decl rf;
 	z3::func_decl nrf;
 	z3::func_decl po;
-	z3::func_decl mcb;
+	z3::func_decl moc;
 
 	z3::expr getBitVec (void *op);
 	z3::expr getMemOrd(llvm::AtomicOrdering ord);
@@ -74,7 +74,7 @@ public:
 		po (z3::function("PO", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())),
 		// memoryConstraintBefore: can't reorder as per c11 memory ordering constraints
 		// (instr, instr) -> bool
-		mcb (z3::function("MemOrdConstraint", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort()))
+		moc (z3::function("MemConstraintBefore", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort()))
 		{
 			// Z3_fixedpoint_set_params(zcontext, zfp, "datalog");
 			z3::params params(zcontext);
@@ -92,7 +92,7 @@ public:
 			// zfp.register_relation(rf);
 			// zfp.register_relation(nrf);
 			// zfp.register_relation(po);
-			// zfp.register_relation(mcb);
+			// zfp.register_relation(moc);
 		}
 	
 	void initZ3(vector<string> globalVars);

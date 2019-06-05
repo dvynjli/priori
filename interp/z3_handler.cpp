@@ -34,7 +34,7 @@ void Z3Helper::addInferenceRules() {
         zfp.register_relation(rf);
         zfp.register_relation(nrf);
         zfp.register_relation(po);
-        zfp.register_relation(mcb);
+        zfp.register_relation(moc);
         z3::expr inst1 = zcontext.bv_const("inst1", BV_SIZE);
         z3::expr inst2 = zcontext.bv_const("inst2", BV_SIZE);
         z3::expr inst3 = zcontext.bv_const("inst3", BV_SIZE);
@@ -70,19 +70,19 @@ void Z3Helper::addInferenceRules() {
                 nrf(inst1, inst3)));
         zfp.add_rule(nrf2, zcontext.str_symbol("NRF2"));
 
-        // ( (l,op) \in PO && l \in AcqOp) => (l,op) \in MCB
+        // ( (l,op) \in PO && l \in AcqOp) => (l,op) \in moc
         z3::expr acqReordering = z3::forall(inst1, inst2, 
                 z3::implies(po(inst1, inst2) && isLoad(inst1) && 
                     z3::exists(ord1, memOrderOf(inst1, ord1) && ord1>=ACQ),
-                mcb(inst1, inst2)));
+                moc(inst1, inst2)));
         zfp.add_rule(acqReordering, zcontext.str_symbol("Acq-Reordering"));
         // cout << "Acq" << endl;
         
-        // ( (op,s) \in PO && s \in RelOp) => (op,s) \in MCB
+        // ( (op,s) \in PO && s \in RelOp) => (op,s) \in moc
         z3::expr relReordering = z3::forall(inst1, inst2,
                 z3::implies(po(inst1, inst2) && isStore(inst2) && 
                     z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=REL),
-                mcb(inst1, inst2)));
+                moc(inst1, inst2)));
         zfp.add_rule(relReordering, zcontext.str_symbol("Rel-Reordering"));
         // cout << "Rel" << endl;
 
@@ -90,7 +90,7 @@ void Z3Helper::addInferenceRules() {
         // ( s \in RelOp && l \in AcqOp && 
         //   (l,v1) \in IsLoad && (s,v1) \in IsStore && 
         //   (s,l) \in RF &&
-        //   (op1,s) \in MCB && (l,op2) \in MCB)
+        //   (op1,s) \in moc && (l,op2) \in moc)
         // => (op1,op2) \in MHB
         z3::expr_vector xs(zcontext);
         xs.push_back(inst1);
@@ -104,7 +104,7 @@ void Z3Helper::addInferenceRules() {
                     z3::exists(ord1, memOrderOf(inst2, ord1) && ord1>=ACQ) && 
                     isVarOf(inst1, var1) && isVarOf(inst2, var1) &&
                     rf(inst1, inst2) &&
-                    mcb(inst3, inst1) && mcb(inst2, inst4), 
+                    moc(inst3, inst1) && moc(inst2, inst4), 
                 mhb(inst3, inst4)));
         zfp.add_rule(relAcqSeq, zcontext.str_symbol("Rel-Acq-Seq1"));
         // cout << "Rel-acq" << endl;
@@ -113,7 +113,7 @@ void Z3Helper::addInferenceRules() {
         // (s2 \in RelOp && l \in AcqOp &&
         //   (s2,v1) \in isStore && (l,v1) \in isStore && (s1,v1) \in isStore
         //   (s1,l) \in RF && (s2,s1) \in PO &&
-        //   (op1,s2) \in MCB && (l,op2) \in MCB)
+        //   (op1,s2) \in moc && (l,op2) \in moc)
         // => (op1,l) \in MHB
         xs.push_back(inst5);
         z3::expr relAcqSeq2 = z3::forall(xs, 
@@ -122,7 +122,7 @@ void Z3Helper::addInferenceRules() {
                     z3::exists(ord1, memOrderOf(inst3, ord1) && ord1>=REL) &&
                     isVarOf(inst1, var1) && isVarOf(inst2, var1) && isVarOf(inst3, var1) &&
                     rf(inst1, inst2) && po(inst3, inst1) &&
-                    mcb(inst4, inst3) && mcb(inst2, inst5), 
+                    moc(inst4, inst3) && moc(inst2, inst5), 
                 mhb(inst4, inst5)));
         zfp.add_rule(relAcqSeq2, zcontext.str_symbol("Rel-Acq-Seq2"));
 
