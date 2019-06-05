@@ -65,6 +65,9 @@ Q. Can we use event structure style approach to prune interfernces? If needed no
     events can be used.
 A. No. That is a different analysis strategy altogether. Doesn't seem like they can be merged.
 
+Q. Are there invarient generation tools for concurent programs?
+A. huddini (not for concurrent)
+    ???
 
 
 Instructions that need Apron interface-
@@ -88,7 +91,8 @@ TODO:
         dominate rules - not needed
     change pthread to thread
     Interf where rel-acq sync is happening, and read after acq should not read from environment of write before rel,
-        instead it should read from self, since this has already been copied    
+        instead it should read from self, since this has already been copied  
+    complexity of pruning interferce  
 
 Other functionality that might be added
     Race detection on non-atomics - 
