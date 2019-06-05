@@ -160,6 +160,9 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, stri
             ap_interval_t *fromInterval = ap_abstract1_bound_variable(man, &absValue, (ap_var_t)strOp2.c_str());
             ap_linexpr1_set_list(&expr, AP_COEFF_I, fromInterval, strOp1.c_str(), AP_END);
             break;
+        default:
+            fprintf(stderr, "WARNING: unsupported binary operation\n");
+            break;
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
@@ -177,6 +180,9 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, int 
             break;
         case MUL:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp2, strOp1.c_str(), AP_END);
+            break;
+        default:
+            fprintf(stderr, "WARNING: unsupported binary operation\n");
             break;
     }
     // ap_linexpr1_fprint(stderr, &expr);
@@ -197,6 +203,9 @@ void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, string 
         case MUL:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2, AP_END);
             break;
+        default:
+            fprintf(stderr, "WARNING: unsupported binary operation\n");
+            break;
     }
     // ap_linexpr1_fprint(stderr, &expr);
     ap_var_t var = (ap_var_t) strTo.c_str();
@@ -216,6 +225,9 @@ void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, int int
         case MUL:
             ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp1*intOp2, AP_END);
             break;
+        case DIV:
+            ap_linexpr1_set_list(&expr, AP_CST_S_INT, intOp1/intOp2, AP_END);
+            break;            
     }
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
