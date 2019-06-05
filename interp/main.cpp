@@ -11,8 +11,8 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
     cl::values(
         clEnumVal(interval , "use interval domain"),
         clEnumVal(octagon, "use octagon domain")));
-cl::opt<bool> useZ3 ("z3", cl::desc("Enable interferce pruning using Z3"));
-cl::opt<bool> noPrint ("no-print", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> noPrint   ("no-print", cl::desc("Enable interferce pruning using Z3"));
 
 class VerifierPass : public ModulePass {
 
@@ -41,7 +41,7 @@ class VerifierPass : public ModulePass {
         // unsat_core_example1();
         if (!noPrint) {
             errs() << "----DONE----\n";
-            errs() << "Check testcase 7 assertion 2\n";
+            errs() << "Check testcase 7 assertion\n";
         }
         fprintf(stderr, "Time taken: %f\n", time);
     }

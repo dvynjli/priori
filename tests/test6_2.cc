@@ -9,7 +9,6 @@ atomic<int> x,y;
 
 void* fun1(void * arg){
 	y.store(10, memory_order_relaxed);
-	// int a = x.load(memory_order_relaxed);
 	x.store(20, memory_order_release);
 	return NULL;
 }
@@ -23,6 +22,10 @@ void* fun2(void * arg){
 void* fun3(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = y.load(memory_order_relaxed);
+	// (x==20) ==> (y==10) should hold
+	assert(a!=20 || b==10);
+	// (x!=0) ==> (y!=0) should fail
+	assert(a==0 || b!=0);
 	return NULL;
 }
 

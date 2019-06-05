@@ -89,10 +89,25 @@ with z3
 
 without z3
 
-test6
+test6_1
 with z3
 
 without z3
+
+test6_2
+with z3
+Time taken: 39.476128
+Time taken: 60.115296
+Time taken: 43.975417
+Time taken: 54.834422
+Time taken: 42.482684
+without z3
+Time taken: 0.012773
+Time taken: 0.013141
+Time taken: 0.012568
+Time taken: 0.013878
+Time taken: 0.012310
+
 
 test7
 with z3 (correct result for assert1, wrong for assert2)
@@ -107,21 +122,6 @@ Time taken: 0.035926
 Time taken: 0.035913
 Time taken: 0.038486
 Time taken: 0.036860
-
-test7_1
-with z3
-Time taken: 39.476128
-Time taken: 60.115296
-Time taken: 43.975417
-Time taken: 54.834422
-Time taken: 42.482684
-without z3 (assertion caught)
-Time taken: 0.012773
-Time taken: 0.013141
-Time taken: 0.012568
-Time taken: 0.013878
-Time taken: 0.012310
-
 
 test8
 with z3
