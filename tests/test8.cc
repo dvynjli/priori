@@ -14,8 +14,10 @@ void* fun1(void * arg){
 }
 
 void* fun2(void * arg){
-	x.load(memory_order_acquire);
-	y.load(memory_order_relaxed);
+	int a = x.load(memory_order_acquire);
+	int b = y.load(memory_order_relaxed);
+	// a==20 ==> b==10 should hold
+	assert(a!=20 || b==10);
 	return NULL;
 }
 

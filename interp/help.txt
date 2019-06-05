@@ -87,7 +87,8 @@ TODO:
     control structure dependent static analysis
         dominate rules - not needed
     change pthread to thread
-        
+    Interf where rel-acq sync is happening, and read after acq should not read from environment of write before rel,
+        instead it should read from self, since this has already been copied    
 
 Other functionality that might be added
     Race detection on non-atomics - 
@@ -114,7 +115,6 @@ Possible Optimizations:
     try adding mhb rules at static time - check if it reduces the time
     try to remove rel-acq-seq2 rule from z3 by applying the interferce same as isRelSeq in case of relaxed write of same thread 
         need to maintain most recent rel write of a thread as relHeads ???
-
     
     Z3Helper:
         use bit vectors of smaller size
