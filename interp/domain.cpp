@@ -620,9 +620,6 @@ void Environment::applyInterference(
     bool isRelAcqSeq, 
     llvm::Instruction *head=nullptr
 ) {
-    // fprintf(stderr, "Before applying interf:\n");
-    // printEnvironment();
-
     if (isRelAcqSeq) {
         map <REL_HEAD, ApDomain> newEnvironment;
         for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
@@ -649,8 +646,6 @@ void Environment::applyInterference(
             }
         }
     }
-    // fprintf(stderr, "After applying interf:\n");
-    // printEnvironment();
 }
 
 void Environment::joinEnvironment(Environment other) {
@@ -715,14 +710,18 @@ void Environment::printEnvironment() {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         fprintf (stderr, "RelHead:\n");
-        for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
-            fprintf(stderr, "%s: ", it->first.c_str());
-            if (it->second != nullptr)
-                it->second->print(llvm::errs());
-            else fprintf(stderr, "NULL");
-            fprintf(stderr, "\n");
-        }
+        printRelHead(relHead);
         it->second.printApDomain();
+        fprintf(stderr, "\n");
+    }
+}
+
+void Environment::printRelHead(REL_HEAD relHead) {
+    for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
+        fprintf(stderr, "%s: ", it->first.c_str());
+        if (it->second != nullptr)
+            it->second->print(llvm::errs());
+        else fprintf(stderr, "NULL");
         fprintf(stderr, "\n");
     }
 }

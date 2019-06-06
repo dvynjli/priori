@@ -69,6 +69,7 @@ public:
 
 class Environment {
     REL_HEAD initRelHead(vector<string> globalVars);
+    void printRelHead(REL_HEAD relHead);
 public:
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain

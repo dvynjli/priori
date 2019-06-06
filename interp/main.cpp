@@ -28,7 +28,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Value*, string> valueToName;
     Z3Helper zHelper;
 
-    
+
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
         vector<string> globalVars = getGlobalIntVars(M);
@@ -41,9 +41,9 @@ class VerifierPass : public ModulePass {
         // unsat_core_example1();
         if (!noPrint) {
             errs() << "----DONE----\n";
-            errs() << "Check testcase 7 assertion\n";
+            errs() << "Check testcase 7, 12 assertion - same reason\n";
         }
-        fprintf(stderr, "Time taken: %f\n", time);
+        fprintf(stderr, "Time elapsed: %f\n", time);
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -133,7 +133,7 @@ class VerifierPass : public ModulePass {
                         }
                     }
                 }
-                // Push the init to read from self envionment
+                // Push the current context to read from self envionment
                 allStoresForCurLoad.push_back(nullptr);
                 loadsToAllStores[curFunc][load] = allStoresForCurLoad;
             }
@@ -339,7 +339,7 @@ class VerifierPass : public ModulePass {
 
         while (!isFixedPointReached) {
             programState = programStateCurItr;
-            
+
             if (!noPrint) {
                 errs() << "_________________________________________________\n";
                 errs() << "Iteration: " << iterations << "\n";
@@ -1113,7 +1113,7 @@ class VerifierPass : public ModulePass {
                 for (auto it3=stores.begin(); it3!=stores.end(); ++it3) {
                     errs() << "\t";
                     if(*it3) printValue(*it3);
-                    else errs() << "INIT\n";
+                    else errs() << "Thread Local Context\n";
                 }
             }
         }
@@ -1173,7 +1173,7 @@ class VerifierPass : public ModulePass {
                     it3->first->print(errs());
                     errs() << "\n\tStore: ";
                     if (it3->second) it3->second->print(errs());
-                    else errs() << "INIT";
+                    else errs() << "Thread Local Context";
                     errs() << "\n";
                 }
             }
