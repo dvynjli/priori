@@ -13,6 +13,7 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
         clEnumVal(octagon, "use octagon domain")));
 cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interferce pruning using Z3"));
 
 class VerifierPass : public ModulePass {
 
@@ -26,7 +27,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
-    // Z3Helper zHelper;
+    Z3Minimal zHelper;
 
 
     bool runOnModule (Module &M) {
@@ -146,6 +147,7 @@ class VerifierPass : public ModulePass {
     void initThreadDetails(Module &M, vector<string> globalVars) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
+        map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
         vector< pair <string, pair<Instruction*, Instruction*>>> relations;
 
         //find main function
@@ -175,6 +177,7 @@ class VerifierPass : public ModulePass {
             {
                 Instruction *lastGlobalInst=nullptr;
                 map<string, Instruction*> lastGlobalOfVar;
+                map<string, StoreInst*> lastRelWrite;
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
                 {
                     if (CallInst *call = dyn_cast<CallInst>(it)) {
@@ -192,19 +195,19 @@ class VerifierPass : public ModulePass {
                                     // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
                                     // no global instr before thread create in current function (or in newly created thread)
                                     if (lastGlobalInstBeforeCall) {
-                                        // zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                        if (minimalZ3) zHelper.addSB(lastGlobalInstBeforeCall, call);
                                         relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                                     }
                                     if (nextGlobalInstAfterCall) {
-                                        // zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                        if (minimalZ3) zHelper.addSB(call, nextGlobalInstAfterCall);
                                         relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                                     }
                                     if (firstGlobalInstInCalled) {
-                                        // zHelper.addMHB(call, firstGlobalInstInCalled);
+                                        if (minimalZ3) zHelper.addSB(call, firstGlobalInstInCalled);
                                         relations.push_back(make_pair("mhb", make_pair(call, firstGlobalInstInCalled)));
                                     }
                                     if (lastGlobalInst) {
-                                        // zHelper.addPO(lastGlobalInst, call);
+                                        if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
                                         relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                                     }
                                 }
@@ -217,19 +220,19 @@ class VerifierPass : public ModulePass {
                             Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
                             vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
                             if (nextGlobalInstAfterCall) {
-                                // zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                if (minimalZ3) zHelper.addSB(call, nextGlobalInstAfterCall);
                                 relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                             }
                             if (lastGlobalInstBeforeCall) {
-                                // zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                if (minimalZ3) zHelper.addSB(lastGlobalInstBeforeCall, call);
                                 relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                             }
                             for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
-                                // zHelper.addMHB(*it, call);
+                                if (minimalZ3) zHelper.addSB(*it, call);
                                 relations.push_back(make_pair("mhb", make_pair(*it, call)));
                             }
                             if (lastGlobalInst) {
-                                // zHelper.addPO(lastGlobalInst, call);
+                                if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                             }
                         }
@@ -246,14 +249,20 @@ class VerifierPass : public ModulePass {
                         if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
                             destVar = gepOp->getPointerOperand();
                         }
-                        string destVarName = getNameFromValue(destVar);
                         if (dyn_cast<GlobalVariable>(destVar)) {
+                            string destVarName = getNameFromValue(destVar);
                             varToStores[destVarName].insert(storeInst);
+                            if (storeInst->getOrdering() >= llvm::AtomicOrdering::Release) {
+                                lastRelWrite[destVarName] = storeInst;
+                            }
+                            else if (lastRelWrite[destVarName]) {
+                                prevRelWriteOfSameVar[storeInst] = lastRelWrite[destVarName];
+                            }
                             // errs() << "****adding store instr for: ";
                             // printValue(storeInst);
                             // zHelper.addStoreInstr(storeInst);
                             if (lastGlobalInst) {
-                                // zHelper.addPO(lastGlobalInst, storeInst);
+                                if (minimalZ3) zHelper.addSB(lastGlobalInst, storeInst);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, storeInst)));
                             } 
                             // no global operation yet. Add MHB with init
@@ -287,7 +296,7 @@ class VerifierPass : public ModulePass {
                                 // printValue(loadInst);
                                 // zHelper.addLoadInstr(loadInst);
                                 if (lastGlobalInst) {
-                                    // Helper.addPO(lastGlobalInst, loadInst);
+                                    if (minimalZ3) zHelper.addSB(lastGlobalInst, loadInst);
                                     relations.push_back(make_pair("po", make_pair(lastGlobalInst, loadInst)));
                                 }
                                 // no global operation yet. Add MHB with init
@@ -325,8 +334,8 @@ class VerifierPass : public ModulePass {
         //         printValue(it2->first);
         //     }
         // }
-
-        getFeasibleInterferences(allLoads, allStores, relations);
+    
+        getFeasibleInterferences(allLoads, allStores, relations, prevRelWriteOfSameVar);
         // printFeasibleInterf();
     }
 
@@ -989,7 +998,8 @@ class VerifierPass : public ModulePass {
     void getFeasibleInterferences (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores, 
-        vector< pair <string, pair<Instruction*, Instruction*>>> relations
+        vector< pair <string, pair<Instruction*, Instruction*>>> relations, 
+        map<StoreInst*, StoreInst*> prevRelWriteOfSameVar
     ){
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
@@ -1022,11 +1032,20 @@ class VerifierPass : public ModulePass {
             }
             }
         }
-        
+        else if (minimalZ3) {
+            for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
+                vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
+                for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
+                    auto interfs = *interfItr;
+                    if (isFeasibleMinimal(*interfItr, prevRelWriteOfSameVar))
+                        curFuncInterfs.push_back(*interfItr);
+                }
+                feasibleInterfences[funcItr->first] = curFuncInterfs;
+            }
+        }
         else {
             feasibleInterfences = allInterfs;
         }
-        
     }
 
     bool isFeasible (
@@ -1055,6 +1074,50 @@ class VerifierPass : public ModulePass {
         // return true;
     }
 
+    bool isFeasibleMinimal(unordered_map<Instruction*, Instruction*> interfs,
+        map<StoreInst*, StoreInst*> prevRelWriteOfSameVar 
+    ) {
+        for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
+            if (lsPair->second == nullptr)
+                continue;
+            for (auto otherLS=interfs.begin(); otherLS!=interfs.end(); ++otherLS) {
+                // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
+                if (otherLS == lsPair || otherLS->second==nullptr)
+                    continue;
+                // (l --sb--> l')
+                if (zHelper.querySB(lsPair->first, otherLS->first)) {
+                    LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
+                    StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
+                    LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
+                    StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);
+                    auto ordStore = st->getOrdering();
+                    auto ordLoad  = ld->getOrdering();
+                    Value* obj = st->getPointerOperand();
+                    if(GEPOperator *gepOp = dyn_cast<GEPOperator>(obj)){
+                        obj = gepOp->getPointerOperand();
+                    }
+                    Value* obj_prime = st_prime->getPointerOperand();
+                    if(GEPOperator *gepOp = dyn_cast<GEPOperator>(obj_prime)){
+                        obj_prime = gepOp->getPointerOperand();
+                    }
+
+                    if (ordLoad>=llvm::AtomicOrdering::Acquire && ordStore>=llvm::AtomicOrdering::Release) {
+                        if (zHelper.querySB(st_prime, st)) return false;
+                    }
+                    else if (ordLoad >= llvm::AtomicOrdering::Acquire) {
+                        StoreInst *st_pre = prevRelWriteOfSameVar[st];
+                        if (st_pre && st_pre==st_prime) return false;
+                        else if (obj == obj_prime && zHelper.querySB(st_prime, st)) return false;
+                        // TODO: other precond
+                        else if (st_pre && zHelper.querySB(st_prime, st_pre)) return false;
+                    }
+                    else if (obj == obj_prime && zHelper.querySB(st_prime, st)) return false;
+                }
+            }
+        }
+        return true;
+    }
+
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
         unordered_map<Instruction*, Environment> instrToEnvOld,
         unordered_map<Instruction*, Environment> instrToEnvNew
@@ -1075,10 +1138,6 @@ class VerifierPass : public ModulePass {
         }
         
         return instrToEnvNew;
-    }
-
-    bool isFeasibleMinimal() {
-
     }
 
     void checkAssertions() {
@@ -1281,8 +1340,11 @@ class VerifierPass : public ModulePass {
     }
 
     void printValue(Value *val) {
-        val->print(errs());
-        errs() << "\n";
+        if (val!=nullptr) {
+            val->print(errs());
+            errs() << "\n";
+        }
+        else errs() << "nullptr\n";
     }
 
     public:

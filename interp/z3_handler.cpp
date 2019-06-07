@@ -386,6 +386,32 @@ void Z3Helper::testQuery() {
 
 }
 
+
+
+void Z3Minimal::addSB (llvm::Instruction *from, llvm::Instruction *to) {
+    const z3::expr fromExpr = getBitVec(from);
+    const z3::expr toExpr = getBitVec(to);
+    z3::expr app = sb(fromExpr, toExpr);
+    zfp.add_rule(app, zcontext.str_symbol(""));
+    // rules = rules + "\n" +  app.to_string();
+}
+
+bool Z3Minimal::querySB(llvm::Instruction *from, llvm::Instruction *to) {
+    try {
+        z3::expr query = sb(getBitVec(from), getBitVec(to));
+        bool isSB = zfp.query(query);
+        return isSB;
+    } catch (z3::exception e) {
+        cout << "Exception: " << e << endl;
+        exit(0);
+    }
+}
+
+z3::expr Z3Minimal::getBitVec (void *op) {
+    unsigned int ptr = (unsigned int) op;
+    return zcontext.bv_val(ptr, BV_SIZE);
+}
+
 /* void Z3Helper::test_bv_fun() {
     z3::expr int2Expr = zcontext.bv_val(1024, 2);
     z3::expr int4Expr = zcontext.bv_val(1024, 4);

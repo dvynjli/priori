@@ -95,6 +95,8 @@ TODO:
         this will solve assertion in test7
     complexity of pruning interferce
     revise rules as per new understanding of rel-acq and hb, change names as well
+    getting preRelWrie from previous BB
+    copy context of preRelWrie in case of relaxed to acquire sync
 
 Other functionality that might be added
     Race detection on non-atomics - 

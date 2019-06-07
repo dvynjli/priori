@@ -16,7 +16,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 
-#define BV_SIZE (__SIZEOF_POINTER__*8)
+#define BV_SIZE (__SIZEOF_POINTER__*3)
 
 // llvm: NA=0, RLX=2, ACQ=4, REL=5, (ACQ_REL=6), SEQ_CST=7
 enum mem_order {NA, RLX, ACQ, REL, ACQ_REL, SEQ_CST};
@@ -111,6 +111,36 @@ public:
 
 	void testFixedPoint();
 	void testQuery();
+};
+
+class Z3Minimal {
+	z3::context zcontext;
+	z3::fixedpoint zfp;
+	z3::func_decl sb;
+	z3::expr getBitVec (void *op);
+
+	public:
+	Z3Minimal() : 
+		zfp (z3::fixedpoint(zcontext)), 
+		sb (z3::function("SequencesBefore", zcontext.bv_sort(BV_SIZE), zcontext.bv_sort(BV_SIZE), zcontext.bool_sort())) {
+			z3::params params(zcontext);
+			try {
+				params.set("engine", zcontext.str_symbol("datalog"));
+			} catch (z3::exception e) { cout << "Exception: " << e << endl; exit(0);}
+			zfp.register_relation(sb);
+
+			z3::expr inst1 = zcontext.bv_const("inst1", BV_SIZE);
+			z3::expr inst2 = zcontext.bv_const("inst2", BV_SIZE);
+			z3::expr inst3 = zcontext.bv_const("inst3", BV_SIZE);
+			// (s1,s2) in SB && (s2,s3) in SB => (s1,s3) in SB
+			z3::expr transitive_sb = z3::forall(inst1, inst2, inst3, 
+					z3::implies((sb(inst1, inst2) && sb(inst2, inst3)), 
+					sb(inst1, inst3) ));
+			zfp.add_rule(transitive_sb, zcontext.str_symbol("Transitive-SB"));
+		}
+
+	void addSB(llvm::Instruction *from, llvm::Instruction *to);
+	bool querySB(llvm::Instruction *from, llvm::Instruction *to);
 };
 
 #endif
