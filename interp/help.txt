@@ -39,7 +39,7 @@ Q. Query has to be read-from of all threads. How to encode interferences?
 A. Don't need it anymore
 
 Q. In ex T1: x_rel=1; || T2: x_rel=2; || T3: a=Rx_acq; b=Rx_acq , if a reads from T1 and b reads from T3, 
-    what should be the release head aftre b?
+    what should be the release head after b?
 A. The possible options are release head of {T1}, {T2} or {T1, T2}. But whatever option we choose, 
     the environment of both T1 and T2 will be carried to the thread T3. So the computation will be correct.
 
@@ -69,7 +69,6 @@ Q. Are there invarient generation tools for concurent programs?
 A. huddini (not for concurrent)
     ???
 
-
 Instructions that need Apron interface-
     BinOp   +, -, *, /, %, &&, ||, rmw, 
             &, | (can be added later)
@@ -79,6 +78,7 @@ Instructions that need Apron interface-
     Function calls (can be added later)
 Instructions that need Z3 interface-
     thread create, thread join, fences, lock,
+Lazy join of environment (same as Kusano-FSE16)
 
 TODO:
     init local vars with TOP, not zero
@@ -92,7 +92,9 @@ TODO:
     change pthread to thread
     Interf where rel-acq sync is happening, and read after acq should not read from environment of write before rel,
         instead it should read from self, since this has already been copied  
-    complexity of pruning interferce  
+        this will solve assertion in test7
+    complexity of pruning interferce
+    revise rules as per new understanding of rel-acq and hb, change names as well
 
 Other functionality that might be added
     Race detection on non-atomics - 

@@ -26,13 +26,13 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
-    Z3Helper zHelper;
+    // Z3Helper zHelper;
 
 
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
         vector<string> globalVars = getGlobalIntVars(M);
-        zHelper.initZ3(globalVars);
+        // zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
         analyzeProgram(M);
         checkAssertions();
@@ -192,19 +192,19 @@ class VerifierPass : public ModulePass {
                                     // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
                                     // no global instr before thread create in current function (or in newly created thread)
                                     if (lastGlobalInstBeforeCall) {
-                                        zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                        // zHelper.addMHB(lastGlobalInstBeforeCall, call);
                                         relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                                     }
                                     if (nextGlobalInstAfterCall) {
-                                        zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                        // zHelper.addMHB(call, nextGlobalInstAfterCall);
                                         relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                                     }
                                     if (firstGlobalInstInCalled) {
-                                        zHelper.addMHB(call, firstGlobalInstInCalled);
+                                        // zHelper.addMHB(call, firstGlobalInstInCalled);
                                         relations.push_back(make_pair("mhb", make_pair(call, firstGlobalInstInCalled)));
                                     }
                                     if (lastGlobalInst) {
-                                        zHelper.addPO(lastGlobalInst, call);
+                                        // zHelper.addPO(lastGlobalInst, call);
                                         relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                                     }
                                 }
@@ -217,19 +217,19 @@ class VerifierPass : public ModulePass {
                             Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
                             vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
                             if (nextGlobalInstAfterCall) {
-                                zHelper.addMHB(call, nextGlobalInstAfterCall);
+                                // zHelper.addMHB(call, nextGlobalInstAfterCall);
                                 relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                             }
                             if (lastGlobalInstBeforeCall) {
-                                zHelper.addMHB(lastGlobalInstBeforeCall, call);
+                                // zHelper.addMHB(lastGlobalInstBeforeCall, call);
                                 relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                             }
                             for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
-                                zHelper.addMHB(*it, call);
+                                // zHelper.addMHB(*it, call);
                                 relations.push_back(make_pair("mhb", make_pair(*it, call)));
                             }
                             if (lastGlobalInst) {
-                                zHelper.addPO(lastGlobalInst, call);
+                                // zHelper.addPO(lastGlobalInst, call);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                             }
                         }
@@ -1075,6 +1075,10 @@ class VerifierPass : public ModulePass {
         }
         
         return instrToEnvNew;
+    }
+
+    bool isFeasibleMinimal() {
+
     }
 
     void checkAssertions() {
