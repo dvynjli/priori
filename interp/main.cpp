@@ -22,6 +22,7 @@ class VerifierPass : public ModulePass {
         Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
     */
     vector <Function*> threads;
+    map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
     unordered_map <Function*, Environment> funcInitEnv;
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
@@ -147,7 +148,6 @@ class VerifierPass : public ModulePass {
     void initThreadDetails(Module &M, vector<string> globalVars) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
-        map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
         vector< pair <string, pair<Instruction*, Instruction*>>> relations;
 
         //find main function
@@ -335,7 +335,7 @@ class VerifierPass : public ModulePass {
         //     }
         // }
     
-        getFeasibleInterferences(allLoads, allStores, relations, prevRelWriteOfSameVar);
+        getFeasibleInterferences(allLoads, allStores, relations);
         // printFeasibleInterf();
     }
 
@@ -932,17 +932,17 @@ class VerifierPass : public ModulePass {
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
                             auto ordStore = storeInst->getOrdering();
                             auto ordLoad  = loadInst->getOrdering();
-                            if ((ordLoad==llvm::AtomicOrdering::Acquire || 
-                                    ordLoad==llvm::AtomicOrdering::SequentiallyConsistent ||
-                                    ordLoad==llvm::AtomicOrdering::AcquireRelease) && 
-                                    (ordStore==llvm::AtomicOrdering::Release ||
+                            if (ordLoad==llvm::AtomicOrdering::Acquire || 
+                                ordLoad==llvm::AtomicOrdering::SequentiallyConsistent ||
+                                ordLoad==llvm::AtomicOrdering::AcquireRelease) {
+                                if (ordStore==llvm::AtomicOrdering::Release ||
                                     ordStore==llvm::AtomicOrdering::SequentiallyConsistent ||
-                                    ordStore==llvm::AtomicOrdering::AcquireRelease)) {
-                                // Instruction *relHead = interfApDomain.getRelHead(varName);
-                                // if (relHead != nullptr) {
-                                //     curEnv.setRelHead(varName, relHead);
+                                    ordStore==llvm::AtomicOrdering::AcquireRelease) {
                                     isRelSeq = true;
-                                // }
+                                }
+                                else if (prevRelWriteOfSameVar[storeInst]){
+                                    curEnv.carryEnvironment(varName, interfEnv);
+                                }
                             }
                         }
                     }
@@ -998,8 +998,7 @@ class VerifierPass : public ModulePass {
     void getFeasibleInterferences (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores, 
-        vector< pair <string, pair<Instruction*, Instruction*>>> relations, 
-        map<StoreInst*, StoreInst*> prevRelWriteOfSameVar
+        vector< pair <string, pair<Instruction*, Instruction*>>> relations
     ){
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
@@ -1037,7 +1036,7 @@ class VerifierPass : public ModulePass {
                 vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
                 for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
                     auto interfs = *interfItr;
-                    if (isFeasibleMinimal(*interfItr, prevRelWriteOfSameVar))
+                    if (isFeasibleMinimal(*interfItr))
                         curFuncInterfs.push_back(*interfItr);
                 }
                 feasibleInterfences[funcItr->first] = curFuncInterfs;
@@ -1074,9 +1073,7 @@ class VerifierPass : public ModulePass {
         // return true;
     }
 
-    bool isFeasibleMinimal(unordered_map<Instruction*, Instruction*> interfs,
-        map<StoreInst*, StoreInst*> prevRelWriteOfSameVar 
-    ) {
+    bool isFeasibleMinimal(unordered_map<Instruction*, Instruction*> interfs) {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
                 continue;

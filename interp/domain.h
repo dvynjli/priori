@@ -70,7 +70,8 @@ public:
 class Environment {
     REL_HEAD initRelHead(vector<string> globalVars);
     void printRelHead(REL_HEAD relHead);
-public:
+
+    public:
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain
     map <REL_HEAD, ApDomain> environment;
@@ -106,6 +107,7 @@ public:
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
     void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, llvm::Instruction *head=nullptr);
+    void carryEnvironment(string interfVar, Environment fromEnv);
     void joinEnvironment(Environment other);
     void meetEnvironment(Environment other);
     void setVar(string strVar);

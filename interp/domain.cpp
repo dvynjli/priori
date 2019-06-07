@@ -621,23 +621,7 @@ void Environment::applyInterference(
     llvm::Instruction *head=nullptr
 ) {
     if (isRelAcqSeq) {
-        map <REL_HEAD, ApDomain> newEnvironment;
-        for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-            for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
-                REL_HEAD curRelHead(curItr->first);
-                REL_HEAD interfRelHead(interfItr->first);
-                curRelHead[interfVar] = interfRelHead[interfVar];
-                ApDomain newDomain;
-                newDomain.copyApDomain(curItr->second);
-                newDomain.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
-                auto searchRelHead = environment.find(curRelHead);
-                if (searchRelHead != environment.end()) {
-                    newDomain.joinApDomain(searchRelHead->second);
-                }
-                newEnvironment[curRelHead] = newDomain;
-            }
-        }
-        environment = newEnvironment;
+        carryEnvironment(interfVar, fromEnv);
     }
     else {
         for (auto it=environment.begin(); it!=environment.end(); ++it) {
@@ -646,6 +630,26 @@ void Environment::applyInterference(
             }
         }
     }
+}
+
+void Environment::carryEnvironment(string interfVar, Environment fromEnv) {
+    map <REL_HEAD, ApDomain> newEnvironment;
+        for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
+            for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
+                REL_HEAD curRelHead(curItr->first);
+                REL_HEAD interfRelHead(interfItr->first);
+                curRelHead[interfVar] = interfRelHead[interfVar];
+                ApDomain newDomain;
+                newDomain.copyApDomain(curItr->second);
+                newDomain.applyInterference(interfVar, interfItr->second, true);
+                auto searchRelHead = environment.find(curRelHead);
+                if (searchRelHead != environment.end()) {
+                    newDomain.joinApDomain(searchRelHead->second);
+                }
+                newEnvironment[curRelHead] = newDomain;
+            }
+        }
+        environment = newEnvironment;
 }
 
 void Environment::joinEnvironment(Environment other) {
