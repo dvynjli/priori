@@ -21,7 +21,7 @@ void* fun2(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = y.load(memory_order_relaxed);
 	// a==3 => y!=0 should hold
-	assert((a!=3|| b!=0));
+	assert((a!=2|| b!=0));
 	return NULL;
 }
 
