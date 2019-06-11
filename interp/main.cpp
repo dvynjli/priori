@@ -37,13 +37,13 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
         analyzeProgram(M);
-        checkAssertions();
+        // checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
         if (!noPrint) {
             errs() << "----DONE----\n";
-            errs() << "Check testcase 7, 12 assertion - same reason\n";
+            errs() << "Why test16 is working??\n";
         }
         fprintf(stderr, "Time elapsed: %f\n", time);
     }
@@ -516,18 +516,19 @@ class VerifierPass : public ModulePass {
                     curFuncEnv[successors].joinEnvironment(curEnv);
                 }
             }
-            // else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
-            //     if (callInst->getCalledFunction()->getName() == "__assert_fail") {
-            //         // errs() << "*** found assert" << "\n";
-            //         // printValue(callInst);
-            //         if (!curEnv.isUnreachable()) {
-            //             errs() << "ERROR: Assertion failed\n";
-            //             printValue(callInst);
-            //             curEnv.printEnvironment();
-            //             exit(0);
-            //         }
-            //     }
-            // }
+            else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
+                if (callInst->getCalledFunction()->getName() == "__assert_fail") {
+                    // errs() << "*** found assert" << "\n";
+                    // printValue(callInst);
+                    if (!curEnv.isUnreachable()) {
+                        errs() << "__________________________________________________\n";
+                        errs() << "ERROR: Assertion failed\n";
+                        printValue(callInst);
+                        curEnv.printEnvironment();
+                        exit(0);
+                    }
+                }
+            }
             else {
                 
             }
@@ -834,7 +835,7 @@ class VerifierPass : public ModulePass {
             curEnv.changeRelHeadIfNull(destVarName, storeInst);
         }
         else {
-            curEnv.changeRelHeadToNull(destVarName, storeInst);
+            // curEnv.changeRelHeadToNull(destVarName, storeInst);
         }
 
         Value* fromVar = storeInst->getValueOperand();
@@ -851,7 +852,7 @@ class VerifierPass : public ModulePass {
             string fromVarName = getNameFromValue(fromVar);
             curEnv.performUnaryOp(STORE, destVarName, fromVarName);
         }
-
+        // curEnv.printEnvironment();
         return curEnv;
     }
 
@@ -925,7 +926,6 @@ class VerifierPass : public ModulePass {
                     // errs() << "Before Interf:\n";
                     // curEnv.printEnvironment();
 
-                    // TODO: need to set the bool value proplerly
                     Environment interfEnv = searchInterfEnv->second;
                     bool isRelSeq = false;
                     if (StoreInst *storeInst = dyn_cast<StoreInst>(interfInst)) {
@@ -946,7 +946,7 @@ class VerifierPass : public ModulePass {
                             }
                         }
                     }
-                    curEnv.applyInterference(varName, interfEnv, isRelSeq);
+                    curEnv.applyInterference(varName, interfEnv, isRelSeq, zHelper, interfInst);
                 }
             }
         }
@@ -1193,7 +1193,7 @@ class VerifierPass : public ModulePass {
         fun1Env.printEnvironment();
         errs() << "To domain:\n";
         fun2Env.printEnvironment();
-        fun2Env.applyInterference("x", fun1Env, true);
+        fun2Env.applyInterference("x", fun1Env, true, zHelper);
         errs() << "After applying:\n";
         fun2Env.printEnvironment();
     }

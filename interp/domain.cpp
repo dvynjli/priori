@@ -618,13 +618,28 @@ void Environment::applyInterference(
     string interfVar, 
     Environment fromEnv, 
     bool isRelAcqSeq, 
-    llvm::Instruction *head=nullptr
+    Z3Minimal &zHelper, 
+    llvm::Instruction *interfInst=nullptr
 ) {
+    // fprintf(stderr, "Env before applying interf:\n");
+    // printEnvironment();
+
     if (isRelAcqSeq) {
         carryEnvironment(interfVar, fromEnv);
     }
     else {
         for (auto it=environment.begin(); it!=environment.end(); ++it) {
+            REL_HEAD curRelHead = it->first;
+            
+            bool apply = true;
+            for (auto relHeadIt=curRelHead.begin(); relHeadIt!=curRelHead.end(); ++relHeadIt) {
+                if (relHeadIt->second != nullptr && zHelper.querySB(interfInst, relHeadIt->second)) {
+                    apply = false;
+                    break;
+                }
+            }
+            if(!apply) continue;
+
             for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
                 it->second.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
             }

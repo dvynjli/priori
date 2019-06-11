@@ -12,6 +12,8 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "z3_handler.h"
+
 typedef map <string, llvm::Instruction*> REL_HEAD;
 extern llvm::cl::opt<DomainTypes> AbsDomType;
 
@@ -106,7 +108,7 @@ class Environment {
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, llvm::Instruction *head=nullptr);
+    void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr);
     void carryEnvironment(string interfVar, Environment fromEnv);
     void joinEnvironment(Environment other);
     void meetEnvironment(Environment other);
