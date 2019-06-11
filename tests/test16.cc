@@ -37,7 +37,5 @@ int main () {
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
 	pthread_join(t3, NULL);
-	
-	// (a==2 && b==3) ==> (c!=1) should not hold
 	return 0;
 }
