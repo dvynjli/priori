@@ -599,8 +599,7 @@ class VerifierPass : public ModulePass {
             default:
                 if (!noPrint) {
                     errs() << "WARNING: Unknown cmp instruction: ";
-                    cmpInst->print(errs());
-                    errs() << "\n";
+                    printValue(cmpInst);
                 }
                 return curEnv;
         }
@@ -668,13 +667,25 @@ class VerifierPass : public ModulePass {
         Environment fromVar1FalseEnv;
         Environment fromVar2TrueEnv;
         Environment fromVar2FalseEnv;
+        
         if (CmpInst *op1 = dyn_cast<CmpInst>(fromVar1)) {
             auto env = branchEnv[op1];
             fromVar1TrueEnv = env.first;
             fromVar1FalseEnv = env.second;
         }
-        if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)
-        ) {
+        else if (BinaryOperator *op1 = dyn_cast<BinaryOperator>(fromVar1)) {
+            auto oper = op1->getOpcode();
+            if (oper == Instruction::And || oper == Instruction::Or) {
+                auto env = branchEnv[op1];
+                fromVar1TrueEnv = env.first;
+                fromVar1FalseEnv = env.second;
+            }
+        }
+        else {
+            errs() << "ERROR: env not found in branchEnv\n";
+            exit(0);
+        }
+        if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)) {
             auto env = branchEnv[op2];
             fromVar2TrueEnv = env.first;
             fromVar2FalseEnv = env.second;
@@ -690,21 +701,17 @@ class VerifierPass : public ModulePass {
             // errs() << "F2:\n";
             // fromVar2FalseEnv.printEnvironment();
         }
-        if (BinaryOperator *op1 = dyn_cast<BinaryOperator>(fromVar1)) {
-            auto oper = op1->getOpcode();
-            if (oper == Instruction::And || oper == Instruction::Or) {
-                auto env = branchEnv[op1];
-                fromVar1TrueEnv = env.first;
-                fromVar1FalseEnv = env.second;
-            }
-        }
-        if (BinaryOperator *op2 = dyn_cast<BinaryOperator>(fromVar2)) {
+        else if (BinaryOperator *op2 = dyn_cast<BinaryOperator>(fromVar2)) {
             auto oper = op2->getOpcode();
             if (oper == Instruction::And || oper == Instruction::Or) {
                 auto env = branchEnv[op2];
                 fromVar2TrueEnv = env.first;
                 fromVar2FalseEnv = env.second;
             }
+        }
+        else {
+            errs() << "ERROR: env not found in branchEnv\n";
+            exit(0);
         }
 
         // since we are working on -O1, none of the operands can be constant.
@@ -1081,12 +1088,15 @@ class VerifierPass : public ModulePass {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
                     continue;
+                LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
+                StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
+                LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
+                StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);        
                 // (l --sb--> l')
-                if (zHelper.querySB(lsPair->first, otherLS->first)) {
-                    LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
-                    StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
-                    LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
-                    StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);
+                if (zHelper.querySB(ld, ld_prime)) {
+                    // (l --sb--> l' && s = s') reading from local context will give the same result
+                    if (st == st_prime) return false;
+                    
                     auto ordStore = st->getOrdering();
                     auto ordLoad  = ld->getOrdering();
                     Value* obj = st->getPointerOperand();
@@ -1105,7 +1115,6 @@ class VerifierPass : public ModulePass {
                         StoreInst *st_pre = prevRelWriteOfSameVar[st];
                         if (st_pre && st_pre==st_prime) return false;
                         else if (obj == obj_prime && zHelper.querySB(st_prime, st)) return false;
-                        // TODO: other precond
                         else if (st_pre && zHelper.querySB(st_prime, st_pre)) return false;
                     }
                     else if (obj == obj_prime && zHelper.querySB(st_prime, st)) return false;
