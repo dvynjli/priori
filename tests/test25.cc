@@ -27,6 +27,9 @@ void* fun3(void * arg){
 	int c = z.load(memory_order_relaxed);
 	// (x==2 && z==1) ==> (y!=1) should hold
 	assert((a!=2 || c!=1) || b!=1);
+	// (x==2 && z==1) ==> (y!=1) should hold
+	assert((a!=2 || c!=1) || b!=1);
+	
 	return NULL;
 }
 

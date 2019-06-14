@@ -93,10 +93,10 @@ TODO:
     getting preRelWrie from previous BB
     copy context of preRelWrie in case of relaxed to acquire sync
         if need to carry conditionally based on relHead, change carryEnvironment()
-    Why test16 is working?
     Fix error with octagon domain again
-    Fix error in carrying env between BB. check assertion 2 in test17_2
-    Fix test16 by adding one iteration for all store with all relaxed store of other threads
+    Fix error in carrying env between BB. check assertion 2 in test25
+    Fix test21 by adding one iteration for all store with all relaxed store of other threads
+    Fix test28 - check comments in out_faulty
 
 Other functionality that might be added
     Race detection on non-atomics - 
@@ -114,8 +114,6 @@ Possible Optimizations:
     delete from environment if domain is bottom - optimize isUnreachable()
     create interfernce based on data and control dependecies. will result in less z3 queries
         might be also delete data dep rule from z3
-    fix error in testcase 7 assertion 2 - 
-        reason is applying entire environment of interference without considering RelHead if no rel seq is started or continued.
     reduce number of variables
     try reducing number of rules
         this will decrese time of fiexed point computation
