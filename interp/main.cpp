@@ -523,8 +523,10 @@ class VerifierPass : public ModulePass {
                     if (!curEnv.isUnreachable()) {
                         errs() << "__________________________________________________\n";
                         errs() << "ERROR: Assertion failed\n";
-                        printValue(callInst);
-                        curEnv.printEnvironment();
+                        if (!noPrint) {
+                            printValue(callInst);
+                            curEnv.printEnvironment();
+                        }
                         exit(0);
                     }
                 }

@@ -326,7 +326,7 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
                 fprintf(stderr, "ERROR: Interfering variable not in domain. Something went wrong.\n");
                 exit(0);
             }
-            if (it->second) {
+            if (it->second && it->first!=interfVar) {
                 // there has been some event that has initialized the variable. Need to join the environment of this variable
                 ap_abstract1_t tmpValue = ap_abstract1_copy(man, &absValue);
                 
@@ -658,9 +658,9 @@ void Environment::carryEnvironment(string interfVar, Environment fromEnv) {
                 newDomain.copyApDomain(curItr->second);
                 newDomain.applyInterference(interfVar, interfItr->second, true);
                 auto searchRelHead = environment.find(curRelHead);
-                if (searchRelHead != environment.end()) {
-                    newDomain.joinApDomain(searchRelHead->second);
-                }
+                // if (searchRelHead != environment.end()) {
+                //     newDomain.joinApDomain(searchRelHead->second);
+                // }
                 newEnvironment[curRelHead] = newDomain;
             }
         }
