@@ -640,9 +640,14 @@ void Environment::applyInterference(
             }
             if(!apply) continue;
 
+            ApDomain curDomain, tmpDomain;
+            curDomain.copyApDomain(it->second);
             for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-                it->second.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+                tmpDomain.copyApDomain(it->second);
+                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+                curDomain.joinApDomain(tmpDomain);
             }
+            environment[curRelHead] = curDomain;
         }
     }
 }

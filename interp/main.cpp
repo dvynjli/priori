@@ -352,11 +352,12 @@ class VerifierPass : public ModulePass {
             if (!noPrint) {
                 errs() << "_________________________________________________\n";
                 errs() << "Iteration: " << iterations << "\n";
+                // printProgramState();
             }
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
                 if (!noPrint) {
-                    fprintf(stderr, "\n******DEBUG: Analyzing thread %s*****\n", curFunc->getName());
+                    fprintf(stderr, "\n******** DEBUG: Analyzing thread %s ********\n", curFunc->getName());
                 }
 
                 // find feasible interfernce for current function
@@ -398,7 +399,6 @@ class VerifierPass : public ModulePass {
             
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
-            // printProgramState();
         }
         if (!noPrint) {
             errs() << "_________________________________________________\n";
