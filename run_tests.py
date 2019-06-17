@@ -4,7 +4,7 @@ from subprocess import Popen, PIPE
 import subprocess
 import os
 
-domain = 'interval'
+domain = 'interval' 	# options are interval, octagon
 num_tests=28
 # if the test should fail assertion, value of test_result is false]
 test_result = 	[True, True, True, True, True, 

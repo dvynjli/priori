@@ -252,7 +252,9 @@ class VerifierPass : public ModulePass {
                         if (dyn_cast<GlobalVariable>(destVar)) {
                             string destVarName = getNameFromValue(destVar);
                             varToStores[destVarName].insert(storeInst);
-                            if (storeInst->getOrdering() >= llvm::AtomicOrdering::Release) {
+                            if (storeInst->getOrdering() == llvm::AtomicOrdering::Release ||
+                                storeInst->getOrdering() == llvm::AtomicOrdering::AcquireRelease ||
+                                storeInst->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent) {
                                 lastRelWrite[destVarName] = storeInst;
                             }
                             else if (lastRelWrite[destVarName]) {
@@ -1110,10 +1112,17 @@ class VerifierPass : public ModulePass {
                         obj_prime = gepOp->getPointerOperand();
                     }
 
-                    if (ordLoad>=llvm::AtomicOrdering::Acquire && ordStore>=llvm::AtomicOrdering::Release) {
+                    if ((ordLoad == llvm::AtomicOrdering::Acquire ||
+                            ordLoad == llvm::AtomicOrdering::AcquireRelease ||
+                            ordLoad == llvm::AtomicOrdering::SequentiallyConsistent) && 
+                            (ordStore == llvm::AtomicOrdering::Release ||
+                            ordStore == llvm::AtomicOrdering::AcquireRelease ||
+                            ordStore == llvm::AtomicOrdering::SequentiallyConsistent)) {
                         if (zHelper.querySB(st_prime, st)) return false;
                     }
-                    else if (ordLoad >= llvm::AtomicOrdering::Acquire) {
+                    else if (ordLoad == llvm::AtomicOrdering::Acquire ||
+                            ordLoad == llvm::AtomicOrdering::AcquireRelease ||
+                            ordLoad == llvm::AtomicOrdering::SequentiallyConsistent) {
                         StoreInst *st_pre = prevRelWriteOfSameVar[st];
                         if (st_pre && st_pre==st_prime) return false;
                         else if (obj == obj_prime && zHelper.querySB(st_prime, st)) return false;
