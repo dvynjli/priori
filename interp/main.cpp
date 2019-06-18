@@ -43,7 +43,6 @@ class VerifierPass : public ModulePass {
         // unsat_core_example1();
         if (!noPrint) {
             errs() << "----DONE----\n";
-            errs() << "Why test16 is working??\n";
         }
         fprintf(stderr, "Time elapsed: %f\n", time);
     }
