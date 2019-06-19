@@ -21,7 +21,7 @@ void ApDomain::init(vector<string> globalVars, vector<string> functionVars){
     // fprintf(stderr, "var: %s\n", var);
     // DEBUG && fprintf(stderr, "creating top\n");
     absValue = ap_abstract1_top(man, env);
-    assignZerosToAllVars();
+    assignZerosToGlobals(globalVars);
     //initRelHead(globalVars);
     initHasChanged(globalVars);
     // printApDomain();
@@ -43,11 +43,11 @@ void ApDomain::setHasChanged(string var) {
     }
 }
 
-void ApDomain::assignZerosToAllVars() {
+void ApDomain::assignZerosToGlobals(vector<string> globalVars) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
-    for(int i = 0; i< env->intdim; i++) {
-        ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
-        ap_var_t var = ap_environment_var_of_dim(env, i);
+    ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
+    for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
+        ap_var_t var = (ap_var_t) (it->c_str());
         absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     }
 }

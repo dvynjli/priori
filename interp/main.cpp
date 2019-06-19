@@ -37,11 +37,11 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
         analyzeProgram(M);
-        // checkAssertions();
+        checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
-        if (!noPrint) {
+        if (!noPrint) { 
             errs() << "----DONE----\n";
         }
         fprintf(stderr, "Time elapsed: %f\n", time);

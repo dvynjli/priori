@@ -7,3 +7,4 @@ build/*
 *.pdf
 .vscode/**
 out
+exec_mutiple_times.sh

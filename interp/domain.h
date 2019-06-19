@@ -26,7 +26,7 @@ class ApDomain {
     
     ap_manager_t* initApManager();
     ap_environment_t* initEnvironment(vector<string> globalVars, vector<string> functionVars);
-    void assignZerosToAllVars();
+    void assignZerosToGlobals(vector<string> globalVars);
     void initHasChanged(vector<string> globalVars);
     ap_constyp_t getApConsType(operation oper);
     void setHasChanged(string var);
