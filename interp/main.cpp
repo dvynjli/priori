@@ -14,6 +14,8 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
 cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> useRelHead ("useRelHead", cl::desc("Enable interference pruning using Z3 using Release Head based analysis"));
+cl::opt<bool> useMO ("useMO", cl::desc("Enable interference pruning using Z3 using modification order based analysis"));
 
 class VerifierPass : public ModulePass {
 

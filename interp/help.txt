@@ -84,7 +84,6 @@ TODO:
     get load store pairs only ones (from initThreadDetails) - 
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
         with this assertion can be checked and stooped mid-analysis
-        can optimize this
     change pthread to thread
     Fix error with octagon domain again
     Fix error in carrying env between BB. check assertion 2 in test25
@@ -106,18 +105,19 @@ Possible Optimizations:
     create interfernce based on data and control dependecies. will result in less z3 queries
         might be also delete data dep rule from z3
     reduce number of variables
+    ------------ Not applicable anymore --------------------------------
     try reducing number of rules
         this will decrese time of fiexed point computation
         but requires to add more rules to Z3
     try adding mhb rules at static time - check if it reduces the time
     try to remove rel-acq-seq2 rule from z3 by applying the interferce same as isRelSeq in case of relaxed write of same thread 
         need to maintain most recent rel write of a thread as relHeads ???
-    
     Z3Helper:
         use bit vectors of smaller size
         don't init again and again - Won't work since every set of rules and hence their fixedpoints are different.
             need to figure out how to remove rules
             or can use different threads for different queries if z3 and cpp vectors are serializable
+    --------------------------------------------------------------------
 
     parallelization
         checking feasiblity of interfernces with analysis of other thread
