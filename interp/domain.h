@@ -15,6 +15,7 @@
 #include "z3_handler.h"
 
 typedef map <string, llvm::Instruction*> REL_HEAD;
+
 extern llvm::cl::opt<DomainTypes> AbsDomType;
 
 class ApDomain {
@@ -69,56 +70,148 @@ public:
     void printApDomain();
 };
 
-class Environment {
-    REL_HEAD initRelHead(vector<string> globalVars);
-    void printRelHead(REL_HEAD relHead);
 
-    public:
-    // relHead: var -> relHeadInstruction
-    // environment: relHead -> ApDomain
-    map <REL_HEAD, ApDomain> environment;
-    
-    bool operator== (const Environment &other) const;
+
+
+template<typename T>
+class EnvironmentBase {
+public:
+    virtual bool operator== (const T &other) const = 0;
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
-    void init(vector<string> globalVars, vector<string> functionVars);
-    void copyEnvironment(Environment copyFrom);
-    void addRelHead(string var, llvm::Instruction *head);
-    void changeRelHeadIfNull(string var, llvm::Instruction *head);
-    void changeRelHead(string var, llvm::Instruction *head);
-    void changeRelHeadToNull(string var, llvm::Instruction *inst);
+    virtual void init(vector<string> globalVars, vector<string> functionVars) = 0;
+    virtual void copyEnvironment(T copyFrom) = 0;
 
     // Unary Operation
-    void performUnaryOp(operation oper, string strTo, string strOp);
-    void performUnaryOp(operation oper, string strTo, int intOp);
+    virtual void performUnaryOp(operation oper, string strTo, string strOp) = 0;
+    virtual void performUnaryOp(operation oper, string strTo, int intOp) = 0;
     
     // Binary Operations
-    void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
-    void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
-    void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
-    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    virtual void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) = 0;
+    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2) = 0;
+    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2) = 0;
+    virtual void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) = 0;
     
     // Other Operations
     // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
 
     // Cmp Operations
-    void performCmpOp(operation oper, string strOp1, int intOp2);
-    void performCmpOp(operation oper, int intOp1,    string strOp2);
-    void performCmpOp(operation oper, int intOp1,    int intOp2);
-    void performCmpOp(operation oper, string strOp1, string strOp2);
+    virtual void performCmpOp(operation oper, string strOp1, int intOp2) = 0;
+    virtual void performCmpOp(operation oper, int intOp1,    string strOp2) = 0;
+    virtual void performCmpOp(operation oper, int intOp1,    int intOp2) = 0;
+    virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
     
-    void applyInterference(string interfVar, Environment fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr);
-    void carryEnvironment(string interfVar, Environment fromEnv);
-    void joinEnvironment(Environment other);
-    void meetEnvironment(Environment other);
+    virtual void applyInterference(string interfVar, T fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr) = 0;
+    virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
+    virtual void joinEnvironment(T other) = 0;
+    virtual void meetEnvironment(T other) = 0;
+    virtual bool isUnreachable() = 0;
+
+    virtual void printEnvironment() = 0;
+};
+
+
+
+class EnvironmentRelHead : public EnvironmentBase<EnvironmentRelHead> {
+    REL_HEAD initRelHead(vector<string> globalVars);
+    
+    void printRelHead(REL_HEAD relHead);
+    void addRelHead(string var, llvm::Instruction *head);
+    void changeRelHead(string var, llvm::Instruction *head);
     void setVar(string strVar);
     void unsetVar(string strVar);
-    bool isUnreachable();
 
-    void printEnvironment();
+public:
+    // relHead: var -> relHeadInstruction
+    // environment: relHead -> ApDomain
+    map <REL_HEAD, ApDomain> environment;
+
+    void changeRelHeadToNull(string var, llvm::Instruction *inst);
+    void changeRelHeadIfNull(string var, llvm::Instruction *head);
+    
+    virtual bool operator== (const EnvironmentRelHead &other) const;
+    // map <REL_HEAD, ApDomain>::iterator begin();
+    // map <REL_HEAD, ApDomain>::iterator end();
+
+    virtual void init(vector<string> globalVars, vector<string> functionVars);
+    virtual void copyEnvironment(EnvironmentRelHead copyFrom);
+
+    // Unary Operation
+    virtual void performUnaryOp(operation oper, string strTo, string strOp);
+    virtual void performUnaryOp(operation oper, string strTo, int intOp);
+    
+    // Binary Operations
+    virtual void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
+    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
+    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
+    virtual void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    
+    // Other Operations
+    // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
+
+    // Cmp Operations
+    virtual void performCmpOp(operation oper, string strOp1, int intOp2);
+    virtual void performCmpOp(operation oper, int intOp1,    string strOp2);
+    virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
+    virtual void performCmpOp(operation oper, string strOp1, string strOp2);
+    
+    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr);
+    virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
+    virtual void joinEnvironment(EnvironmentRelHead other);
+    virtual void meetEnvironment(EnvironmentRelHead other);
+    virtual bool isUnreachable();
+
+    virtual void printEnvironment();
+};
 
 
+
+class EnvironmentMO : public EnvironmentBase<EnvironmentMO> {
+    REL_HEAD initRelHead(vector<string> globalVars);
+
+    void printRelHead(REL_HEAD relHead);
+public:
+    // relHead: var -> relHeadInstruction
+    // environment: relHead -> ApDomain
+    map <REL_HEAD, ApDomain> environment;
+
+    void changeRelHeadToNull(string var, llvm::Instruction *inst);
+    void changeRelHeadIfNull(string var, llvm::Instruction *head);
+    
+    virtual bool operator== (const EnvironmentMO &other) const;
+    // map <REL_HEAD, ApDomain>::iterator begin();
+    // map <REL_HEAD, ApDomain>::iterator end();
+
+    virtual void init(vector<string> globalVars, vector<string> functionVars);
+    virtual void copyEnvironment(EnvironmentMO copyFrom);
+
+    // Unary Operation
+    virtual void performUnaryOp(operation oper, string strTo, string strOp);
+    virtual void performUnaryOp(operation oper, string strTo, int intOp);
+    
+    // Binary Operations
+    virtual void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
+    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
+    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
+    virtual void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    
+    // Other Operations
+    // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
+
+    // Cmp Operations
+    virtual void performCmpOp(operation oper, string strOp1, int intOp2);
+    virtual void performCmpOp(operation oper, int intOp1,    string strOp2);
+    virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
+    virtual void performCmpOp(operation oper, string strOp1, string strOp2);
+    
+    virtual void applyInterference(string interfVar, EnvironmentMO fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr);
+    virtual void carryEnvironment(string interfVar, EnvironmentMO fromEnv);
+    virtual void joinEnvironment(EnvironmentMO other);
+    virtual void meetEnvironment(EnvironmentMO other);
+    virtual bool isUnreachable();
+
+    virtual void printEnvironment();
 };
 
 #endif

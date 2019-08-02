@@ -23,6 +23,9 @@ class VerifierPass : public ModulePass {
         Vector- interferences of t1 with t1 will be explored in case more than one thread of same func are present
         Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
     */
+    
+    typedef EnvironmentRelHead Environment;
+
     vector <Function*> threads;
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
@@ -360,7 +363,8 @@ class VerifierPass : public ModulePass {
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
                 if (!noPrint) {
-                    fprintf(stderr, "\n******** DEBUG: Analyzing thread %s ********\n", curFunc->getName());
+                    // fprintf(stderr, "\n******** DEBUG: Analyzing thread %s ********\n", curFunc->getName());
+                    errs() << "\n******** DEBUG: Analyzing thread " << curFunc->getName() << "********\n";
                 }
 
                 // find feasible interfernce for current function

@@ -456,19 +456,25 @@ void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstr
 }
 
 
-bool Environment::operator== (const Environment &other) const {
+
+//////////////////////////////////////
+//      class EnvironmentRelHead     
+//////////////////////////////////////
+
+
+bool EnvironmentRelHead::operator== (const EnvironmentRelHead &other) const {
     return environment==other.environment;
 }
 
-// map <REL_HEAD, ApDomain>::iterator Environment::begin() {
+// map <REL_HEAD, ApDomain>::iterator EnvironmentRelHead::begin() {
 //     return begin();
 // }
 
-// map <REL_HEAD, ApDomain>::iterator Environment::end() {
+// map <REL_HEAD, ApDomain>::iterator EnvironmentRelHead::end() {
 //     return end();
 // }
 
-void Environment::init(vector<string> globalVars, vector<string> functionVars){
+void EnvironmentRelHead::init(vector<string> globalVars, vector<string> functionVars){
     REL_HEAD relHead = initRelHead(globalVars);
     ApDomain dom;
     dom.init(globalVars, functionVars);
@@ -477,7 +483,7 @@ void Environment::init(vector<string> globalVars, vector<string> functionVars){
     // printEnvironment();
 }
 
-void Environment::copyEnvironment(Environment copyFrom){
+void EnvironmentRelHead::copyEnvironment(EnvironmentRelHead copyFrom){
     // environment = copyFrom.environment;
     environment.clear();
     for (auto it=copyFrom.environment.begin(); it!=copyFrom.environment.end(); ++it) {
@@ -487,7 +493,7 @@ void Environment::copyEnvironment(Environment copyFrom){
     }
 }
 
-REL_HEAD Environment::initRelHead(vector<string> globalVars) {
+REL_HEAD EnvironmentRelHead::initRelHead(vector<string> globalVars) {
     REL_HEAD relHead;
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
         relHead[(*it)] = nullptr;
@@ -495,11 +501,11 @@ REL_HEAD Environment::initRelHead(vector<string> globalVars) {
     return relHead;
 }
 
-// llvm::Instruction* Environment::getRelHead(string var) {
+// llvm::Instruction* EnvironmentRelHead::getRelHead(string var) {
 //     return relHead[var];
 // }
 
-void Environment::addRelHead(string var, llvm::Instruction *head) {
+void EnvironmentRelHead::addRelHead(string var, llvm::Instruction *head) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
         relHead[var] = head;
@@ -513,7 +519,7 @@ void Environment::addRelHead(string var, llvm::Instruction *head) {
     }
 }
 
-void Environment::changeRelHeadIfNull(string var, llvm::Instruction *head) {
+void EnvironmentRelHead::changeRelHeadIfNull(string var, llvm::Instruction *head) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
@@ -524,7 +530,7 @@ void Environment::changeRelHeadIfNull(string var, llvm::Instruction *head) {
     environment = newEnvironment;
 }
 
-void Environment::changeRelHead(string var, llvm::Instruction *head) {
+void EnvironmentRelHead::changeRelHead(string var, llvm::Instruction *head) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
@@ -534,7 +540,7 @@ void Environment::changeRelHead(string var, llvm::Instruction *head) {
     environment = newEnvironment;
 }
 
-void Environment::changeRelHeadToNull(string var, llvm::Instruction *inst) {
+void EnvironmentRelHead::changeRelHeadToNull(string var, llvm::Instruction *inst) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
@@ -547,76 +553,76 @@ void Environment::changeRelHeadToNull(string var, llvm::Instruction *inst) {
     environment = newEnvironment;
 }
 
-void Environment::performUnaryOp(operation oper, string strTo, string strOp) {
+void EnvironmentRelHead::performUnaryOp(operation oper, string strTo, string strOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performUnaryOp(oper, strTo, strOp);
     }
 }
 
-void Environment::performUnaryOp(operation oper, string strTo, int intOp) {
+void EnvironmentRelHead::performUnaryOp(operation oper, string strTo, int intOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performUnaryOp(oper, strTo, intOp);
     }
 }
 
-void Environment::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
     }
 }
 
-void Environment::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
     }
 }
 
-void Environment::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
     }
 }
 
-void Environment::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
     }
 }
 
 // template <class OP1, class OP2>
-// void Environment::performCmpOp(operation oper, OP1 op1, OP2 op2) {
+// void EnvironmentRelHead::performCmpOp(operation oper, OP1 op1, OP2 op2) {
 //     for (auto it=environment.begin(); it!=environment.end(); ++it) {
 //         it->second.performCmpOp(oper, op1, op2);
 //     }
 // }
 
-void Environment::performCmpOp(operation oper, string strOp1, int intOp2) {
+void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, intOp2);
     }
 }
 
-void Environment::performCmpOp(operation oper, int intOp1, string strOp2) {
+void EnvironmentRelHead::performCmpOp(operation oper, int intOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, strOp2);
     }
 }
 
-void Environment::performCmpOp(operation oper, int intOp1, int intOp2) {
+void EnvironmentRelHead::performCmpOp(operation oper, int intOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, intOp2);
     }
 }
 
-void Environment::performCmpOp(operation oper, string strOp1, string strOp2) {
+void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, strOp2);
     }
 }
 
-void Environment::applyInterference(
+void EnvironmentRelHead::applyInterference(
     string interfVar, 
-    Environment fromEnv, 
+    EnvironmentRelHead fromEnv, 
     bool isRelAcqSeq, 
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr
@@ -652,7 +658,7 @@ void Environment::applyInterference(
     }
 }
 
-void Environment::carryEnvironment(string interfVar, Environment fromEnv) {
+void EnvironmentRelHead::carryEnvironment(string interfVar, EnvironmentRelHead fromEnv) {
     map <REL_HEAD, ApDomain> newEnvironment;
         for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
             for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
@@ -672,7 +678,7 @@ void Environment::carryEnvironment(string interfVar, Environment fromEnv) {
         environment = newEnvironment;
 }
 
-void Environment::joinEnvironment(Environment other) {
+void EnvironmentRelHead::joinEnvironment(EnvironmentRelHead other) {
     for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         ApDomain newDomain;
@@ -689,7 +695,7 @@ void Environment::joinEnvironment(Environment other) {
     }
 }
 
-void Environment::meetEnvironment(Environment other) {
+void EnvironmentRelHead::meetEnvironment(EnvironmentRelHead other) {
     for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         ApDomain newDomain;
@@ -706,19 +712,19 @@ void Environment::meetEnvironment(Environment other) {
     }
 }
 
-void Environment::setVar(string strVar) {
+void EnvironmentRelHead::setVar(string strVar) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.setVar(strVar);
     }
 }
 
-void Environment::unsetVar(string strVar) {
+void EnvironmentRelHead::unsetVar(string strVar) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.unsetVar(strVar);
     }
 }
 
-bool Environment::isUnreachable() {
+bool EnvironmentRelHead::isUnreachable() {
     bool isUnreach = true;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         if (!it->second.isUnreachable()) {
@@ -729,7 +735,7 @@ bool Environment::isUnreachable() {
     return isUnreach;
 }
 
-void Environment::printEnvironment() {
+void EnvironmentRelHead::printEnvironment() {
     fprintf(stderr, "\n--Environment--\n");
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead = it->first;
@@ -740,7 +746,7 @@ void Environment::printEnvironment() {
     }
 }
 
-void Environment::printRelHead(REL_HEAD relHead) {
+void EnvironmentRelHead::printRelHead(REL_HEAD relHead) {
     for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());
         if (it->second != nullptr)
@@ -749,3 +755,220 @@ void Environment::printRelHead(REL_HEAD relHead) {
         fprintf(stderr, "\n");
     }
 }
+
+
+
+//////////////////////////////////////
+//      class EnvironmentMO         //
+//////////////////////////////////////
+bool EnvironmentMO::operator== (const EnvironmentMO &other) const {
+    return environment==other.environment;
+}
+
+
+void EnvironmentMO::init(vector<string> globalVars, vector<string> functionVars){
+    REL_HEAD relHead = initRelHead(globalVars);
+    ApDomain dom;
+    dom.init(globalVars, functionVars);
+    // fprintf(stderr, "dom done. assign to env\n");
+    environment[relHead] = dom;
+    // printEnvironment();
+}
+
+void EnvironmentMO::copyEnvironment(EnvironmentMO copyFrom){
+    // environment = copyFrom.environment;
+    environment.clear();
+    for (auto it=copyFrom.environment.begin(); it!=copyFrom.environment.end(); ++it) {
+        ApDomain newDomain;
+        newDomain.copyApDomain(it->second);
+        environment[it->first]=newDomain;
+    }
+}
+
+void EnvironmentMO::performUnaryOp(operation oper, string strTo, string strOp) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performUnaryOp(oper, strTo, strOp);
+    }
+}
+
+void EnvironmentMO::performUnaryOp(operation oper, string strTo, int intOp) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performUnaryOp(oper, strTo, intOp);
+    }
+}
+
+void EnvironmentMO::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
+    }
+}
+
+void EnvironmentMO::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
+    }
+}
+
+void EnvironmentMO::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
+    }
+}
+
+void EnvironmentMO::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
+    }
+}
+
+void EnvironmentMO::performCmpOp(operation oper, string strOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, strOp1, intOp2);
+    }
+}
+
+void EnvironmentMO::performCmpOp(operation oper, int intOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, intOp1, strOp2);
+    }
+}
+
+void EnvironmentMO::performCmpOp(operation oper, int intOp1, int intOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, intOp1, intOp2);
+    }
+}
+
+void EnvironmentMO::performCmpOp(operation oper, string strOp1, string strOp2) {
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        it->second.performCmpOp(oper, strOp1, strOp2);
+    }
+}
+
+void EnvironmentMO::applyInterference(
+    string interfVar, 
+    EnvironmentMO fromEnv, 
+    bool isRelAcqSeq, 
+    Z3Minimal &zHelper, 
+    llvm::Instruction *interfInst=nullptr
+) {
+    // fprintf(stderr, "Env before applying interf:\n");
+    // printEnvironment();
+
+    if (isRelAcqSeq) {
+        carryEnvironment(interfVar, fromEnv);
+    }
+    else {
+        for (auto it=environment.begin(); it!=environment.end(); ++it) {
+            REL_HEAD curRelHead = it->first;
+            
+            bool apply = true;
+            for (auto relHeadIt=curRelHead.begin(); relHeadIt!=curRelHead.end(); ++relHeadIt) {
+                if (relHeadIt->second != nullptr && zHelper.querySB(interfInst, relHeadIt->second)) {
+                    apply = false;
+                    break;
+                }
+            }
+            if(!apply) continue;
+
+            ApDomain curDomain, tmpDomain;
+            curDomain.copyApDomain(it->second);
+            for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
+                tmpDomain.copyApDomain(it->second);
+                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+                curDomain.joinApDomain(tmpDomain);
+            }
+            environment[curRelHead] = curDomain;
+        }
+    }
+}
+
+void EnvironmentMO::carryEnvironment(string interfVar, EnvironmentMO fromEnv) {
+    map <REL_HEAD, ApDomain> newEnvironment;
+        for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
+            for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
+                REL_HEAD curRelHead(curItr->first);
+                REL_HEAD interfRelHead(interfItr->first);
+                curRelHead[interfVar] = interfRelHead[interfVar];
+                ApDomain newDomain;
+                newDomain.copyApDomain(curItr->second);
+                newDomain.applyInterference(interfVar, interfItr->second, true);
+                auto searchRelHead = environment.find(curRelHead);
+                // if (searchRelHead != environment.end()) {
+                //     newDomain.joinApDomain(searchRelHead->second);
+                // }
+                newEnvironment[curRelHead] = newDomain;
+            }
+        }
+        environment = newEnvironment;
+}
+
+void EnvironmentMO::joinEnvironment(EnvironmentMO other) {
+    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
+        REL_HEAD relHead = it->first;
+        ApDomain newDomain;
+        newDomain.copyApDomain(it->second);
+
+        // if the relHead already exist in the current enviornment,
+        // join it with the existing one
+        // else add it to the current environment
+        auto searchRelHead = environment.find(relHead);
+        if (searchRelHead != environment.end()) {
+            newDomain.joinApDomain(searchRelHead->second);
+        }
+        environment[relHead] = newDomain;
+    }
+}
+
+void EnvironmentMO::meetEnvironment(EnvironmentMO other) {
+    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
+        REL_HEAD relHead = it->first;
+        ApDomain newDomain;
+        newDomain.copyApDomain(it->second);
+
+        // if the relHead already exist in the current enviornment,
+        // meet it with the existing one
+        // else add it to the current environment
+        auto searchRelHead = environment.find(relHead);
+        if (searchRelHead != environment.end()) {
+            newDomain.meetApDomain(searchRelHead->second);
+        }
+        environment[relHead] = newDomain;
+    }
+}
+
+
+bool EnvironmentMO::isUnreachable() {
+    bool isUnreach = true;
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        if (!it->second.isUnreachable()) {
+            isUnreach = false;
+            break;
+        }
+    }
+    return isUnreach;
+}
+
+void EnvironmentMO::printEnvironment() {
+    fprintf(stderr, "\n--Environment--\n");
+    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+        REL_HEAD relHead = it->first;
+        fprintf (stderr, "Modification Order:\n");
+        printRelHead(relHead);
+        it->second.printApDomain();
+        fprintf(stderr, "\n");
+    }
+}
+
+void EnvironmentMO::printRelHead(REL_HEAD relHead) {
+    for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
+        fprintf(stderr, "%s: ", it->first.c_str());
+        if (it->second != nullptr)
+            it->second->print(llvm::errs());
+        else fprintf(stderr, "NULL");
+        fprintf(stderr, "\n");
+    }
+}
+
+
+
