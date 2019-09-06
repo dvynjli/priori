@@ -41,15 +41,16 @@ class VerifierPass : public ModulePass {
         vector<string> globalVars = getGlobalIntVars(M);
         // zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
-        analyzeProgram(M);
-        checkAssertions();
-        double time = omp_get_wtime() - start_time;
-        // testApplyInterf();
-        // unsat_core_example1();
-        if (!noPrint) { 
-            errs() << "----DONE----\n";
-        }
-        fprintf(stderr, "Time elapsed: %f\n", time);
+        testPO();
+        // analyzeProgram(M);
+        // checkAssertions();
+        // double time = omp_get_wtime() - start_time;
+        // // testApplyInterf();
+        // // unsat_core_example1();
+        // if (!noPrint) { 
+        //     errs() << "----DONE----\n";
+        // }
+        // fprintf(stderr, "Time elapsed: %f\n", time);
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -1221,6 +1222,41 @@ class VerifierPass : public ModulePass {
         fun2Env.applyInterference("x", fun1Env, true, zHelper);
         errs() << "After applying:\n";
         fun2Env.printEnvironment();
+    }
+
+    void testPO() {
+        PartialOrder po;
+        errs() << "Adding PO between ";
+        auto p1=prevRelWriteOfSameVar.begin()->first;
+        auto p2=prevRelWriteOfSameVar.begin()->first;
+        auto p3=prevRelWriteOfSameVar.begin()->first;
+        bool first = true, append=true;
+        for (auto it=prevRelWriteOfSameVar.begin(); it!=prevRelWriteOfSameVar.end(); it++) {
+            printValue(it->first);
+            printValue(it->second);
+            errs() << "\n";
+            if (it->first!=nullptr && it->second!=nullptr) {
+                po.addOrder(it->first, it->second);
+                first ? (p1 = it->second) : (first=false, p1= it->first);
+                // break;
+            } 
+            else if (!append) {p3 = ((it->first!=nullptr)?(it->first):(it->second)); append=false;}
+        }
+        errs() << po.toString(); 
+
+        errs() << "make transitive chain\n";
+        errs() << p1 << " order with " << p2 << ": " << po.addOrder(p1,p2) << "\n";
+        errs() << po.toString();    
+
+        errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
+        errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
+
+        errs() << "append " << p3 << ": " << po.append(p3) << "\n";
+        errs() << po.toString();
+
+        errs() << "removing " << p1 << "\n";
+        po.remove(p1);
+        errs() << po.toString();
     }
 
     void printInstToEnvMap(unordered_map<Instruction*, Environment> instToEnvMap) {

@@ -2,6 +2,7 @@
 #define _PO
 
 #include "common.h"
+#include <sstream>
 
 class PartialOrder {
 	// all the instructions ordered after a in partial order are given 

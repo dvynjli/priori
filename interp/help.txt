@@ -87,6 +87,7 @@ TODO:
     change pthread to thread
     Fix error with octagon domain again
     Fix error in carrying env between BB. check assertion 2 in test25
+    convert useRelHead to useMOHead and useMO to useMOPO. make them options 
 
 Other functionality that might be added
     Race detection on non-atomics - 

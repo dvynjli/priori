@@ -12,7 +12,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "z3_handler.h"
-// #include "partial_order.h"
+#include "partial_order.h"
 
 typedef map <string, llvm::Instruction*> REL_HEAD;
 
