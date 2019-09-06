@@ -43,6 +43,9 @@ public:
 	// values of x
 	bool remove(llvm::Instruction* inst);
 
+	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator begin();
+	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator end();
+
 	string toString();
 };
 

@@ -10,7 +10,7 @@ using namespace std;
 atomic<int> x,y;
 
 void* fun1(void * arg){
-	x.store(5, memory_order_relaxed);
+	// x.store(5, memory_order_relaxed);
 	x.store(1, memory_order_release);
 	x.store(2, memory_order_relaxed);
 	return NULL;
