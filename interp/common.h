@@ -6,11 +6,13 @@
 #include <stdlib.h>
 
 #include <unordered_set>
+#include <set>
 #include <queue>
 #include <vector>
 #include <unordered_map> 
 #include <map>
 #include "llvm/Support/CommandLine.h"
+#include "llvm/IR/Instructions.h"
 
 #define DEBUG 1
 
