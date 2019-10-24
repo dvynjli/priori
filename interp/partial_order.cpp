@@ -5,30 +5,48 @@
 // Since partial order can't be cyclic, if (to, from) are already
 // in order, returns false. The behavior might be undefined 
 // in this case. Else add (from, to) and returns true
-bool PartialOrder::addOrder(llvm::Instruction* from, llvm::Instruction* to) {
+bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::Instruction* to) {
 	cout << "addOrder\n";
-	// TODO: check if some inst sequenced before 'from' or 'to' is in
-	// order. If yes, remove the older one.
+	
 	if (isOrderedBefore(from, to)) return true;
+	
+	// Check if some inst sequenced before 'from' or 'to' is in
+	// the order. If yes, remove the older one.
+	// OPT: The check is required only if 'from' or 'to' are not 
+	// in the order already.
+	for (auto it=order.begin(); it!=order.end(); ++it) {
+		llvm::Instruction* inst = it->first;
+		if (zHelper.querySB(inst, to)) remove(inst);
+		if (zHelper.querySB(inst, from)) remove(inst);
+	}
+
 	// find 'to' in ordering
 	auto toItr = order.find(to);
+	// if 'to' does not exist, add an (to,<empty>) in order 
 	if (toItr == order.end()) {
 		set<llvm::Instruction*> emptyset {};
 		order[to] = emptyset;
 	}
+
 	// set transitive ordering from-->to
 	return makeTransitiveOrdering(from, to, toItr);
 }
 
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
-bool PartialOrder::append(llvm::Instruction* inst) {
-	// TODO: check if some inst sequenced before 'inst' in order. 
+bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
+	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
-	if (!order[inst].empty()) return false;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
-		if (it->first != inst) {
-			it->second.insert(inst);
+		if (zHelper.querySB(it->first, newinst)) remove(it->first);
+	}
+
+	// If the 'newinst' is already in the order, it cannot be appended
+	if (!order[newinst].empty()) return false;
+	
+	for (auto it=order.begin(); it!=order.end(); ++it) {
+		if (it->first != newinst) {
+			it->second.insert(newinst);
 		}
 	}
 	return true;
@@ -37,12 +55,12 @@ bool PartialOrder::append(llvm::Instruction* inst) {
 // Joins two partial orders maintaing the ordering relation in both
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
-bool PartialOrder::join(PartialOrder other) {
+bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder other) {
 	cout << "join";
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {
-			if (!addOrder(fromItr->first, *toItr))
+			if (!addOrder(zHelper, fromItr->first, *toItr))
 				return false;
 		}
 	}

@@ -2,6 +2,7 @@
 #define _PO
 
 #include "common.h"
+#include "z3_handler.h"
 #include <sstream>
 
 class PartialOrder {
@@ -21,16 +22,16 @@ public:
 	// Adds (from, to) to order if not already. 
 	// Since partial order can't be cyclic, if (to, from) are already
 	// in order, returns false. Else add (from, to) and returns true
-	bool addOrder(llvm::Instruction* from, llvm::Instruction* to);
+	bool addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::Instruction* to);
 
 	// Adds inst such that Va \in order, (a, inst) \in order.
 	// Returns false if inst \in order and order[inst] != {}
-	bool append(llvm::Instruction* inst);
+	bool append(Z3Minimal &zHelper, llvm::Instruction* inst);
 
 	// Joins two partial orders maintaing the ordering relation in both
 	// If this is not possible (i.e. joining will result in cycle), 
 	// returns false
-	bool join(PartialOrder other);
+	bool join(Z3Minimal &zHelper, PartialOrder other);
 
 	// checks if (inst1, inst2) \in order
 	bool isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* inst2);
