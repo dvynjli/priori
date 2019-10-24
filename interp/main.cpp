@@ -14,8 +14,8 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
 cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interferce pruning using Z3"));
-cl::opt<bool> useRelHead ("useRelHead", cl::desc("Enable interference pruning using Z3 using Release Head based analysis"));
-cl::opt<bool> useMO ("useMO", cl::desc("Enable interference pruning using Z3 using modification order based analysis"));
+cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
+cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
 
 class VerifierPass : public ModulePass {
 
@@ -1236,7 +1236,7 @@ class VerifierPass : public ModulePass {
             printValue(it->second);
             errs() << "\n";
             if (it->first!=nullptr && it->second!=nullptr) {
-                po.addOrder(it->first, it->second);
+                po.addOrder(zHelper, it->first, it->second);
                 first ? (p1 = it->second) : (first=false, p1= it->first);
                 // break;
             } 
@@ -1245,7 +1245,7 @@ class VerifierPass : public ModulePass {
         errs() << po.toString(); 
 
         errs() << "second po\n";
-        errs() << p1 << " order with " << p2 << ": " << po2.addOrder(p1,p2) << "\n";
+        errs() << p1 << " order with " << p2 << ": " << po2.addOrder(zHelper, p1,p2) << "\n";
         errs() << po2.toString();    
 
         errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
@@ -1254,7 +1254,7 @@ class VerifierPass : public ModulePass {
         errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
 
         errs() << "po Join po2\n";
-        errs() << po.join(po2) << "\n";
+        errs() << po.join(zHelper, po2) << "\n";
         errs() << po.toString();
 
         errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
