@@ -6,18 +6,18 @@
 // in order, returns false. The behavior might be undefined 
 // in this case. Else add (from, to) and returns true
 bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::Instruction* to) {
-	cout << "addOrder\n";
+	// cout << "addOrder " << from << "-->" << to << "\n";
 	
 	if (isOrderedBefore(from, to)) return true;
-	
+
 	// Check if some inst sequenced before 'from' or 'to' is in
 	// the order. If yes, remove the older one.
 	// OPT: The check is required only if 'from' or 'to' are not 
 	// in the order already.
-	for (auto it=order.begin(); it!=order.end(); ++it) {
-		llvm::Instruction* inst = it->first;
-		if (zHelper.querySB(inst, to)) remove(inst);
-		if (zHelper.querySB(inst, from)) remove(inst);
+	for (auto it=order.begin(); it!=order.end(); ) {
+		llvm::Instruction* inst = it->first; ++it;
+		if (inst != to && zHelper.querySB(inst, to)) {remove(inst);}
+		if (inst != from && zHelper.querySB(inst, from)) {remove(inst);}
 	}
 
 	// find 'to' in ordering
@@ -56,7 +56,7 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
 bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder other) {
-	cout << "join";
+	cout << "joining\n";
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {

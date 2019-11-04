@@ -1225,49 +1225,55 @@ class VerifierPass : public ModulePass {
     }
 
     void testPO() {
+        /* Test using test32 */
         PartialOrder po, po2;
-        errs() << "Adding PO between ";
         auto p1=prevRelWriteOfSameVar.begin()->first;
         auto p2=prevRelWriteOfSameVar.begin()->first;
-        // auto p3=prevRelWriteOfSameVar.begin()->first;
+        auto p3=prevRelWriteOfSameVar.begin()->first;
         bool first = true, append=true;
         for (auto it=prevRelWriteOfSameVar.begin(); it!=prevRelWriteOfSameVar.end(); it++) {
             printValue(it->first);
             printValue(it->second);
             errs() << "\n";
             if (it->first!=nullptr && it->second!=nullptr) {
+                errs() << "Adding PO between "; printValue(it->first); printValue(it->second);
                 po.addOrder(zHelper, it->first, it->second);
                 first ? (p1 = it->second) : (first=false, p1= it->first);
                 // break;
             } 
-            // else if (!append) {p3 = ((it->first!=nullptr)?(it->first):(it->second)); append=false;}
+            else if (!append) {p3 = ((it->first!=nullptr)?(it->first):(it->second)); append=false;}
         }
-        errs() << po.toString(); 
+        errs() << po.toString() << "\n"; 
 
         errs() << "second po\n";
         errs() << p1 << " order with " << p2 << ": " << po2.addOrder(zHelper, p1,p2) << "\n";
-        errs() << po2.toString();    
+        errs() << po2.toString() << "\n";    
 
         errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
         errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
         errs() << p1 << " isOrderedBefore " << p2 << ": " << po2.isOrderedBefore(p1,p2) << "\n";
         errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
 
-        errs() << "po Join po2\n";
+        errs() << "\npo Join po2\n";
         errs() << po.join(zHelper, po2) << "\n";
-        errs() << po.toString();
+        errs() << po.toString() << "\n";
 
         errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
         errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
         errs() << p1 << " isOrderedBefore " << p2 << ": " << po2.isOrderedBefore(p1,p2) << "\n";
         errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
 
-        // errs() << "append " << p3 << ": " << po.append(p3) << "\n";
-        // errs() << po.toString();
+        errs() << "append " << p2 << ": " << po.append(zHelper, p2) << "\n";
+        errs() << po.toString() << "\n";
 
-        // errs() << "removing " << p1 << "\n";
-        // po.remove(p1);
-        // errs() << po.toString();
+        errs() << "removing " << p1 << "\n";
+        po.remove(p1);
+        errs() << po.toString() << "\n";
+
+        errs() << "Append " << p1 << "again\n";
+        po.append(zHelper, p1);
+        errs() << po.toString() << "\n";
+        
     }
 
     void printInstToEnvMap(unordered_map<Instruction*, Environment> instToEnvMap) {
