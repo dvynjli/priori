@@ -779,7 +779,7 @@ void EnvironmentPOMO::init(vector<string> globalVars, vector<string> functionVar
 POMO EnvironmentPOMO::initPOMO(vector<string> globalVars){
     POMO pomo;
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        pomo[(*it)] = nullptr;
+        pomo[(*it)] = new PartialOrder();
     }
     return pomo;
 }
@@ -979,7 +979,10 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
     for (auto curIt: environment) {
         for (auto otherIt: other) {
             // join the POMOs
-            POMO curPomo = joinPOMO(zHelper, curIt.first, otherIt.first);
+            POMO curPomo;
+            joinPOMO(zHelper, curIt.first, otherIt.first, curPomo);
+            // fprintf(stderr, "CurPOMO:\n");
+            // printPOMO(curPomo);
 
             // meet of ApDomain
             ApDomain newDomain;
@@ -994,6 +997,9 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
             newenvironment[curPomo] = newDomain;
         }
     }
+    environment = newenvironment;
+    // fprintf(stderr, "Env after meet:\n");
+    // printEnvironment();
 }
 
 
@@ -1008,8 +1014,9 @@ bool EnvironmentPOMO::isUnreachable() {
     return isUnreach;
 }
 
-POMO EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2){
-    for (auto it:pomo1) {
+void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO){
+    joinedPOMO = pomo1;
+    for (auto it:joinedPOMO) {
         auto searchPomo2 = pomo2.find(it.first);
         if (searchPomo2 == pomo2.end()) {
             fprintf(stderr, "ERROR: Variable mismatch in POMOs");
@@ -1026,17 +1033,22 @@ void EnvironmentPOMO::printEnvironment() {
         POMO pomo = it->first;
         fprintf (stderr, "Modification Order:\n");
         printPOMO(pomo);
+        // fprintf(stderr, "printing ApDomain\n");
         it->second.printApDomain();
         fprintf(stderr, "\n");
     }
 }
 
 void EnvironmentPOMO::printPOMO(POMO pomo) {
+    // fprintf(stderr, "Printing POMO\n");
     for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());
-        fprintf(stderr, "%s", it->second->toString());
+        if (it->second)
+            fprintf(stderr, "%s", it->second->toString().c_str());
+        else fprintf(stderr, "NULL");
         fprintf(stderr, "\n");
     }
+    // fprintf(stderr, "printing done\n");
 }
 
 map<POMO, ApDomain>::iterator EnvironmentPOMO::begin() {

@@ -57,6 +57,8 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 // returns false
 bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 	cout << "joining\n";
+	// if (order.empty()) cout << "EMPTY\n";
+	// else 
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {
@@ -155,8 +157,10 @@ bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instru
 }
 
 string PartialOrder::toString() {
-	std::stringstream ss; 
+	std::stringstream ss;
 	for (auto itFrom: order){
+		cout << "toString\n" << endl;
+
 		for (auto itTo: itFrom.second) {
 			ss << itFrom.first; 
 			ss << "---->";
@@ -164,6 +168,7 @@ string PartialOrder::toString() {
 			ss << "\n";
 		}
 	}
+	cout << ss.str() << "\n";
 	return ss.str();
 }
 

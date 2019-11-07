@@ -41,7 +41,7 @@ class VerifierPass : public ModulePass {
         vector<string> globalVars = getGlobalIntVars(M);
         // zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
-        testPO();
+        // testPO();
         analyzeProgram(M);
         // checkAssertions();
         // double time = omp_get_wtime() - start_time;
@@ -380,7 +380,7 @@ class VerifierPass : public ModulePass {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
                         unordered_map <Instruction*, Instruction*> interf;
-                        newFuncEnv = analyzeThread(*funcItr, interf);
+                        newFuncEnv = analyzeThread(curFunc, interf);
                         programStateCurItr.emplace(curFunc, newFuncEnv);
                     }
                 }
@@ -546,7 +546,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            // curEnv.printEnvironment();
+            curEnv.printEnvironment();
         }
            
         return curEnv;

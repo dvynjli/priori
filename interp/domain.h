@@ -172,7 +172,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     POMO initPOMO(vector<string> globalVars);
     
     void printPOMO(POMO pomo);
-    POMO joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2);
+    void joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO);
     
     map<POMO, ApDomain>::iterator begin();
 	map<POMO, ApDomain>::iterator end();
