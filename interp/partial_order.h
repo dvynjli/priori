@@ -31,7 +31,7 @@ public:
 	// Joins two partial orders maintaing the ordering relation in both
 	// If this is not possible (i.e. joining will result in cycle), 
 	// returns false
-	bool join(Z3Minimal &zHelper, PartialOrder other);
+	bool join(Z3Minimal &zHelper, PartialOrder &other);
 
 	// checks if (inst1, inst2) \in order
 	bool isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* inst2);
@@ -39,10 +39,20 @@ public:
 	// checks if inst is a part of this partial order
 	bool isExists(llvm::Instruction* inst);
 
+	// checks if the partial order other is consistent with this partial order
+	// Two parial orders are consistent only if Va.Vb (a,b) \in order
+	// (b,a) \notin other.order, or wiseversa
+	bool isConsistent(PartialOrder &other);
+
+	// domain-level feasibility checking
+	bool isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst);
+
 	// Removes inst from the element of the set. It should also remove
 	// all (x, inst) and (inst, x) pair from order for all possible 
 	// values of x
 	bool remove(llvm::Instruction* inst);
+	
+	virtual bool operator== (const PartialOrder &other) const;
 
 	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator begin();
 	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator end();

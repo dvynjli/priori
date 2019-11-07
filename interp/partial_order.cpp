@@ -55,7 +55,7 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 // Joins two partial orders maintaing the ordering relation in both
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
-bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder other) {
+bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 	cout << "joining\n";
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
@@ -69,6 +69,7 @@ bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder other) {
 
 // checks if (inst1, inst2) \in order
 bool PartialOrder::isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* inst2) {
+	if (!isExists(inst1)) return false;
 	auto search = order[inst1].find(inst2);
 	if (search == order[inst1].end()) return false;
 	else return true;
@@ -76,8 +77,39 @@ bool PartialOrder::isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* 
 
 // checks if inst is a part of this partial order
 bool PartialOrder::isExists(llvm::Instruction* inst) {
-
+	auto search = order.find(inst);
+	if (search == order.end()) return false;
+	else return true;
 }
+
+// checks if the partial order other is consistent with this partial order
+// Two parial orders are consistent only if  Va.Vb (a,b) \in order 
+// (b,a) \notin other.order, or viceversa
+bool PartialOrder::isConsistent(PartialOrder &other) {
+	for (auto itFrom:other) {
+		for (auto itTo:itFrom.second) {
+			// if ordering is conistent 
+			if (isOrderedBefore(itTo, itFrom.first)) return false;
+		}
+	}
+
+	return true;
+}
+
+
+// domain-level feasibility checking
+bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst) {
+	// curInst should not be ordered before any inst in interferring domain
+	for (auto it:other) {
+		if (zHelper.querySB(curInst, it.first)) return false;
+	}
+	// interfInst should not be ordered before any inst in current domain
+	for (auto it:order) {
+		if (zHelper.querySB(interfInst, it.first)) return false;
+	}
+	return true;
+}
+
 
 // Removes inst from the element of the set. It should also remove
 // all (x, inst) and (inst, x) pair from order for all possible 
@@ -133,6 +165,10 @@ string PartialOrder::toString() {
 		}
 	}
 	return ss.str();
+}
+
+bool PartialOrder::operator==(const PartialOrder &other) const {
+	return order == other.order;
 }
 
 map<llvm::Instruction*, set<llvm::Instruction*>>::iterator PartialOrder::begin() {
