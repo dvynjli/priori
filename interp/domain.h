@@ -15,6 +15,7 @@
 #include "partial_order.h"
 
 typedef map <string, llvm::Instruction*> REL_HEAD;
+typedef map <string, PartialOrder*> POMO;
 
 extern llvm::cl::opt<DomainTypes> AbsDomType;
 
@@ -59,7 +60,7 @@ public:
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSeq);
+    void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSync);
     void joinApDomain(ApDomain other);
     void meetApDomain(ApDomain other);
     void setVar(string strVar);
@@ -102,7 +103,7 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2) = 0;
     virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
     
-    virtual void applyInterference(string interfVar, T fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr) = 0;
+    virtual void applyInterference(string interfVar, T fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
     virtual void meetEnvironment(T other) = 0;
@@ -156,7 +157,7 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr);
+    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
     virtual void joinEnvironment(EnvironmentRelHead other);
     virtual void meetEnvironment(EnvironmentRelHead other);
@@ -167,24 +168,27 @@ public:
 
 
 
-class EnvironmentMO : public EnvironmentBase<EnvironmentMO> {
-    REL_HEAD initRelHead(vector<string> globalVars);
+class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
+    POMO initPOMO(vector<string> globalVars);
+    
+    void printPOMO(POMO pomo);
+    map<POMO, ApDomain>::iterator begin();
+	map<POMO, ApDomain>::iterator end();
 
-    void printRelHead(REL_HEAD relHead);
 public:
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain
-    map <REL_HEAD, ApDomain> environment;
+    map <POMO, ApDomain> environment;
 
-    void changeRelHeadToNull(string var, llvm::Instruction *inst);
-    void changeRelHeadIfNull(string var, llvm::Instruction *head);
+    // void changeRelHeadToNull(string var, llvm::Instruction *inst);
+    // void changeRelHeadIfNull(string var, llvm::Instruction *head);
     
-    virtual bool operator== (const EnvironmentMO &other) const;
+    virtual bool operator== (const EnvironmentPOMO &other) const;
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
     virtual void init(vector<string> globalVars, vector<string> functionVars);
-    virtual void copyEnvironment(EnvironmentMO copyFrom);
+    virtual void copyEnvironment(EnvironmentPOMO copyFrom);
 
     // Unary Operation
     virtual void performUnaryOp(operation oper, string strTo, string strOp);
@@ -205,10 +209,10 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    virtual void applyInterference(string interfVar, EnvironmentMO fromEnv, bool isRelAcqSeq, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr);
-    virtual void carryEnvironment(string interfVar, EnvironmentMO fromEnv);
-    virtual void joinEnvironment(EnvironmentMO other);
-    virtual void meetEnvironment(EnvironmentMO other);
+    virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
+    virtual void carryEnvironment(string interfVar, EnvironmentPOMO fromEnv);
+    virtual void joinEnvironment(EnvironmentPOMO other);
+    virtual void meetEnvironment(EnvironmentPOMO other);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();

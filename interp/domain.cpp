@@ -315,11 +315,11 @@ void ApDomain::printApDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
 }
 
-void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSeq) {
+void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSync) {
     // If this is a part of release-acquire sequence, copy the values of all the global vars,
     // else only the variable for which interference is 
     ap_var_t apInterVar;
-    if (isRelAcqSeq) {
+    if (isRelAcqSync) {
         for (auto it=hasChanged.begin(); it!=hasChanged.end(); ++it) {
             apInterVar = (ap_var_t) it->first.c_str();
             if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
@@ -623,14 +623,15 @@ void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strO
 void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
-    bool isRelAcqSeq, 
+    bool isRelAcqSync, 
     Z3Minimal &zHelper, 
-    llvm::Instruction *interfInst=nullptr
+    llvm::Instruction *interfInst=nullptr, 
+    llvm::Instruction *curInst=nullptr
 ) {
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
 
-    if (isRelAcqSeq) {
+    if (isRelAcqSync) {
         carryEnvironment(interfVar, fromEnv);
     }
     else {
@@ -650,7 +651,7 @@ void EnvironmentRelHead::applyInterference(
             curDomain.copyApDomain(it->second);
             for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
                 tmpDomain.copyApDomain(it->second);
-                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSync);
                 curDomain.joinApDomain(tmpDomain);
             }
             environment[curRelHead] = curDomain;
@@ -759,23 +760,31 @@ void EnvironmentRelHead::printRelHead(REL_HEAD relHead) {
 
 
 //////////////////////////////////////
-//      class EnvironmentMO         //
+//      class EnvironmentPOMO         //
 //////////////////////////////////////
-bool EnvironmentMO::operator== (const EnvironmentMO &other) const {
+bool EnvironmentPOMO::operator== (const EnvironmentPOMO &other) const {
     return environment==other.environment;
 }
 
 
-void EnvironmentMO::init(vector<string> globalVars, vector<string> functionVars){
-    REL_HEAD relHead = initRelHead(globalVars);
+void EnvironmentPOMO::init(vector<string> globalVars, vector<string> functionVars){
+    POMO pomo = initPOMO(globalVars);
     ApDomain dom;
     dom.init(globalVars, functionVars);
     // fprintf(stderr, "dom done. assign to env\n");
-    environment[relHead] = dom;
+    environment[pomo] = dom;
     // printEnvironment();
 }
 
-void EnvironmentMO::copyEnvironment(EnvironmentMO copyFrom){
+POMO EnvironmentPOMO::initPOMO(vector<string> globalVars){
+    POMO pomo;
+    for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
+        pomo[(*it)] = nullptr;
+    }
+    return pomo;
+}
+
+void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO copyFrom){
     // environment = copyFrom.environment;
     environment.clear();
     for (auto it=copyFrom.environment.begin(); it!=copyFrom.environment.end(); ++it) {
@@ -785,85 +794,129 @@ void EnvironmentMO::copyEnvironment(EnvironmentMO copyFrom){
     }
 }
 
-void EnvironmentMO::performUnaryOp(operation oper, string strTo, string strOp) {
+void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, string strOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performUnaryOp(oper, strTo, strOp);
     }
 }
 
-void EnvironmentMO::performUnaryOp(operation oper, string strTo, int intOp) {
+void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, int intOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performUnaryOp(oper, strTo, intOp);
     }
 }
 
-void EnvironmentMO::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
     }
 }
 
-void EnvironmentMO::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
     }
 }
 
-void EnvironmentMO::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
     }
 }
 
-void EnvironmentMO::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
     }
 }
 
-void EnvironmentMO::performCmpOp(operation oper, string strOp1, int intOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, intOp2);
     }
 }
 
-void EnvironmentMO::performCmpOp(operation oper, int intOp1, string strOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, int intOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, strOp2);
     }
 }
 
-void EnvironmentMO::performCmpOp(operation oper, int intOp1, int intOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, int intOp1, int intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, intOp2);
     }
 }
 
-void EnvironmentMO::performCmpOp(operation oper, string strOp1, string strOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, strOp2);
     }
 }
 
-void EnvironmentMO::applyInterference(
+void EnvironmentPOMO::applyInterference(
     string interfVar, 
-    EnvironmentMO fromEnv, 
-    bool isRelAcqSeq, 
+    EnvironmentPOMO fromEnv, 
+    bool isRelAcqSync, 
     Z3Minimal &zHelper, 
-    llvm::Instruction *interfInst=nullptr
+    llvm::Instruction *interfInst=nullptr,
+    llvm::Instruction *curInst=nullptr
 ) {
-    // fprintf(stderr, "Env before applying interf:\n");
-    // printEnvironment();
+    fprintf(stderr, "Env before applying interf:\n");
+    printEnvironment();
 
-    if (isRelAcqSeq) {
+    // We are assuming RA. Hence everything is RelAcqSync
+    if (isRelAcqSync) {
         carryEnvironment(interfVar, fromEnv);
+        for (auto curIt:environment) {
+            for (auto interfIt:fromEnv) {
+                POMO curpomo = curIt.first;
+                POMO interfpomo = interfIt.first;
+                
+                // check if POMO are conssistent for all variables
+                bool apply = true;
+                for (auto varIt:curpomo) {
+                    auto searchInterfPomo = interfpomo.find(varIt.first);
+                    if (searchInterfPomo == interfpomo.end()) {
+                        fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+                        exit(0);
+                    }
+                    if (!varIt.second->isConsistent(*(searchInterfPomo->second))) apply=false;
+                    // check domain-level feasibility 
+                    if(!varIt.second->isFeasible(zHelper, *(searchInterfPomo->second), interfInst, curInst)) apply=false; 
+                }
+
+                if (apply) {
+                    // merge the two partial orders
+                    for (auto varIt: curpomo) {
+                        auto searchInterfPomo = interfpomo.find(varIt.first);
+                        if (searchInterfPomo == interfpomo.end()) {
+                            fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+                            exit(0);
+                        }
+                        // join the two partial orders
+                        varIt.second->join(zHelper, *(searchInterfPomo->second));
+                        // for interfVar, add the store intruction in the end
+                        if (varIt.first == interfVar) {   
+                            varIt.second->append(zHelper, interfInst);
+                        }
+                    }
+                    // create new ApDomain for this POMO
+                    ApDomain curDomain, tmpDomain;
+                    curDomain.copyApDomain(curIt.second);
+                    tmpDomain.applyInterference(interfVar, interfIt.second, isRelAcqSync);
+                    environment[curIt.first] = curDomain;
+                }
+            }
+        }
     }
     else {
-        for (auto it=environment.begin(); it!=environment.end(); ++it) {
-            REL_HEAD curRelHead = it->first;
+        // Need to fill this to add supposrt for models other than RA
+        /* for (auto it=environment.begin(); it!=environment.end(); ++it) {
+            POMO curPomo = it->first;
             
             bool apply = true;
-            for (auto relHeadIt=curRelHead.begin(); relHeadIt!=curRelHead.end(); ++relHeadIt) {
+            for (auto pomoIt=curPomo.begin(); pomoIt!=curPomo.end(); ++pomoIt) {
                 if (relHeadIt->second != nullptr && zHelper.querySB(interfInst, relHeadIt->second)) {
                     apply = false;
                     break;
@@ -875,16 +928,16 @@ void EnvironmentMO::applyInterference(
             curDomain.copyApDomain(it->second);
             for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
                 tmpDomain.copyApDomain(it->second);
-                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSeq);
+                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSync);
                 curDomain.joinApDomain(tmpDomain);
             }
             environment[curRelHead] = curDomain;
-        }
+        } */
     }
 }
 
-void EnvironmentMO::carryEnvironment(string interfVar, EnvironmentMO fromEnv) {
-    map <REL_HEAD, ApDomain> newEnvironment;
+void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO fromEnv) {
+    /* map <REL_HEAD, ApDomain> newEnvironment;
         for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
             for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
                 REL_HEAD curRelHead(curItr->first);
@@ -900,11 +953,11 @@ void EnvironmentMO::carryEnvironment(string interfVar, EnvironmentMO fromEnv) {
                 newEnvironment[curRelHead] = newDomain;
             }
         }
-        environment = newEnvironment;
+        environment = newEnvironment; */
 }
 
-void EnvironmentMO::joinEnvironment(EnvironmentMO other) {
-    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
+void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
+    /* for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         ApDomain newDomain;
         newDomain.copyApDomain(it->second);
@@ -917,11 +970,11 @@ void EnvironmentMO::joinEnvironment(EnvironmentMO other) {
             newDomain.joinApDomain(searchRelHead->second);
         }
         environment[relHead] = newDomain;
-    }
+    } */
 }
 
-void EnvironmentMO::meetEnvironment(EnvironmentMO other) {
-    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
+void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO other) {
+    /* for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         ApDomain newDomain;
         newDomain.copyApDomain(it->second);
@@ -934,40 +987,46 @@ void EnvironmentMO::meetEnvironment(EnvironmentMO other) {
             newDomain.meetApDomain(searchRelHead->second);
         }
         environment[relHead] = newDomain;
-    }
+    } */
 }
 
 
-bool EnvironmentMO::isUnreachable() {
+bool EnvironmentPOMO::isUnreachable() {
     bool isUnreach = true;
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
+    /* for (auto it=environment.begin(); it!=environment.end(); ++it) {
         if (!it->second.isUnreachable()) {
             isUnreach = false;
             break;
         }
-    }
+    } */
     return isUnreach;
 }
 
-void EnvironmentMO::printEnvironment() {
+void EnvironmentPOMO::printEnvironment() {
     fprintf(stderr, "\n--Environment--\n");
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        REL_HEAD relHead = it->first;
+        POMO pomo = it->first;
         fprintf (stderr, "Modification Order:\n");
-        printRelHead(relHead);
+        printPOMO(pomo);
         it->second.printApDomain();
         fprintf(stderr, "\n");
     }
 }
 
-void EnvironmentMO::printRelHead(REL_HEAD relHead) {
-    for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
+void EnvironmentPOMO::printPOMO(POMO pomo) {
+    for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());
-        if (it->second != nullptr)
-            it->second->print(llvm::errs());
-        else fprintf(stderr, "NULL");
+        fprintf(stderr, "%s", it->second->toString());
         fprintf(stderr, "\n");
     }
+}
+
+map<POMO, ApDomain>::iterator EnvironmentPOMO::begin() {
+	return environment.begin();
+}
+
+map<POMO, ApDomain>::iterator EnvironmentPOMO::end() {
+	return environment.end();
 }
 
 
