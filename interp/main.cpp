@@ -24,7 +24,7 @@ class VerifierPass : public ModulePass {
         Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
     */
     
-    typedef EnvironmentRelHead Environment;
+    typedef EnvironmentPOMO Environment;
 
     vector <Function*> threads;
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
@@ -42,7 +42,7 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M, globalVars);
         testPO();
-        // analyzeProgram(M);
+        analyzeProgram(M);
         // checkAssertions();
         // double time = omp_get_wtime() - start_time;
         // // testApplyInterf();
@@ -404,8 +404,8 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
-            
-            isFixedPointReached = isFixedPoint(programStateCurItr);
+            isFixedPointReached = true;
+            // isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
         }
         if (!noPrint) {
@@ -724,7 +724,7 @@ class VerifierPass : public ModulePass {
             exit(0);
         }
 
-        // since we are working on -O1, none of the operands can be constant.
+        // since we are working with -O1, none of the operands can be constant.
         // string fromVar1Name = getNameFromValue(fromVar1);
         // string fromVar2Name = getNameFromValue(fromVar2);
 
@@ -734,7 +734,7 @@ class VerifierPass : public ModulePass {
         trueBranchEnv.copyEnvironment(fromVar1TrueEnv);
         falseBranchEnv.copyEnvironment(fromVar1FalseEnv);
         if (oper == Instruction::And) {
-            trueBranchEnv.meetEnvironment(fromVar2TrueEnv);
+            trueBranchEnv.meetEnvironment(zHelper, fromVar2TrueEnv);
             falseBranchEnv.joinEnvironment(fromVar2FalseEnv);
         }
 
@@ -763,7 +763,7 @@ class VerifierPass : public ModulePass {
             // errs() << "F2 meet F1:\n";
             // fromVar2FalseEnv.printEnvironment();
             //-//
-            falseBranchEnv.meetEnvironment(fromVar2FalseEnv);
+            falseBranchEnv.meetEnvironment(zHelper, fromVar2FalseEnv);
             // errs() << "F1 meet F2:\n";
             // falseBranchEnv.printEnvironment();
         }
@@ -849,7 +849,7 @@ class VerifierPass : public ModulePass {
             ord==llvm::AtomicOrdering::AcquireRelease) {
             // if (curEnv.getRelHead(destVarName) == nullptr)
             //     curEnv.setRelHead(destVarName, storeInst);
-            curEnv.changeRelHeadIfNull(destVarName, storeInst);
+            // curEnv.changeRelHeadIfNull(destVarName, storeInst);
         }
         else {
             // curEnv.changeRelHeadToNull(destVarName, storeInst);

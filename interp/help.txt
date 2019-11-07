@@ -88,11 +88,12 @@ TODO:
     Fix error with octagon domain again
     Fix error in carrying env between BB. check assertion 2 in test25
     See if zHelper is required in join and append
+    Change POMO applyInterf to join ApDomain acc to POMO
 
 Other functionality that might be added
     Race detection on non-atomics - 
         if a non aomic load can read from more than one writes
-        can be done at the time of interference feasibl=ility checking
+        can be done at the time of interference feasiblility checking
     creation of more than one thread of a function
         need to change the MHB adding for thread create
 

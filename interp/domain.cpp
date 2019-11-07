@@ -696,7 +696,7 @@ void EnvironmentRelHead::joinEnvironment(EnvironmentRelHead other) {
     }
 }
 
-void EnvironmentRelHead::meetEnvironment(EnvironmentRelHead other) {
+void EnvironmentRelHead::meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other) {
     for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
         REL_HEAD relHead = it->first;
         ApDomain newDomain;
@@ -957,49 +957,67 @@ void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO fromEnv
 }
 
 void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
-    /* for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
-        REL_HEAD relHead = it->first;
+    for (auto it=other.begin(); it!=other.end(); ++it) {
+        POMO pomo = it->first;
         ApDomain newDomain;
         newDomain.copyApDomain(it->second);
 
-        // if the relHead already exist in the current enviornment,
+        // if the pomo already exist in the current enviornment,
         // join it with the existing one
         // else add it to the current environment
-        auto searchRelHead = environment.find(relHead);
-        if (searchRelHead != environment.end()) {
-            newDomain.joinApDomain(searchRelHead->second);
+        auto searchPomo = environment.find(pomo);
+        if (searchPomo != environment.end()) {
+            newDomain.joinApDomain(searchPomo->second);
         }
-        environment[relHead] = newDomain;
-    } */
+        environment[pomo] = newDomain;
+    }
 }
+// Used for logical intructions
+void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other) {
+    map <POMO, ApDomain> newenvironment;
 
-void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO other) {
-    /* for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
-        REL_HEAD relHead = it->first;
-        ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
+    for (auto curIt: environment) {
+        for (auto otherIt: other) {
+            // join the POMOs
+            POMO curPomo = joinPOMO(zHelper, curIt.first, otherIt.first);
 
-        // if the relHead already exist in the current enviornment,
-        // meet it with the existing one
-        // else add it to the current environment
-        auto searchRelHead = environment.find(relHead);
-        if (searchRelHead != environment.end()) {
-            newDomain.meetApDomain(searchRelHead->second);
+            // meet of ApDomain
+            ApDomain newDomain;
+            newDomain.copyApDomain(curIt.second);
+            newDomain.meetApDomain(otherIt.second);
+
+            // if curPOMO alread exist join the newDomain with existing one
+            auto searchPomo = environment.find(curPomo);
+            if (searchPomo != environment.end()) {
+                newDomain.joinApDomain(searchPomo->second);
+            }
+            newenvironment[curPomo] = newDomain;
         }
-        environment[relHead] = newDomain;
-    } */
+    }
 }
 
 
 bool EnvironmentPOMO::isUnreachable() {
     bool isUnreach = true;
-    /* for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        if (!it->second.isUnreachable()) {
+    for (auto it:environment) {
+        if (!it.second.isUnreachable()) {
             isUnreach = false;
             break;
         }
-    } */
+    }
     return isUnreach;
+}
+
+POMO EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2){
+    for (auto it:pomo1) {
+        auto searchPomo2 = pomo2.find(it.first);
+        if (searchPomo2 == pomo2.end()) {
+            fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+            exit(0);
+        }
+        // join the two partial orders
+        it.second->join(zHelper, *(searchPomo2->second));
+    }
 }
 
 void EnvironmentPOMO::printEnvironment() {

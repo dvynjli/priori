@@ -106,7 +106,7 @@ public:
     virtual void applyInterference(string interfVar, T fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
-    virtual void meetEnvironment(T other) = 0;
+    virtual void meetEnvironment(Z3Minimal &zHelper, T other) = 0;
     virtual bool isUnreachable() = 0;
 
     virtual void printEnvironment() = 0;
@@ -120,8 +120,6 @@ class EnvironmentRelHead : public EnvironmentBase<EnvironmentRelHead> {
     void printRelHead(REL_HEAD relHead);
     void addRelHead(string var, llvm::Instruction *head);
     void changeRelHead(string var, llvm::Instruction *head);
-    void setVar(string strVar);
-    void unsetVar(string strVar);
 
 public:
     // relHead: var -> relHeadInstruction
@@ -160,7 +158,9 @@ public:
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
     virtual void joinEnvironment(EnvironmentRelHead other);
-    virtual void meetEnvironment(EnvironmentRelHead other);
+    virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other);
+    void setVar(string strVar);
+    void unsetVar(string strVar);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();
@@ -172,6 +172,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     POMO initPOMO(vector<string> globalVars);
     
     void printPOMO(POMO pomo);
+    POMO joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2);
+    
     map<POMO, ApDomain>::iterator begin();
 	map<POMO, ApDomain>::iterator end();
 
@@ -212,7 +214,7 @@ public:
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentPOMO fromEnv);
     virtual void joinEnvironment(EnvironmentPOMO other);
-    virtual void meetEnvironment(EnvironmentPOMO other);
+    virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();
