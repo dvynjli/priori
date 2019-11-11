@@ -157,6 +157,10 @@ bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instru
 	return true;
 }
 
+void PartialOrder::copy (const PartialOrder &copyFrom) {
+	order = copyFrom.order;
+}
+
 string PartialOrder::toString() {
 	std::stringstream ss;
 	for (auto itFrom: order){

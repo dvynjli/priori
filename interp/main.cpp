@@ -364,7 +364,6 @@ class VerifierPass : public ModulePass {
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
                 if (!noPrint) {
-                    // fprintf(stderr, "\n******** DEBUG: Analyzing thread %s ********\n", curFunc->getName());
                     errs() << "\n******** DEBUG: Analyzing thread " << curFunc->getName() << "********\n";
                 }
 
@@ -422,6 +421,8 @@ class VerifierPass : public ModulePass {
 
         unordered_map <Instruction*, Environment> curFuncEnv;
         curFuncEnv[&(*(F->begin()->begin()))] = funcInitEnv[F];
+        errs() << "CurDuncEnv before checking preds:\n";
+        printInstToEnvMap(curFuncEnv);
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
@@ -440,6 +441,8 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
+            errs() << "CurDuncEnv before calling analyzeBB:\n";
+            printInstToEnvMap(curFuncEnv);
             analyzeBasicBlock(currentBB, curFuncEnv, interf);
         }
 
@@ -897,6 +900,8 @@ class VerifierPass : public ModulePass {
                 }           
                 if (dyn_cast<GlobalVariable>(fromVar)) {
                     // errs() << "Load of global\n";
+                    // errs() << "Env before:";
+                    // curEnv.printEnvironment();
                     curEnv = applyInterfToLoad(unaryInst, curEnv, interf, fromVarName);
                 }
                 break;

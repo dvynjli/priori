@@ -320,8 +320,8 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
     // else only the variable for which interference is 
     ap_var_t apInterVar;
     if (isRelAcqSync) {
-        fprintf(stderr, "applyinterf in ApDom for var %s. Dom before apply:\n", interfVar.c_str());
-        printApDomain();
+        // fprintf(stderr, "applyinterf in ApDom for var %s. Dom before apply:\n", interfVar.c_str());
+        // printApDomain();
 
         for (auto it=hasChanged.begin(); it!=hasChanged.end(); ++it) {
             apInterVar = (ap_var_t) it->first.c_str();
@@ -351,8 +351,8 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
                 setHasChanged(it->first);
             }
         }
-        fprintf(stderr, "dom after apply:\n");
-        printApDomain();
+        // fprintf(stderr, "dom after apply:\n");
+        // printApDomain();
     }
 
     else {
@@ -875,12 +875,12 @@ void EnvironmentPOMO::applyInterference(
         carryEnvironment(interfVar, fromEnv);
         for (auto curIt:environment) {
             for (auto interfIt:fromEnv) {
-                POMO curpomo = curIt.first;
+                POMO curPomo = curIt.first;
                 POMO interfpomo = interfIt.first;
                 
                 // check if POMO are conssistent for all variables
                 bool apply = true;
-                for (auto varIt:curpomo) {
+                for (auto varIt:curPomo) {
                     auto searchInterfPomo = interfpomo.find(varIt.first);
                     if (searchInterfPomo == interfpomo.end()) {
                         fprintf(stderr, "ERROR: Variable mismatch in POMOs");
@@ -893,18 +893,21 @@ void EnvironmentPOMO::applyInterference(
 
                 if (apply) {
                     // merge the two partial orders
-                    for (auto varIt: curpomo) {
+                    PartialOrder *tmpPO = new PartialOrder();
+                    for (auto varIt: curPomo) {
                         auto searchInterfPomo = interfpomo.find(varIt.first);
                         if (searchInterfPomo == interfpomo.end()) {
                             fprintf(stderr, "ERROR: Variable mismatch in POMOs");
                             exit(0);
                         }
                         // join the two partial orders
-                        varIt.second->join(zHelper, *(searchInterfPomo->second));
+                        tmpPO->copy(*(varIt.second));
+                        tmpPO->join(zHelper, *(searchInterfPomo->second));
                         // for interfVar, add the store intruction in the end
                         if (varIt.first == interfVar) {   
-                            varIt.second->append(zHelper, interfInst);
+                            tmpPO->append(zHelper, interfInst);
                         }
+                        curPomo[varIt.first] = tmpPO;
                     }
                     // create new ApDomain for this POMO
                     ApDomain tmpDomain;
@@ -986,7 +989,7 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
             // join the POMOs
             POMO curPomo;
             joinPOMO(zHelper, curIt.first, otherIt.first, curPomo);
-            // fprintf(stderr, "CurPOMO:\n");
+            // fprintf(stderr, "curPomo:\n");
             // printPOMO(curPomo);
 
             // meet of ApDomain
@@ -994,7 +997,7 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
             newDomain.copyApDomain(curIt.second);
             newDomain.meetApDomain(otherIt.second);
 
-            // if curPOMO alread exist join the newDomain with existing one
+            // if curPomo alread exist join the newDomain with existing one
             auto searchPomo = environment.find(curPomo);
             if (searchPomo != environment.end()) {
                 newDomain.joinApDomain(searchPomo->second);

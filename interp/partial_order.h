@@ -57,6 +57,8 @@ public:
 	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator begin();
 	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator end();
 
+	void copy (const PartialOrder &copyFrom);
+
 	string toString();
 };
 
