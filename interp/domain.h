@@ -212,9 +212,11 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
-    virtual void carryEnvironment(string interfVar, EnvironmentPOMO fromEnv);
     virtual void joinEnvironment(EnvironmentPOMO other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other);
+    // TODO: this function is not reuired for POMO. change the structure to use append instead of this
+    virtual void carryEnvironment(string interfVar, EnvironmentPOMO fromEnv);
+    virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();

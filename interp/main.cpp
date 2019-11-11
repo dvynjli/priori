@@ -43,14 +43,14 @@ class VerifierPass : public ModulePass {
         initThreadDetails(M, globalVars);
         // testPO();
         analyzeProgram(M);
-        // checkAssertions();
-        // double time = omp_get_wtime() - start_time;
-        // // testApplyInterf();
-        // // unsat_core_example1();
-        // if (!noPrint) { 
-        //     errs() << "----DONE----\n";
-        // }
-        // fprintf(stderr, "Time elapsed: %f\n", time);
+        checkAssertions();
+        double time = omp_get_wtime() - start_time;
+        // testApplyInterf();
+        // unsat_core_example1();
+        if (!noPrint) { 
+            errs() << "----DONE----\n";
+        }
+        fprintf(stderr, "Time elapsed: %f\n", time);
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -405,7 +405,7 @@ class VerifierPass : public ModulePass {
                 }
             }
             isFixedPointReached = true;
-            // isFixedPointReached = isFixedPoint(programStateCurItr);
+            isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
         }
         if (!noPrint) {
@@ -850,9 +850,14 @@ class VerifierPass : public ModulePass {
             // if (curEnv.getRelHead(destVarName) == nullptr)
             //     curEnv.setRelHead(destVarName, storeInst);
             // curEnv.changeRelHeadIfNull(destVarName, storeInst);
+            if(useMOPO) {
+                errs() << "appending " << storeInst << " to " << destVarName << "\n";
+                curEnv.appendInst(zHelper, storeInst, destVarName);
+            }
         }
         else {
             // curEnv.changeRelHeadToNull(destVarName, storeInst);
+            // since we are assuming only RA, this block is not required.
         }
 
         Value* fromVar = storeInst->getValueOperand();

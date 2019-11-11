@@ -35,6 +35,7 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
 bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
+	cout << "appending Partial order " << newinst << "\n";
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ++it) {
@@ -159,14 +160,12 @@ bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instru
 string PartialOrder::toString() {
 	std::stringstream ss;
 	for (auto itFrom: order){
-		cout << "toString\n" << endl;
-
+		// cout << "toString\n" << endl;
+		ss << itFrom.first << " ---> " ;
 		for (auto itTo: itFrom.second) {
-			ss << itFrom.first; 
-			ss << "---->";
-			ss << itTo;
-			ss << "\n";
+			ss << itTo << ", ";
 		}
+		ss << "\n";
 	}
 	cout << ss.str() << "\n";
 	return ss.str();

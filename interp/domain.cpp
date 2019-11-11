@@ -320,6 +320,9 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
     // else only the variable for which interference is 
     ap_var_t apInterVar;
     if (isRelAcqSync) {
+        fprintf(stderr, "applyinterf in ApDom for var %s. Dom before apply:\n", interfVar.c_str());
+        printApDomain();
+
         for (auto it=hasChanged.begin(); it!=hasChanged.end(); ++it) {
             apInterVar = (ap_var_t) it->first.c_str();
             if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
@@ -348,6 +351,8 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
                 setHasChanged(it->first);
             }
         }
+        fprintf(stderr, "dom after apply:\n");
+        printApDomain();
     }
 
     else {
@@ -902,10 +907,10 @@ void EnvironmentPOMO::applyInterference(
                         }
                     }
                     // create new ApDomain for this POMO
-                    ApDomain curDomain, tmpDomain;
-                    curDomain.copyApDomain(curIt.second);
+                    ApDomain tmpDomain;
+                    tmpDomain.copyApDomain(curIt.second);
                     tmpDomain.applyInterference(interfVar, interfIt.second, isRelAcqSync);
-                    environment[curIt.first] = curDomain;
+                    environment[curIt.first] = tmpDomain;
                 }
             }
         }
@@ -1000,6 +1005,18 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
     environment = newenvironment;
     // fprintf(stderr, "Env after meet:\n");
     // printEnvironment();
+}
+
+void EnvironmentPOMO::appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var) {
+    for (auto it: environment) {
+        auto searchVarPomo = it.first.find(var);
+        if (searchVarPomo == it.first.end()) {
+            fprintf(stderr, "ERROR: Variable not found in POMOs");
+            exit(0);
+        }
+        fprintf(stderr, "appending from POMO\n");
+        searchVarPomo->second->append(zHelper, storeInst);
+    }
 }
 
 
