@@ -872,7 +872,6 @@ void EnvironmentPOMO::applyInterference(
 
     // We are assuming RA. Hence everything is RelAcqSync
     if (isRelAcqSync) {
-        carryEnvironment(interfVar, fromEnv);
         for (auto curIt:environment) {
             for (auto interfIt:fromEnv) {
                 POMO curPomo = curIt.first;
@@ -886,9 +885,15 @@ void EnvironmentPOMO::applyInterference(
                         fprintf(stderr, "ERROR: Variable mismatch in POMOs");
                         exit(0);
                     }
-                    if (!varIt.second->isConsistent(*(searchInterfPomo->second))) apply=false;
+                    if (!varIt.second->isConsistent(*(searchInterfPomo->second))) {
+                        apply=false;
+                        break;
+                    }
                     // check domain-level feasibility 
-                    if(!varIt.second->isFeasible(zHelper, *(searchInterfPomo->second), interfInst, curInst)) apply=false; 
+                    if (!varIt.second->isFeasible(zHelper, *(searchInterfPomo->second), interfInst, curInst)) {
+                        apply=false;
+                        break;
+                    } 
                 }
 
                 if (apply) {
@@ -896,18 +901,27 @@ void EnvironmentPOMO::applyInterference(
                     PartialOrder *tmpPO = new PartialOrder();
                     for (auto varIt: curPomo) {
                         auto searchInterfPomo = interfpomo.find(varIt.first);
-                        if (searchInterfPomo == interfpomo.end()) {
-                            fprintf(stderr, "ERROR: Variable mismatch in POMOs");
-                            exit(0);
-                        }
+                        // don't need this search again
+                        // if (searchInterfPomo == interfpomo.end()) {
+                        //     fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+                        //     exit(0);
+                        // }
+                        
                         // join the two partial orders
                         tmpPO->copy(*(varIt.second));
+                        fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
+
                         tmpPO->join(zHelper, *(searchInterfPomo->second));
+
+                        fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
+                        
                         // for interfVar, add the store intruction in the end
                         if (varIt.first == interfVar) {   
                             tmpPO->append(zHelper, interfInst);
                         }
                         curPomo[varIt.first] = tmpPO;
+                        fprintf(stderr, "Pomo so far:\n");
+                        printPOMO(curPomo);
                     }
                     // create new ApDomain for this POMO
                     ApDomain tmpDomain;
@@ -942,6 +956,9 @@ void EnvironmentPOMO::applyInterference(
             environment[curRelHead] = curDomain;
         } */
     }
+
+    fprintf(stderr, "env after apply interf\n");
+    printEnvironment();
 }
 
 void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO fromEnv) {
