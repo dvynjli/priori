@@ -57,11 +57,15 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
 bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
-	cout << "joining\n";
+	// cout << "joining\n";
 	// if (order.empty()) cout << "EMPTY\n";
 	// else 
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
+		if (fromItr->second.empty()){
+			set<llvm::Instruction*> emptyset {};
+			order[fromItr->first] = emptyset;
+		}
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {
 			if (!addOrder(zHelper, fromItr->first, *toItr))
 				return false;
