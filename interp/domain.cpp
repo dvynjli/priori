@@ -872,6 +872,7 @@ void EnvironmentPOMO::applyInterference(
 
     // We are assuming RA. Hence everything is RelAcqSync
     if (isRelAcqSync) {
+        map <POMO, ApDomain> newenvironment;
         for (auto curIt:environment) {
             for (auto interfIt:fromEnv) {
                 POMO curPomo = curIt.first;
@@ -898,8 +899,9 @@ void EnvironmentPOMO::applyInterference(
 
                 if (apply) {
                     // merge the two partial orders
-                    PartialOrder *tmpPO = new PartialOrder();
+                    POMO newPomo;
                     for (auto varIt: curPomo) {
+                        PartialOrder *tmpPO = new PartialOrder();
                         auto searchInterfPomo = interfpomo.find(varIt.first);
                         // don't need this search again
                         // if (searchInterfPomo == interfpomo.end()) {
@@ -909,54 +911,34 @@ void EnvironmentPOMO::applyInterference(
                         
                         // join the two partial orders
                         tmpPO->copy(*(varIt.second));
-                        fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
+                        // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
 
                         tmpPO->join(zHelper, *(searchInterfPomo->second));
 
-                        fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
+                        // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                         
                         // for interfVar, add the store intruction in the end
                         if (varIt.first == interfVar) {   
                             tmpPO->append(zHelper, interfInst);
                         }
-                        curPomo[varIt.first] = tmpPO;
-                        fprintf(stderr, "Pomo so far:\n");
-                        printPOMO(curPomo);
+                        newPomo[varIt.first] = tmpPO;
+                        // fprintf(stderr, "Pomo so far:\n");
+                        // printPOMO(newPomo);
+
                     }
                     // create new ApDomain for this POMO
                     ApDomain tmpDomain;
                     tmpDomain.copyApDomain(curIt.second);
                     tmpDomain.applyInterference(interfVar, interfIt.second, isRelAcqSync);
-                    environment[curIt.first] = tmpDomain;
+                    newenvironment[newPomo] = tmpDomain;
                 }
             }
         }
+        environment = newenvironment;
     }
     else {
         // Need to fill this to add supposrt for models other than RA
-        /* for (auto it=environment.begin(); it!=environment.end(); ++it) {
-            POMO curPomo = it->first;
-            
-            bool apply = true;
-            for (auto pomoIt=curPomo.begin(); pomoIt!=curPomo.end(); ++pomoIt) {
-                if (relHeadIt->second != nullptr && zHelper.querySB(interfInst, relHeadIt->second)) {
-                    apply = false;
-                    break;
-                }
-            }
-            if(!apply) continue;
-
-            ApDomain curDomain, tmpDomain;
-            curDomain.copyApDomain(it->second);
-            for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-                tmpDomain.copyApDomain(it->second);
-                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSync);
-                curDomain.joinApDomain(tmpDomain);
-            }
-            environment[curRelHead] = curDomain;
-        } */
     }
-
     fprintf(stderr, "env after apply interf\n");
     printEnvironment();
 }
@@ -1037,6 +1019,7 @@ void EnvironmentPOMO::appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst,
         fprintf(stderr, "appending from POMO\n");
         searchVarPomo->second->append(zHelper, storeInst);
     }
+    // environment = newenvironment;
 }
 
 

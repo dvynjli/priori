@@ -403,7 +403,7 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
-            isFixedPointReached = true;
+            // isFixedPointReached = true;
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
         }
@@ -421,8 +421,8 @@ class VerifierPass : public ModulePass {
 
         unordered_map <Instruction*, Environment> curFuncEnv;
         curFuncEnv[&(*(F->begin()->begin()))] = funcInitEnv[F];
-        errs() << "CurDuncEnv before checking preds:\n";
-        printInstToEnvMap(curFuncEnv);
+        // errs() << "CurDuncEnv before checking preds:\n";
+        // printInstToEnvMap(curFuncEnv);
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
@@ -441,8 +441,8 @@ class VerifierPass : public ModulePass {
                 // if coditional branching
                 // if unconditional branching
 
-            errs() << "CurDuncEnv before calling analyzeBB:\n";
-            printInstToEnvMap(curFuncEnv);
+            // errs() << "CurFuncEnv before calling analyzeBB:\n";
+            // printInstToEnvMap(curFuncEnv);
             analyzeBasicBlock(currentBB, curFuncEnv, interf);
         }
 
