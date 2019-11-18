@@ -53,6 +53,7 @@ public:
 	bool remove(llvm::Instruction* inst);
 	
 	virtual bool operator== (const PartialOrder &other) const;
+	virtual bool operator<  (const PartialOrder &other) const;
 
 	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator begin();
 	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator end();

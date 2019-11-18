@@ -168,7 +168,6 @@ void PartialOrder::copy (const PartialOrder &copyFrom) {
 string PartialOrder::toString() {
 	std::stringstream ss;
 	for (auto itFrom: order){
-		// cout << "toString\n" << endl;
 		ss << itFrom.first << " ---> " ;
 		for (auto itTo: itFrom.second) {
 			ss << itTo << ", ";
@@ -181,6 +180,13 @@ string PartialOrder::toString() {
 
 bool PartialOrder::operator==(const PartialOrder &other) const {
 	return order == other.order;
+}
+
+bool PartialOrder::operator<(const PartialOrder &other) const {
+	// TODO: Might need to change this. If instructions are disjoint,
+	// this will not determine any order between the two POs. 
+	// As per our definition, sb should play a role here.
+	return order < other.order;
 }
 
 map<llvm::Instruction*, set<llvm::Instruction*>>::iterator PartialOrder::begin() {

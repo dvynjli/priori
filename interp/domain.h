@@ -15,7 +15,7 @@
 #include "partial_order.h"
 
 typedef map <string, llvm::Instruction*> REL_HEAD;
-typedef map <string, PartialOrder*> POMO;
+typedef map <string, PartialOrder> POMO;
 
 extern llvm::cl::opt<DomainTypes> AbsDomType;
 

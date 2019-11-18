@@ -784,7 +784,7 @@ void EnvironmentPOMO::init(vector<string> globalVars, vector<string> functionVar
 POMO EnvironmentPOMO::initPOMO(vector<string> globalVars){
     POMO pomo;
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        pomo[(*it)] = new PartialOrder();
+        pomo[(*it)] = PartialOrder();
     }
     return pomo;
 }
@@ -867,8 +867,8 @@ void EnvironmentPOMO::applyInterference(
     llvm::Instruction *interfInst=nullptr,
     llvm::Instruction *curInst=nullptr
 ) {
-    fprintf(stderr, "Env before applying interf:\n");
-    printEnvironment();
+    // fprintf(stderr, "Env before applying interf:\n");
+    // printEnvironment();
 
     // We are assuming RA. Hence everything is RelAcqSync
     if (isRelAcqSync) {
@@ -886,12 +886,12 @@ void EnvironmentPOMO::applyInterference(
                         fprintf(stderr, "ERROR: Variable mismatch in POMOs");
                         exit(0);
                     }
-                    if (!varIt.second->isConsistent(*(searchInterfPomo->second))) {
+                    if (!varIt.second.isConsistent(searchInterfPomo->second)) {
                         apply=false;
                         break;
                     }
                     // check domain-level feasibility 
-                    if (!varIt.second->isFeasible(zHelper, *(searchInterfPomo->second), interfInst, curInst)) {
+                    if (!varIt.second.isFeasible(zHelper, searchInterfPomo->second, interfInst, curInst)) {
                         apply=false;
                         break;
                     } 
@@ -901,7 +901,7 @@ void EnvironmentPOMO::applyInterference(
                     // merge the two partial orders
                     POMO newPomo;
                     for (auto varIt: curPomo) {
-                        PartialOrder *tmpPO = new PartialOrder();
+                        PartialOrder tmpPO = PartialOrder();
                         auto searchInterfPomo = interfpomo.find(varIt.first);
                         // don't need this search again
                         // if (searchInterfPomo == interfpomo.end()) {
@@ -910,16 +910,16 @@ void EnvironmentPOMO::applyInterference(
                         // }
                         
                         // join the two partial orders
-                        tmpPO->copy(*(varIt.second));
+                        tmpPO.copy(varIt.second);
                         // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
 
-                        tmpPO->join(zHelper, *(searchInterfPomo->second));
+                        tmpPO.join(zHelper, searchInterfPomo->second);
 
                         // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                         
                         // for interfVar, add the store intruction in the end
                         if (varIt.first == interfVar) {   
-                            tmpPO->append(zHelper, interfInst);
+                            tmpPO.append(zHelper, interfInst);
                         }
                         newPomo[varIt.first] = tmpPO;
                         // fprintf(stderr, "Pomo so far:\n");
@@ -939,8 +939,8 @@ void EnvironmentPOMO::applyInterference(
     else {
         // Need to fill this to add supposrt for models other than RA
     }
-    fprintf(stderr, "env after apply interf\n");
-    printEnvironment();
+    // fprintf(stderr, "env after apply interf\n");
+    // printEnvironment();
 }
 
 void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO fromEnv) {
@@ -1010,16 +1010,19 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
 }
 
 void EnvironmentPOMO::appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var) {
+    map <POMO, ApDomain> newEnv;
     for (auto it: environment) {
-        auto searchVarPomo = it.first.find(var);
-        if (searchVarPomo == it.first.end()) {
-            fprintf(stderr, "ERROR: Variable not found in POMOs");
-            exit(0);
+        POMO tmpPomo;
+        for (auto varIt: it.first) {
+            tmpPomo[varIt.first] = varIt.second;
+            if (varIt.first == var) {
+                // fprintf(stderr, "appending from POMO\n");
+                tmpPomo[varIt.first].append(zHelper, storeInst);
+            }
         }
-        fprintf(stderr, "appending from POMO\n");
-        searchVarPomo->second->append(zHelper, storeInst);
+        newEnv[tmpPomo] = it.second;
     }
-    // environment = newenvironment;
+    environment = newEnv;
 }
 
 
@@ -1043,7 +1046,7 @@ void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO
             exit(0);
         }
         // join the two partial orders
-        it.second->join(zHelper, *(searchPomo2->second));
+        it.second.join(zHelper, searchPomo2->second);
     }
 }
 
@@ -1063,9 +1066,9 @@ void EnvironmentPOMO::printPOMO(POMO pomo) {
     // fprintf(stderr, "Printing POMO\n");
     for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());
-        if (it->second)
-            fprintf(stderr, "%s", it->second->toString().c_str());
-        else fprintf(stderr, "NULL");
+        // if (it->second)
+            fprintf(stderr, "%s", it->second.toString().c_str());
+        // else fprintf(stderr, "NULL");
         fprintf(stderr, "\n");
     }
     // fprintf(stderr, "printing done\n");
