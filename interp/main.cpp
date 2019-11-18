@@ -549,7 +549,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            curEnv.printEnvironment();
+            // curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -854,7 +854,7 @@ class VerifierPass : public ModulePass {
             //     curEnv.setRelHead(destVarName, storeInst);
             // curEnv.changeRelHeadIfNull(destVarName, storeInst);
             if(useMOPO) {
-                errs() << "appending " << storeInst << " to " << destVarName << "\n";
+                // errs() << "appending " << storeInst << " to " << destVarName << "\n";
                 curEnv.appendInst(zHelper, storeInst, destVarName);
             }
         }

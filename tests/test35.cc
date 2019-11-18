@@ -17,7 +17,7 @@ void* fun2(void * arg){
 	int tmp1 = y.load(memory_order_acquire);
 	int tmp2 = x.load(memory_order_acquire);
 	// tmp2 == 1 => tmp1 == 1 should fail
-	// assert((tmp2!=1) || (tmp1==1));
+	assert((tmp2!=1) || (tmp1==1));
 	return NULL;
 }
 

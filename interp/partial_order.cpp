@@ -35,7 +35,7 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
 bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
-	cout << "appending Partial order " << newinst << "\n";
+	// cout << "appending Partial order " << newinst << "\n";
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ++it) {
