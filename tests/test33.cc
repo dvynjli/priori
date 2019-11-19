@@ -23,8 +23,12 @@ void* fun3(void * arg){
 	int tmp1 = x.load(memory_order_acquire);
 	int tmp2 = y.load(memory_order_acquire);
 	int tmp3 = tmp1 && tmp2;
-	if (tmp3)
-		assert(tmp1 ==0);
+	if (tmp3) {
+		int tmp4 = x.load(memory_order_acquire);
+		// Testcase checks that an older value can not be read
+		// Assertion should pass
+		assert(tmp1 != 0);
+	}
 	return NULL;
 }
 

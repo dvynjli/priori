@@ -28,6 +28,7 @@ int main () {
 	
 	int tx = x.load(memory_order_acquire);
 	int ty = y.load(memory_order_acquire);
+	// assertion can fail
 	assert(tx==1 && ty==1);
 
 	return 0;

@@ -12,13 +12,13 @@ atomic<int> x,y;
 void* fun1(void * arg){
 	// x.store(5, memory_order_relaxed);
 	x.store(1, memory_order_release);
-	x.store(2, memory_order_relaxed);
+	x.store(2, memory_order_release);
 	return NULL;
 }
 
 void* fun2(void * arg){
 	y.store(1, memory_order_release);
-	y.store(2, memory_order_relaxed);
+	y.store(2, memory_order_release);
 	return NULL;
 }
 
@@ -31,7 +31,8 @@ int main () {
 	
 	int tx = x.load(memory_order_acquire);
 	int ty = y.load(memory_order_acquire);
-	assert(tx==1 && ty==1);
+	// x and y can be only 2 after the join. assertion should pass
+	assert(tx==2 && ty==2);
 
 	return 0;
 }

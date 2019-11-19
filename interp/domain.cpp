@@ -883,7 +883,7 @@ void EnvironmentPOMO::applyInterference(
                 for (auto varIt:curPomo) {
                     auto searchInterfPomo = interfpomo.find(varIt.first);
                     if (searchInterfPomo == interfpomo.end()) {
-                        fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+                        fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", varIt.first.c_str());
                         exit(0);
                     }
                     if (!varIt.second.isConsistent(searchInterfPomo->second)) {
@@ -905,7 +905,7 @@ void EnvironmentPOMO::applyInterference(
                         auto searchInterfPomo = interfpomo.find(varIt.first);
                         // don't need this search again
                         // if (searchInterfPomo == interfpomo.end()) {
-                        //     fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+                        //     fprintf(stderr, "ERROR: Variable mismatch in POMOs\n");
                         //     exit(0);
                         // }
                         
@@ -1038,11 +1038,16 @@ bool EnvironmentPOMO::isUnreachable() {
 }
 
 void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO){
+    // fprintf(stderr, "joining:\n");
+    // printPOMO(pomo1);
+    // printPOMO(pomo2);
     joinedPOMO = pomo1;
+    if (pomo2.empty())
+        return;
     for (auto it:joinedPOMO) {
         auto searchPomo2 = pomo2.find(it.first);
         if (searchPomo2 == pomo2.end()) {
-            fprintf(stderr, "ERROR: Variable mismatch in POMOs");
+            fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", it.first.c_str());
             exit(0);
         }
         // join the two partial orders

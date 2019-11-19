@@ -89,6 +89,8 @@ TODO:
     Fix error in carrying env between BB. check assertion 2 in test25
     See if zHelper is required in join and append
     Change POMO applyInterf to join ApDomain acc to POMO
+    Check the operation for join instruction. Join instruction should sync with end of thread
+    Check test16, test30 - check mo, test32 - join
 
 Other functionality that might be added
     Race detection on non-atomics - 
@@ -97,6 +99,7 @@ Other functionality that might be added
     creation of more than one thread of a function
         need to change the MHB adding for thread create
 
+RA testcases: 16, 30, 31, 32, 33, 34, 35
 
 Possible Optimizations:
     LoadStore map
