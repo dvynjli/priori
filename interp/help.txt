@@ -88,11 +88,9 @@ TODO:
     Fix error with octagon domain again
     Fix error in carrying env between BB. check assertion 2 in test25
     See if zHelper is required in join and append
-    URGENT: Change POMO applyInterf to join ApDomain acc to POMO
-    **don't join ApDomain for uninitialized variables
     Check the operation for join instruction. Join instruction should sync with end of thread
-    Check test16, test30 - (ApDomain not acc to POMO), test32 (join)
-    Modification order should never be empty, at least variables should be there
+    Check test32 (join)
+    //Modification order should never be empty, at least variables should be there
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older

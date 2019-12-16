@@ -7,26 +7,25 @@ using namespace std;
 
 atomic<int> x,y;
 
-void* fun1(void * arg){
-	x.store(1, memory_order_release);
-	y.store(1, memory_order_release);
-	return NULL;
-}
-
 void* fun2(void * arg){
-	int tmp1 = y.load(memory_order_acquire);
-	int tmp2 = x.load(memory_order_acquire);
-	// tmp1 == 1 => tmp2 == 1 should pass
-	assert((tmp1!=1) || (tmp2==1));
+	x.store(10, memory_order_relaxed);
+	// int a = x.load(memory_order_relaxed);
+	y.store(20, memory_order_release);
 	return NULL;
 }
 
+void* fun1(void * arg){
+	x.store(50, memory_order_relaxed);
+	y.load(memory_order_acquire);
+	return NULL;
+}
 
 int main () {
-	pthread_t t1,t2,t3;
+	pthread_t t1,t2;
 	pthread_create(&t1, NULL, fun1, NULL);
 	pthread_create(&t2, NULL, fun2, NULL);
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
+	
 	return 0;
 }

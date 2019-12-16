@@ -5,18 +5,24 @@
 
 using namespace std;
 
-atomic<int> x,y;
+atomic<int> x,y,z;
 
-void* fun2(void * arg){
-	x.store(10, memory_order_relaxed);
-	// int a = x.load(memory_order_relaxed);
-	y.store(20, memory_order_relaxed);
+void* fun1(void * arg){
+	int tmp = x.load(memory_order_acquire);
+	z.store(tmp, memory_order_release);
+	y.store(2, memory_order_release);
+	x.store(2, memory_order_release);
 	return NULL;
 }
 
-void* fun1(void * arg){
-	x.store(50, memory_order_relaxed);
-	y.load(memory_order_relaxed);
+void* fun2(void * arg){
+	y.store(1, memory_order_release);
+	x.store(1, memory_order_release);
+	int a = x.load(memory_order_acquire);
+	int b = y.load(memory_order_acquire);
+	int c = z.load(memory_order_acquire);
+	// (x==2 && z==1) => y=2 should hold
+	assert((a!=2 || c!=1) || b==2);
 	return NULL;
 }
 

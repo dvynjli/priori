@@ -5,28 +5,17 @@
 
 using namespace std;
 
-atomic<int> x,y,b;
+atomic<int> x,y;
 
-void* fun2(void * arg){
-	// int b;
-	x.store(10, memory_order_relaxed);
-	int a = x.load(memory_order_relaxed);
-	if (a == 50)
-		y.store(a, memory_order_relaxed);
-	else 
-		y.store(a+10, memory_order_relaxed);
-	a = y.load(memory_order_relaxed);
-	// x.store(memory_order_relaxed);	// this instruction is wrong in O1 IR
-	// if (b > a)
-	// 	x.store(15, memory_order_relaxed);
-	
+void* fun1(void * arg){
+	x.store(1, memory_order_release);
+	y.store(2, memory_order_release);
 	return NULL;
 }
 
-void* fun1(void * arg){
-	x.store(50, memory_order_relaxed);
-	// x.store(15, memory_order_relaxed);
-	y.load(memory_order_relaxed);
+void* fun2(void * arg){
+	y.store(1, memory_order_release);
+	x.store(2, memory_order_release);
 	return NULL;
 }
 
@@ -37,5 +26,10 @@ int main () {
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
 	
+	int tx = x.load(memory_order_acquire);
+	int ty = y.load(memory_order_acquire);
+	// assertion can fail
+	assert(tx==1 && ty==1);
+
 	return 0;
 }

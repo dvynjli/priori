@@ -7,15 +7,16 @@ using namespace std;
 
 atomic<int> x,y;
 
-void* fun1(void * arg){
-	x.store(1, memory_order_release);
-	y.store(2, memory_order_release);
+void* fun2(void * arg){
+	x.store(10, memory_order_relaxed);
+	// int a = x.load(memory_order_relaxed);
+	y.store(20, memory_order_relaxed);
 	return NULL;
 }
 
-void* fun2(void * arg){
-	y.store(1, memory_order_release);
-	x.store(2, memory_order_release);
+void* fun1(void * arg){
+	x.store(50, memory_order_relaxed);
+	y.load(memory_order_relaxed);
 	return NULL;
 }
 
@@ -26,10 +27,5 @@ int main () {
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
 	
-	int tx = x.load(memory_order_acquire);
-	int ty = y.load(memory_order_acquire);
-	// assertion can fail
-	assert(tx==1 && ty==1);
-
 	return 0;
 }

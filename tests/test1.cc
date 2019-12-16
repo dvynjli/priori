@@ -5,44 +5,50 @@
 
 using namespace std;
 
-atomic<int> x, y;
-int b;
-float c;
-
-void* fun2(void * arg){
-	// x.compare_exchange_strong(a, b, memory_order_relaxed);
-	// atomic_fetch_add_explicit(&x, 1, memory_order_acq_rel);
-	x.store(10, memory_order_relaxed);
-	y.load(memory_order_seq_cst);
-	x.store(20, memory_order_seq_cst);
-	// y.load(memory_order_relaxed);
-	return NULL;
-}
+atomic<int> x,y,done1,done2;
 
 void* fun1(void * arg){
-	pthread_t t1;
-	pthread_create(&t1, NULL, fun2, NULL);
-	int a = 10;
-	b = 5;
-	int c = x.load(memory_order_acquire);
-	y.store(a+c, memory_order_release);
-	c = y.load(memory_order_acq_rel);
-	x.store(c+b, memory_order_acq_rel);
-	pthread_join(t1, NULL);
+	x.store(1, memory_order_release);
 	return NULL;
 }
 
-void* fun3(void* arg){
-	y.store(100, memory_order_relaxed);
+void* fun2(void * arg){
+	y.store(1, memory_order_release);
+	return NULL;
+}
+
+void* fun3(void * arg){
+	int a = x.load(memory_order_acquire);
+	int b = y.load(memory_order_acquire);
+	if (a==1 && b==0) {
+		done1.store(1, memory_order_relaxed);
+	}
+	return NULL;
+}
+
+void* fun4(void * arg){
+	int a = y.load(memory_order_acquire);
+	int b = x.load(memory_order_acquire);
+	if (a==1 && b==0) {
+		done2.store(1, memory_order_relaxed);
+	}
 	return NULL;
 }
 
 int main () {
-	pthread_t t1,t2;
+	pthread_t t1,t2,t3,t4;
 	pthread_create(&t1, NULL, fun1, NULL);
-	pthread_create(&t2, NULL, fun3, NULL);
+	pthread_create(&t2, NULL, fun2, NULL);
+	pthread_create(&t3, NULL, fun3, NULL);
+	pthread_create(&t4, NULL, fun4, NULL);
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
+	pthread_join(t3, NULL);
+	pthread_join(t4, NULL);
+	int a = done1.load(memory_order_relaxed);
+	int b = done2.load(memory_order_relaxed);
+	// no total ordering on writes of x and y. assertion should fail.
+	assert(a!=1 || b!=1);
 	
 	return 0;
 }
