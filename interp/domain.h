@@ -35,14 +35,14 @@ class ApDomain {
     void performNECmp(string strOp1, int intOp2);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
+    // llvm::Instruction* getRelHead(string var);
+    // void setRelHead(string var, llvm::Instruction *head);
 
 public:
     bool operator== (const ApDomain &other) const;
     // bool operator!= (ApDomain other);
     void init(vector<string> globalVars, vector<string> functionVars);
     void copyApDomain(ApDomain copyFrom);
-    // llvm::Instruction* getRelHead(string var);
-    // void setRelHead(string var, llvm::Instruction *head);
 
     // Unary Operations
     void performUnaryOp(operation oper, string strTo, string strOp);
@@ -102,6 +102,9 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    string strOp2) = 0;
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2) = 0;
     virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
+
+    // Store Operation
+    virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper)=0;
     
     /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
         * interfVar: Variable on which interference is happening
@@ -128,6 +131,7 @@ class EnvironmentRelHead : public EnvironmentBase<EnvironmentRelHead> {
     void printRelHead(REL_HEAD relHead);
     void addRelHead(string var, llvm::Instruction *head);
     void changeRelHead(string var, llvm::Instruction *head);
+    void changeRelHeadIfNull(string var, llvm::Instruction *head);
 
 public:
     // relHead: var -> relHeadInstruction
@@ -135,7 +139,6 @@ public:
     map <REL_HEAD, ApDomain> environment;
 
     void changeRelHeadToNull(string var, llvm::Instruction *inst);
-    void changeRelHeadIfNull(string var, llvm::Instruction *head);
     
     virtual bool operator== (const EnvironmentRelHead &other) const;
     // map <REL_HEAD, ApDomain>::iterator begin();
@@ -162,6 +165,9 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    string strOp2);
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
+
+    // Store Operations
+    virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
     
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
@@ -218,6 +224,9 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    string strOp2);
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
+
+    // Store Operations
+    virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
     virtual void joinEnvironment(EnvironmentPOMO other);

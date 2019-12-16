@@ -25,6 +25,7 @@ class VerifierPass : public ModulePass {
     */
     
     typedef EnvironmentPOMO Environment;
+    // typedef EnvironmentRelHead Environment;
 
     vector <Function*> threads;
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
@@ -865,10 +866,11 @@ class VerifierPass : public ModulePass {
         // if (curEnv.getRelHead(destVarName) == nullptr)
         //     curEnv.setRelHead(destVarName, storeInst);
         // curEnv.changeRelHeadIfNull(destVarName, storeInst);
-        if(useMOPO) {
+        
+        // if(useMOPO) {
             // errs() << "appending " << storeInst << " to " << destVarName << "\n";
-            curEnv.appendInst(zHelper, storeInst, destVarName);
-        }
+        curEnv.performStoreOp(storeInst, destVarName, zHelper);
+        // }
         
         #ifdef NOTRA
         }

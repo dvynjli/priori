@@ -625,6 +625,12 @@ void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strO
     }
 }
 
+void EnvironmentRelHead::performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper) {
+    // if (getRelHead(destVarName) == nullptr)
+    //     setRelHead(destVarName, storeInst);
+    changeRelHeadIfNull(destVarName, storeInst);
+}
+
 void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
@@ -859,6 +865,22 @@ void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2)
     }
 }
 
+void EnvironmentPOMO::performStoreOp(llvm::StoreInst *storeInst, string destVarName, Z3Minimal &zHelper) {
+    map <POMO, ApDomain> newEnv;
+    for (auto it: environment) {
+        POMO tmpPomo;
+        for (auto varIt: it.first) {
+            tmpPomo[varIt.first] = varIt.second;
+            if (varIt.first == destVarName) {
+                // fprintf(stderr, "appending from POMO\n");
+                tmpPomo[varIt.first].append(zHelper, storeInst);
+            }
+        }
+        newEnv[tmpPomo] = it.second;
+    }
+    environment = newEnv;
+}
+
 void EnvironmentPOMO::applyInterference(
     string interfVar, 
     EnvironmentPOMO interfEnv, 
@@ -1022,23 +1044,6 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
     // fprintf(stderr, "Env after meet:\n");
     // printEnvironment();
 }
-
-void EnvironmentPOMO::appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var) {
-    map <POMO, ApDomain> newEnv;
-    for (auto it: environment) {
-        POMO tmpPomo;
-        for (auto varIt: it.first) {
-            tmpPomo[varIt.first] = varIt.second;
-            if (varIt.first == var) {
-                // fprintf(stderr, "appending from POMO\n");
-                tmpPomo[varIt.first].append(zHelper, storeInst);
-            }
-        }
-        newEnv[tmpPomo] = it.second;
-    }
-    environment = newEnv;
-}
-
 
 bool EnvironmentPOMO::isUnreachable() {
     bool isUnreach = true;
