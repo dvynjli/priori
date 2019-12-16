@@ -25,7 +25,6 @@ Supported abstract domains
 - ```octagon```: octagon domain
 
 Other supported options
-- ```z3```: use z3 to prune out infeasible interferences
 - ```no-print```: No debug prints. Prints only #errors and time elapsed
 - ```z3-minimal```: Enable interferce pruning using Z3 using Release Head based analysis
 - ```useMOHead```: Enable interference pruning using Z3 using modification order head based analysis

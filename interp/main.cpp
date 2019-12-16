@@ -11,7 +11,7 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
     cl::values(
         clEnumVal(interval , "use interval domain"),
         clEnumVal(octagon, "use octagon domain")));
-cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
+// cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
@@ -997,6 +997,7 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
+    /// Compute all possible interferences (feasibile or infeasible)
     unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getAllInterferences (
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
     ){
@@ -1039,6 +1040,7 @@ class VerifierPass : public ModulePass {
         return allInterfs;
     }
 
+    /// Checks all possible interfernces for feasibility one by one.
     void getFeasibleInterferences (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores, 
@@ -1051,6 +1053,8 @@ class VerifierPass : public ModulePass {
         allInterfs = getAllInterferences(loadsToAllStores);
 
         // Check feasibility of permutations and save them in feasibleInterfences
+        // Older code. Not required for RA and Z3Minimal
+        #ifdef NOTRA
         if (useZ3) {
             #pragma omp parallel num_threads(omp_get_num_procs()*2)
             #pragma omp single 
@@ -1075,7 +1079,8 @@ class VerifierPass : public ModulePass {
             }
             }
         }
-        else if (minimalZ3) {
+        #endif
+        if (minimalZ3) {
             for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
                 vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
                 for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
@@ -1091,6 +1096,7 @@ class VerifierPass : public ModulePass {
         }
     }
 
+    /// Older function. Used with UseZ3 flag. 
     bool isFeasible (
         unordered_map<Instruction*, Instruction*> interfs, 
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
@@ -1117,11 +1123,36 @@ class VerifierPass : public ModulePass {
         // return true;
     }
 
+    /** This function checks the feasibility of an interference combination 
+     * under RA memory model 
+     */
     bool isFeasibleRA(unordered_map<Instruction*, Instruction*> interfs) {
-        // TODO: implemetation of this function
+        for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
+            if (lsPair->second == nullptr)
+                continue;
+            for (auto otherLS=interfs.begin(); otherLS!=interfs.end(); ++otherLS) {
+                // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
+                if (otherLS == lsPair || otherLS->second==nullptr)
+                    continue;
+                LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
+                StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
+                LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
+                StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);        
+                // (l --sb--> l')
+                if (zHelper.querySB(ld, ld_prime)) {
+                    // (l --sb--> l' && s = s') reading from local context will give the same result
+                    if (st == st_prime) return false;
+                    else if (zHelper.querySB(st_prime, st)) return false;
+                }
+            }
+        }
+        return true;
     }
 
     #ifdef NOTRA
+    /** This function checks feasibility of an interfernce combination
+     * under C/C++11 minus SC memory model 
+     */
     bool isFeasibleMinimal(unordered_map<Instruction*, Instruction*> interfs) {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
