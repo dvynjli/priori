@@ -33,6 +33,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
+    map<Instruction*, map<string, StoreInst*>> lastWrites; 
     Z3Minimal zHelper;
 
     #ifdef NOTRA
@@ -173,6 +174,7 @@ class VerifierPass : public ModulePass {
 
         while(!funcQ.empty())
         {
+            map<string, StoreInst*> lastWritesCurInst;
             Function *func = funcQ.front();
             funcQ.pop();
             vector<string> funcVars;
@@ -291,6 +293,7 @@ class VerifierPass : public ModulePass {
                                 relations.push_back(make_pair("mhb", make_pair(lastGlobalOfVar[destVarName], storeInst)));
                             lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
+                            lastWritesCurInst[destVarName] = storeInst;
                         }
                     }
                     else {
@@ -328,6 +331,7 @@ class VerifierPass : public ModulePass {
                             }
                         }
                     }
+                    lastWrites.emplace(make_pair(&(*it),lastWritesCurInst));
                 }
 
             }
@@ -992,7 +996,7 @@ class VerifierPass : public ModulePass {
                         }
                     }
                     #endif
-                    curEnv.applyInterference(varName, interfEnv, isRelSeq, zHelper, interfInst);
+                    curEnv.applyInterference(varName, interfEnv, isRelSeq, zHelper, interfInst, unaryInst, &lastWrites);
                 }
             }
         }

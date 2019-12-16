@@ -14,6 +14,15 @@
 #include "z3_handler.h"
 #include "partial_order.h"
 
+// Used to represent the 
+// DONOTHING: if the last write instruction of curret thread comes 
+//      after last write instuction of interfering thread in POMO
+// MERGE: merges both domains. if there is no ordering between last writes 
+//      of current and interferring thread in POMO
+// COPY: copies the domain of interfinst, if the last write of interfering 
+//      thread comes after last write of current thread in POMO
+enum options {DONOTHING, MERGE, COPY};
+
 typedef map <string, llvm::Instruction*> REL_HEAD;
 typedef map <string, PartialOrder> POMO;
 
@@ -37,6 +46,8 @@ class ApDomain {
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
     // llvm::Instruction* getRelHead(string var);
     // void setRelHead(string var, llvm::Instruction *head);
+    void copyVar(ApDomain fromApDomain, ap_var_t apVar);
+    void joinVar(ApDomain fromApDomain, ap_var_t apVar);
 
 public:
     bool operator== (const ApDomain &other) const;
@@ -60,7 +71,7 @@ public:
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
-    void applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSync);
+    void applyInterference(string interfVar, ApDomain fromApDomain, bool isSyncWith, bool isPOMO, map<string, options> *varoptions=nullptr);
     void joinApDomain(ApDomain other);
     void meetApDomain(ApDomain other);
     void setVar(string strVar);
@@ -114,7 +125,9 @@ public:
         * interfInst: Interferring instruction
         * curInst: Current Instruction
         */
-    virtual void applyInterference(string interfVar, T interfEnv, bool isSyncWith, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr) = 0;
+    virtual void applyInterference(string interfVar, T interfEnv, bool isSyncWith, Z3Minimal &zHelper, 
+                llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
     virtual void meetEnvironment(Z3Minimal &zHelper, T other) = 0;
@@ -169,7 +182,9 @@ public:
     // Store Operations
     virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
     
-    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
+    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, 
+                llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
     virtual void joinEnvironment(EnvironmentRelHead other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other);
@@ -228,12 +243,14 @@ public:
     // Store Operations
     virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
     
-    virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr);
+    virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, 
+                llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr);
     virtual void joinEnvironment(EnvironmentPOMO other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other);
     // TODO: this function is not reuired for POMO. change the structure to use append instead of this
     virtual void carryEnvironment(string interfVar, EnvironmentPOMO fromEnv);
-    virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
+    // virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();

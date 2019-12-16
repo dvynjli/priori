@@ -18,7 +18,7 @@ Might need to run ```make``` as sudo
 
 # Running the pass
 ```
-opt -load build/interp/VerifierPass.so -verifier -<domain> -z3-minimal -useRelHead tests/test1.ll
+opt -load build/interp/VerifierPass.so -verifier -<domain> -z3-minimal -useMOPO tests/test1.ll
 ```
 Supported abstract domains
 - ```interval```: interval domain

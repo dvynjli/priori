@@ -97,6 +97,7 @@ TODO:
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
     Properly rewrite performStoreOp with performUnaryOp
+    Computation of PO and lastWrites for programs with branches might be wrong 
 
 Other functionality that might be added
     Race detection on non-atomics - 
