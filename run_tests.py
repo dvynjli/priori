@@ -33,4 +33,8 @@ for test_id in range(1, num_tests+1):
 print('_'*50)
 print('Tests passed correctly:', num_correct)
 print('Tests with false positive:', num_false_positive)
-print('Tests with MISSED ASSERT:', num_missed_asserts)
+if (num_missed_asserts != 0):
+	print('\033[91mTests with MISSED ASSERT:', num_missed_asserts, '\033[0m')
+else:
+	print('Tests with MISSED ASSERT:', num_missed_asserts)
+

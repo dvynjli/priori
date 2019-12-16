@@ -89,8 +89,9 @@ TODO:
     Fix error in carrying env between BB. check assertion 2 in test25
     See if zHelper is required in join and append
     Check the operation for join instruction. Join instruction should sync with end of thread
-    Check test32 (join)
-    //Modification order should never be empty, at least variables should be there
+    **Check test4 (join)
+    URGENT: Check test1 for variable mismatch
+    Modification order should never be empty, at least variables should be there
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older

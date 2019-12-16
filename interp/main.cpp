@@ -528,14 +528,14 @@ class VerifierPass : public ModulePass {
                     curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
                     Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
                     curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
-                    // errs() << "\nTrue Branch:\n";
-                    // printValue(trueBranch);
-                    // errs() << "True branch Env:\n";
-                    // curFuncEnv[trueBranch].printEnvironment();
-                    // errs() << "\nFalse Branch:\n";
-                    // printValue(falseBranch);
-                    // errs() << "False branch Env:\n";
-                    // curFuncEnv[falseBranch].printEnvironment();
+                    errs() << "\nTrue Branch:\n";
+                    printValue(trueBranch);
+                    errs() << "True branch Env:\n";
+                    curFuncEnv[trueBranch].printEnvironment();
+                    errs() << "\nFalse Branch:\n";
+                    printValue(falseBranch);
+                    errs() << "False branch Env:\n";
+                    curFuncEnv[falseBranch].printEnvironment();
                 }
                 else {
                     Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));

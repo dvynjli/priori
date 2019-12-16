@@ -1074,6 +1074,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
         environment[pomo] = newDomain;
     }
 }
+
 // Used for logical intructions
 void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other) {
     map <POMO, ApDomain> newenvironment;
@@ -1081,7 +1082,7 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
     for (auto curIt: environment) {
         for (auto otherIt: other) {
             // join the POMOs
-            POMO curPomo;
+            POMO curPomo = curIt.first;
             joinPOMO(zHelper, curIt.first, otherIt.first, curPomo);
             // fprintf(stderr, "curPomo:\n");
             // printPOMO(curPomo);
