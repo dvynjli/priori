@@ -27,7 +27,6 @@ class VerifierPass : public ModulePass {
     typedef EnvironmentPOMO Environment;
 
     vector <Function*> threads;
-    map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
     unordered_map <Function*, Environment> funcInitEnv;
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
@@ -35,6 +34,9 @@ class VerifierPass : public ModulePass {
     unordered_map <Value*, string> valueToName;
     Z3Minimal zHelper;
 
+    #ifdef NOTRA
+    map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
+    #endif
 
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
@@ -182,7 +184,11 @@ class VerifierPass : public ModulePass {
             {
                 Instruction *lastGlobalInst=nullptr;
                 map<string, Instruction*> lastGlobalOfVar;
+
+                #ifdef NOTRA
                 map<string, StoreInst*> lastRelWrite;
+                #endif
+
                 for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
                 {
                     if (CallInst *call = dyn_cast<CallInst>(it)) {
@@ -260,11 +266,15 @@ class VerifierPass : public ModulePass {
                             if (storeInst->getOrdering() == llvm::AtomicOrdering::Release ||
                                 storeInst->getOrdering() == llvm::AtomicOrdering::AcquireRelease ||
                                 storeInst->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent) {
+                                #ifdef NOTRA
                                 lastRelWrite[destVarName] = storeInst;
+                                #endif
                             }
+                            #ifdef NOTRA
                             else if (lastRelWrite[destVarName]) {
                                 prevRelWriteOfSameVar[storeInst] = lastRelWrite[destVarName];
                             }
+                            #endif
                             // errs() << "****adding store instr for: ";
                             // printValue(storeInst);
                             // zHelper.addStoreInstr(storeInst);
@@ -549,7 +559,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            // curEnv.printEnvironment();
+            curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -847,21 +857,25 @@ class VerifierPass : public ModulePass {
         string destVarName = getNameFromValue(destVar);
 
         auto ord = storeInst->getOrdering();
+        #ifdef NOTRA
         if (ord==llvm::AtomicOrdering::Release || 
             ord==llvm::AtomicOrdering::SequentiallyConsistent ||
             ord==llvm::AtomicOrdering::AcquireRelease) {
-            // if (curEnv.getRelHead(destVarName) == nullptr)
-            //     curEnv.setRelHead(destVarName, storeInst);
-            // curEnv.changeRelHeadIfNull(destVarName, storeInst);
-            if(useMOPO) {
-                // errs() << "appending " << storeInst << " to " << destVarName << "\n";
-                curEnv.appendInst(zHelper, storeInst, destVarName);
-            }
+        #endif
+        // if (curEnv.getRelHead(destVarName) == nullptr)
+        //     curEnv.setRelHead(destVarName, storeInst);
+        // curEnv.changeRelHeadIfNull(destVarName, storeInst);
+        if(useMOPO) {
+            // errs() << "appending " << storeInst << " to " << destVarName << "\n";
+            curEnv.appendInst(zHelper, storeInst, destVarName);
+        }
+        
+        #ifdef NOTRA
         }
         else {
-            // curEnv.changeRelHeadToNull(destVarName, storeInst);
-            // since we are assuming only RA, this block is not required.
+            curEnv.changeRelHeadToNull(destVarName, storeInst);
         }
+        #endif
 
         Value* fromVar = storeInst->getValueOperand();
         
@@ -954,7 +968,9 @@ class VerifierPass : public ModulePass {
                     // curEnv.printEnvironment();
 
                     Environment interfEnv = searchInterfEnv->second;
-                    bool isRelSeq = false;
+                    
+                    bool isRelSeq = true;       // Since the memory model is RA
+                    #ifdef NOTRA
                     if (StoreInst *storeInst = dyn_cast<StoreInst>(interfInst)) {
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
                             auto ordStore = storeInst->getOrdering();
@@ -973,6 +989,7 @@ class VerifierPass : public ModulePass {
                             }
                         }
                     }
+                    #endif
                     curEnv.applyInterference(varName, interfEnv, isRelSeq, zHelper, interfInst);
                 }
             }
@@ -1063,7 +1080,7 @@ class VerifierPass : public ModulePass {
                 vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
                 for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
                     auto interfs = *interfItr;
-                    if (isFeasibleMinimal(*interfItr))
+                    if (isFeasibleRA(*interfItr))
                         curFuncInterfs.push_back(*interfItr);
                 }
                 feasibleInterfences[funcItr->first] = curFuncInterfs;
@@ -1100,6 +1117,11 @@ class VerifierPass : public ModulePass {
         // return true;
     }
 
+    bool isFeasibleRA(unordered_map<Instruction*, Instruction*> interfs) {
+        // TODO: implemetation of this function
+    }
+
+    #ifdef NOTRA
     bool isFeasibleMinimal(unordered_map<Instruction*, Instruction*> interfs) {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
@@ -1150,6 +1172,7 @@ class VerifierPass : public ModulePass {
         }
         return true;
     }
+    #endif
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
         unordered_map<Instruction*, Environment> instrToEnvOld,
@@ -1236,53 +1259,53 @@ class VerifierPass : public ModulePass {
 
     void testPO() {
         /* Test using test32 */
-        PartialOrder po, po2;
-        auto p1=prevRelWriteOfSameVar.begin()->first;
-        auto p2=prevRelWriteOfSameVar.begin()->first;
-        auto p3=prevRelWriteOfSameVar.begin()->first;
-        bool first = true, append=true;
-        for (auto it=prevRelWriteOfSameVar.begin(); it!=prevRelWriteOfSameVar.end(); it++) {
-            printValue(it->first);
-            printValue(it->second);
-            errs() << "\n";
-            if (it->first!=nullptr && it->second!=nullptr) {
-                errs() << "Adding PO between "; printValue(it->first); printValue(it->second);
-                po.addOrder(zHelper, it->first, it->second);
-                first ? (p1 = it->second) : (first=false, p1= it->first);
-                // break;
-            } 
-            else if (!append) {p3 = ((it->first!=nullptr)?(it->first):(it->second)); append=false;}
-        }
-        errs() << po.toString() << "\n"; 
+        // PartialOrder po, po2;
+        // auto p1=prevRelWriteOfSameVar.begin()->first;
+        // auto p2=prevRelWriteOfSameVar.begin()->first;
+        // auto p3=prevRelWriteOfSameVar.begin()->first;
+        // bool first = true, append=true;
+        // for (auto it=prevRelWriteOfSameVar.begin(); it!=prevRelWriteOfSameVar.end(); it++) {
+        //     printValue(it->first);
+        //     printValue(it->second);
+        //     errs() << "\n";
+        //     if (it->first!=nullptr && it->second!=nullptr) {
+        //         errs() << "Adding PO between "; printValue(it->first); printValue(it->second);
+        //         po.addOrder(zHelper, it->first, it->second);
+        //         first ? (p1 = it->second) : (first=false, p1= it->first);
+        //         // break;
+        //     } 
+        //     else if (!append) {p3 = ((it->first!=nullptr)?(it->first):(it->second)); append=false;}
+        // }
+        // errs() << po.toString() << "\n"; 
 
-        errs() << "second po\n";
-        errs() << p1 << " order with " << p2 << ": " << po2.addOrder(zHelper, p1,p2) << "\n";
-        errs() << po2.toString() << "\n";    
+        // errs() << "second po\n";
+        // errs() << p1 << " order with " << p2 << ": " << po2.addOrder(zHelper, p1,p2) << "\n";
+        // errs() << po2.toString() << "\n";    
 
-        errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
-        errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
-        errs() << p1 << " isOrderedBefore " << p2 << ": " << po2.isOrderedBefore(p1,p2) << "\n";
-        errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
+        // errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
+        // errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
+        // errs() << p1 << " isOrderedBefore " << p2 << ": " << po2.isOrderedBefore(p1,p2) << "\n";
+        // errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
 
-        errs() << "\npo Join po2\n";
-        errs() << po.join(zHelper, po2) << "\n";
-        errs() << po.toString() << "\n";
+        // errs() << "\npo Join po2\n";
+        // errs() << po.join(zHelper, po2) << "\n";
+        // errs() << po.toString() << "\n";
 
-        errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
-        errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
-        errs() << p1 << " isOrderedBefore " << p2 << ": " << po2.isOrderedBefore(p1,p2) << "\n";
-        errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
+        // errs() << p1 << " isOrderedBefore " << p2 << ": " << po.isOrderedBefore(p1,p2) << "\n";
+        // errs() << p2 << " isOrderedBefore " << p1 << ": " << po.isOrderedBefore(p2,p1) << "\n";
+        // errs() << p1 << " isOrderedBefore " << p2 << ": " << po2.isOrderedBefore(p1,p2) << "\n";
+        // errs() << p2 << " isOrderedBefore " << p1 << ": " << po2.isOrderedBefore(p2,p1) << "\n";
 
-        errs() << "append " << p2 << ": " << po.append(zHelper, p2) << "\n";
-        errs() << po.toString() << "\n";
+        // errs() << "append " << p2 << ": " << po.append(zHelper, p2) << "\n";
+        // errs() << po.toString() << "\n";
 
-        errs() << "removing " << p1 << "\n";
-        po.remove(p1);
-        errs() << po.toString() << "\n";
+        // errs() << "removing " << p1 << "\n";
+        // po.remove(p1);
+        // errs() << po.toString() << "\n";
 
-        errs() << "Append " << p1 << "again\n";
-        po.append(zHelper, p1);
-        errs() << po.toString() << "\n";
+        // errs() << "Append " << p1 << "again\n";
+        // po.append(zHelper, p1);
+        // errs() << po.toString() << "\n";
         
     }
 
