@@ -63,7 +63,7 @@ bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 	// else 
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
-		if (fromItr->second.empty() && order.find(fromItr->first) == order.end){
+		if (fromItr->second.empty() && order.find(fromItr->first) == order.end()){
 			// TODO: need to check if E inst. fromItr --sb--> inst. No need to add from inst in this case.
 			set<llvm::Instruction*> emptyset {};
 			order[fromItr->first] = emptyset;
