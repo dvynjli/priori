@@ -9,6 +9,7 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 	// cout << "addOrder " << from << "-->" << to << "\n";
 	
 	if (isOrderedBefore(from, to)) return true;
+	if (isOrderedBefore(to, from)) return false;
 
 	// Check if some inst sequenced before 'from' or 'to' is in
 	// the order. If yes, remove the older one.
@@ -62,7 +63,8 @@ bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 	// else 
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
-		if (fromItr->second.empty()){
+		if (fromItr->second.empty() && order.find(fromItr->first) == order.end){
+			// TODO: need to check if E inst. fromItr --sb--> inst. No need to add from inst in this case.
 			set<llvm::Instruction*> emptyset {};
 			order[fromItr->first] = emptyset;
 		}
@@ -172,9 +174,9 @@ string PartialOrder::toString() {
 		for (auto itTo: itFrom.second) {
 			ss << itTo << ", ";
 		}
-		ss << "\n";
+		// ss << "\n";
 	}
-	cout << ss.str() << "\n";
+	// cout << ss.str() << "\n";
 	return ss.str();
 }
 

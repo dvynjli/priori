@@ -315,11 +315,11 @@ void ApDomain::printApDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
 }
 
-void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isRelAcqSync) {
+void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isSyncWith) {
     // If this is a part of release-acquire sequence, copy the values of all the global vars,
     // else only the variable for which interference is 
     ap_var_t apInterVar;
-    if (isRelAcqSync) {
+    if (isSyncWith) {
         // fprintf(stderr, "applyinterf in ApDom for var %s. Dom before apply:\n", interfVar.c_str());
         // printApDomain();
 
@@ -628,7 +628,7 @@ void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strO
 void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
-    bool isRelAcqSync, 
+    bool isSyncWith, 
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr, 
     llvm::Instruction *curInst=nullptr
@@ -636,7 +636,7 @@ void EnvironmentRelHead::applyInterference(
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
 
-    if (isRelAcqSync) {
+    if (isSyncWith) {
         carryEnvironment(interfVar, fromEnv);
     }
     else {
@@ -656,7 +656,7 @@ void EnvironmentRelHead::applyInterference(
             curDomain.copyApDomain(it->second);
             for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
                 tmpDomain.copyApDomain(it->second);
-                tmpDomain.applyInterference(interfVar, interfItr->second, isRelAcqSync);
+                tmpDomain.applyInterference(interfVar, interfItr->second, isSyncWith);
                 curDomain.joinApDomain(tmpDomain);
             }
             environment[curRelHead] = curDomain;
@@ -861,8 +861,8 @@ void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2)
 
 void EnvironmentPOMO::applyInterference(
     string interfVar, 
-    EnvironmentPOMO fromEnv, 
-    bool isRelAcqSync, 
+    EnvironmentPOMO interfEnv, 
+    bool isSyncWith, 
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr,
     llvm::Instruction *curInst=nullptr
@@ -870,11 +870,20 @@ void EnvironmentPOMO::applyInterference(
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
 
+    // Used to represent the 
+    // DONOTHING: if the last write instruction of curret thread comes 
+    //      after last write instuction of interfering thread in POMO
+    // MERGE: merges both domains. if there is no ordering between last writes 
+    //      of current and interferring thread in POMO
+    // COPY: copies the domain of interfinst, if the last write of interfering 
+    //      thread comes after last write of current thread in POMO
+    enum options {DONOTHING, MERGE, COPY};
+
     // We are assuming RA. Hence everything is RelAcqSync
-    if (isRelAcqSync) {
+    if (isSyncWith) {
         map <POMO, ApDomain> newenvironment;
         for (auto curIt:environment) {
-            for (auto interfIt:fromEnv) {
+            for (auto interfIt:interfEnv) {
                 POMO curPomo = curIt.first;
                 POMO interfpomo = interfIt.first;
                 
@@ -899,7 +908,14 @@ void EnvironmentPOMO::applyInterference(
 
                 if (apply) {
                     // merge the two partial orders
+
                     POMO newPomo;
+
+                    // passed to applyinterf of ApDomain to make sure the copy/merging of 
+                    // ApDomain is consistent with POMO. Map from Variable --> short int, 
+                    // where short int 
+                    map<string, options> ;
+                    
                     for (auto varIt: curPomo) {
                         PartialOrder tmpPO = PartialOrder();
                         auto searchInterfPomo = interfpomo.find(varIt.first);
@@ -912,9 +928,7 @@ void EnvironmentPOMO::applyInterference(
                         // join the two partial orders
                         tmpPO.copy(varIt.second);
                         // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
-
                         tmpPO.join(zHelper, searchInterfPomo->second);
-
                         // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                         
                         // for interfVar, add the store intruction in the end
@@ -929,7 +943,7 @@ void EnvironmentPOMO::applyInterference(
                     // create new ApDomain for this POMO
                     ApDomain tmpDomain;
                     tmpDomain.copyApDomain(curIt.second);
-                    tmpDomain.applyInterference(interfVar, interfIt.second, isRelAcqSync);
+                    tmpDomain.applyInterference(interfVar, interfIt.second, isSyncWith);
                     newenvironment[newPomo] = tmpDomain;
                 }
             }
@@ -1072,9 +1086,9 @@ void EnvironmentPOMO::printPOMO(POMO pomo) {
     for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());
         // if (it->second)
-            fprintf(stderr, "%s", it->second.toString().c_str());
+            fprintf(stderr, "%s\n", it->second.toString().c_str());
         // else fprintf(stderr, "NULL");
-        fprintf(stderr, "\n");
+        // fprintf(stderr, "\n");
     }
     // fprintf(stderr, "printing done\n");
 }

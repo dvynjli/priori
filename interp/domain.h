@@ -103,7 +103,15 @@ public:
     virtual void performCmpOp(operation oper, int intOp1,    int intOp2) = 0;
     virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
     
-    virtual void applyInterference(string interfVar, T fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr) = 0;
+    /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
+        * interfVar: Variable on which interference is happening
+        * interfEnv: Environment of interfering instruction
+        * isSyncWith: True for release-acquire synchronization, false otherwise
+        * zHelper: Instance of z3 to be used to check sequences-before
+        * interfInst: Interferring instruction
+        * curInst: Current Instruction
+        */
+    virtual void applyInterference(string interfVar, T interfEnv, bool isSyncWith, Z3Minimal &zHelper, llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
     virtual void meetEnvironment(Z3Minimal &zHelper, T other) = 0;
