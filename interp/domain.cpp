@@ -1093,11 +1093,12 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
             newDomain.meetApDomain(otherIt.second);
 
             // if curPomo alread exist join the newDomain with existing one
-            auto searchPomo = environment.find(curPomo);
-            if (searchPomo != environment.end()) {
+            auto searchPomo = newenvironment.find(curPomo);
+            if (searchPomo != newenvironment.end()) {
                 newDomain.joinApDomain(searchPomo->second);
             }
-            newenvironment[curPomo] = newDomain;
+            if(!newDomain.isUnreachable())
+                newenvironment[curPomo] = newDomain;
         }
     }
     environment = newenvironment;

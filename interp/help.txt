@@ -116,7 +116,8 @@ Possible Optimizations:
     create interfernce based on data and control dependecies. will result in less z3 queries
         might be also delete data dep rule from z3
     reduce number of variables
-    map<string, short int> option; in applyInterf of POMO can be done using bitfeilds.
+    Remove env if ApDomain is bottom
+    In the new approach, z3 doesn't need to initialized repeatedly
     ------------ Not applicable anymore --------------------------------
     try reducing number of rules
         this will decrese time of fiexed point computation
