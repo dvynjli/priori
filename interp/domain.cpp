@@ -311,6 +311,14 @@ void ApDomain::performCmpOp(operation oper, string strOp1, string strOp2) {
     exit(0);
 }
 
+// Perform join only for the list of variables passed in arg2
+void ApDomain::joinOnVars(ApDomain other, vector<string> vars) {
+    for (auto var: vars) {
+        ap_var_t apVar = (ap_var_t) var.c_str();
+        joinVar(other, apVar);
+    }
+}
+
 void ApDomain::printApDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
 }
@@ -672,6 +680,10 @@ void EnvironmentRelHead::performStoreOp(llvm::StoreInst* storeInst, string destV
     changeRelHeadIfNull(destVarName, storeInst);
 }
 
+void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars) {
+
+}
+
 void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
@@ -921,6 +933,23 @@ void EnvironmentPOMO::performStoreOp(llvm::StoreInst *storeInst, string destVarN
         newEnv[tmpPomo] = it.second;
     }
     environment = newEnv;
+}
+
+void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> globalVars) {
+    for (auto it=other.begin(); it!=other.end(); ++it) {
+        POMO pomo = it->first;
+        ApDomain newDomain;
+        newDomain.copyApDomain(it->second);
+
+        // if the pomo already exist in the current enviornment,
+        // join it with the existing one
+        // else add it to the current environment
+        auto searchPomo = environment.find(pomo);
+        if (searchPomo != environment.end()) {
+            newDomain.joinOnVars(searchPomo->second, globalVars);
+        }
+        environment[pomo] = newDomain;
+    }
 }
 
 void EnvironmentPOMO::applyInterference(

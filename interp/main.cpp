@@ -35,6 +35,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Value*, string> valueToName;
     map<Instruction*, map<string, StoreInst*>> lastWrites; 
     Z3Minimal zHelper;
+    vector<string> globalVars;
 
     #ifdef NOTRA
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
@@ -42,9 +43,9 @@ class VerifierPass : public ModulePass {
 
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
-        vector<string> globalVars = getGlobalIntVars(M);
+        globalVars = getGlobalIntVars(M);
         // zHelper.initZ3(globalVars);
-        initThreadDetails(M, globalVars);
+        initThreadDetails(M);
         // testPO();
         analyzeProgram(M);
         checkAssertions();
@@ -154,7 +155,7 @@ class VerifierPass : public ModulePass {
         return loadsToAllStores;
     }
 
-    void initThreadDetails(Module &M, vector<string> globalVars) {
+    void initThreadDetails(Module &M) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
         vector< pair <string, pair<Instruction*, Instruction*>>> relations;
@@ -556,6 +557,18 @@ class VerifierPass : public ModulePass {
                         exit(0);
                     }
                 }
+                else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
+                    if (Function* newThread = dyn_cast<Function> (callInst->getArgOperand(2))) {
+                        // TODO: Chnage the funcInitEnv of newThread
+                    }
+                }
+                else if (!callInst->getCalledFunction()->getName().compare("pthread_join")) {
+                    // errs() << "Env before thread join:\n";
+                    // curEnv.printEnvironment();
+                    curEnv = checkThreadJoin(callInst, curEnv);
+                    // errs() << "Env after thread join:\n";
+                    // curEnv.printEnvironment();
+                }
             }
             else {
                 
@@ -564,7 +577,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            curEnv.printEnvironment();
+            // curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -936,6 +949,22 @@ class VerifierPass : public ModulePass {
         
         curEnv.performUnaryOp(oper, destVarName.c_str(), fromVarName.c_str());
 
+        return curEnv;
+    }
+
+    Environment checkThreadJoin(CallInst *callInst, Environment curEnv) {
+        // Join the environments of joinee thread with this thread. 
+        // Need to copy only globals, discard locals.
+        // Since current implementation of join operarion of EnvironmentPOMO does the same, 
+        // we can call join. Need to change it if join operation is changed
+        Function *calledFunc = findFunctionFromPthreadJoin(callInst);
+        for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
+            for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
+                if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
+                    curEnv.joinOnVars(programState[calledFunc][retInst], globalVars);
+                }
+            }
+        }
         return curEnv;
     }
 

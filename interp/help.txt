@@ -86,17 +86,21 @@ TODO:
         with this assertion can be checked and stooped mid-analysis
     change pthread to thread
     Fix error with octagon domain again
-    Fix error in carrying env between BB. check assertion 2 in test25
     See if zHelper is required in join and append
-    Check the operation for join instruction. Join instruction should sync with end of thread
+    Check the operation for thread create/join instruction
+        thread join instruction should sync with end of thread i.e. env after thread join = cur thread env \join joined thread env
+        thread create instruction should copy the env from the callee thread - change funcInitEnv
     **Check test4 (join)
-    URGENT: Check test1 for variable mismatch
     Modification order should never be empty, at least variables should be there
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
     Properly rewrite performStoreOp with performUnaryOp
-    Computation of PO and lastWrites for programs with branches might be wrong 
+    Computation of PO and lastWrites for programs with branches might be wrong
+        there may be more than one lastwrites in some cases. How to handle that?
+    Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
+    change vector<string> globalVars to pointer
+
 
 Other functionality that might be added
     Race detection on non-atomics - 
@@ -112,7 +116,7 @@ Possible Optimizations:
     while checking if fixed point is reached, we are comparing domain of all the Instructions. It will be sufficient to compare domain of only stores
         But efficiently  doing this will require changing the data structures and store loads saperately from rest of the thread instr
     combine some of the interfernce based on flow
-    delete from environment if domain is bottom - optimize isUnreachable()
+    // delete from environment if domain is bottom - optimize isUnreachable()
     create interfernce based on data and control dependecies. will result in less z3 queries
         might be also delete data dep rule from z3
     reduce number of variables
@@ -138,7 +142,8 @@ Possible Optimizations:
     
     Memory Optimizations
         Reduce number of maps (if maps are taking too much time):
-            run a pass to give instr id to each intruction and store the environment of the intructions in this order or make a wrapper around Instructions
+            run a pass to give instr id to each intruction and store the environment of the intructions 
+            in this order or make a wrapper around Instructions
         Make sure that the ApDomain and other objects are deleted from memory
     
     

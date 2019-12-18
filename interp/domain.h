@@ -71,6 +71,9 @@ public:
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
     
+    // Perform join only for the list of variables passed in arg2
+    void joinOnVars(ApDomain other, vector<string> vars);
+
     void applyInterference(string interfVar, ApDomain fromApDomain, bool isSyncWith, bool isPOMO, map<string, options> *varoptions=nullptr);
     void joinApDomain(ApDomain other);
     void meetApDomain(ApDomain other);
@@ -116,6 +119,10 @@ public:
 
     // Store Operation
     virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper)=0;
+
+    // Thread Join Operation
+    // Perform join only for the list of variables passed in arg2
+    virtual void joinOnVars(T other, vector<string> vars) = 0;
     
     /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
         * interfVar: Variable on which interference is happening
@@ -181,6 +188,10 @@ public:
 
     // Store Operations
     virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
+
+    // Thread Join Operation
+    // Perform join only for the list of variables passed in arg2
+    virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars);
     
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
@@ -242,6 +253,10 @@ public:
 
     // Store Operations
     virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
+
+    // Thread Join Operation
+    // Perform join only for the list of variables passed in arg2
+    virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
