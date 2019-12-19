@@ -100,6 +100,7 @@ TODO:
         there may be more than one lastwrites in some cases. How to handle that?
     Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
     change vector<string> globalVars to pointer
+    Check the consistency of POMOs before join in meetEnvironment
 
 
 Other functionality that might be added

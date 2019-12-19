@@ -59,7 +59,7 @@ ap_manager_t* ApDomain::initApManager() {
     else if(AbsDomType == octagon)
         return oct_manager_alloc();
     else {
-        fprintf(stderr, "unkown domain\n");
+        fprintf(stderr, "ERROR: unkown domain\n");
         exit(0);
     }
 }
@@ -323,7 +323,7 @@ void ApDomain::printApDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
 }
 
-void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isSyncWith, bool isPOMO, 
+void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isPOMO, 
             map<string, options> *varoptions=nullptr
 ) {
     ap_var_t apInterVar;
@@ -332,12 +332,13 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
         // use varoptions to determine what to do for each variable
         for (auto it:(*varoptions)) {
             ap_var_t apVar = (ap_var_t) it.first.c_str();
-            if (it.second == MERGE) {
-                joinVar(fromApDomain, apVar);
-            }
-            else if (it.second == COPY) {
+            if (it.second == COPY || it.first == interfVar) {
                 // copy the variable from the fromApDomain
                 copyVar(fromApDomain, apVar);
+            }
+            else if (it.second == MERGE) {
+                // merge the domain for this variable
+                joinVar(fromApDomain, apVar);
             }
             // else DONOTHING 
         }
@@ -345,7 +346,8 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
 
     // If this is a part of release-acquire sequence, copy the values of all the global vars,
     // else only the variable for which interference is 
-    else if (isSyncWith) {
+    else {
+    // if (isSyncWith) { // since memory model is RA, it is not required
         // fprintf(stderr, "applyinterf in ApDom for var %s. Dom before apply:\n", interfVar.c_str());
         // printApDomain();
 
@@ -384,6 +386,8 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
         // printApDomain();
     }
 
+    #ifdef NOTRA
+    // since memory model is RA, it is not required
     else {
         apInterVar = (ap_var_t) interfVar.c_str();
         if (ap_environment_dim_of_var(env, apInterVar) == AP_DIM_MAX) {
@@ -408,6 +412,7 @@ void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool i
         // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apInterVar, &expr, NULL);
         setHasChanged(interfVar);
     }
+    #endif
 
     // fprintf(stderr, "ApDomain after interf:\n");
     // printApDomain();
@@ -680,14 +685,15 @@ void EnvironmentRelHead::performStoreOp(llvm::StoreInst* storeInst, string destV
     changeRelHeadIfNull(destVarName, storeInst);
 }
 
-void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars) {
+void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper) {
 
 }
 
 void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
-    bool isSyncWith, 
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr, 
     llvm::Instruction *curInst=nullptr, 
@@ -696,9 +702,10 @@ void EnvironmentRelHead::applyInterference(
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
 
-    if (isSyncWith) {
+    // if (isSyncWith) {
         carryEnvironment(interfVar, fromEnv);
-    }
+    // }
+    #ifdef NOTRA
     else {
         for (auto it=environment.begin(); it!=environment.end(); ++it) {
             REL_HEAD curRelHead = it->first;
@@ -722,6 +729,7 @@ void EnvironmentRelHead::applyInterference(
             environment[curRelHead] = curDomain;
         }
     }
+    #endif
 }
 
 void EnvironmentRelHead::carryEnvironment(string interfVar, EnvironmentRelHead fromEnv) {
@@ -733,7 +741,7 @@ void EnvironmentRelHead::carryEnvironment(string interfVar, EnvironmentRelHead f
                 curRelHead[interfVar] = interfRelHead[interfVar];
                 ApDomain newDomain;
                 newDomain.copyApDomain(curItr->second);
-                newDomain.applyInterference(interfVar, interfItr->second, true, false);
+                newDomain.applyInterference(interfVar, interfItr->second, false);
                 auto searchRelHead = environment.find(curRelHead);
                 // if (searchRelHead != environment.end()) {
                 //     newDomain.joinApDomain(searchRelHead->second);
@@ -935,27 +943,85 @@ void EnvironmentPOMO::performStoreOp(llvm::StoreInst *storeInst, string destVarN
     environment = newEnv;
 }
 
-void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> globalVars) {
-    for (auto it=other.begin(); it!=other.end(); ++it) {
-        POMO pomo = it->first;
-        ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
+void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars, 
+    map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+    llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper
+) {
+    map <POMO, ApDomain> newenvironment=environment;
+    for (auto curItr: environment) {
+        for (auto otherItr: other) {
+            POMO curPomo = curItr.first;
+            POMO otherPomo = otherItr.first;
+            bool apply = true;
+            for (auto varItr: curPomo) {
+                auto searchVarOtherItr = otherPomo.find(varItr.first);
+                if (searchVarOtherItr == otherPomo.end()) {
+                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", varItr.first.c_str());
+                    exit(0);
+                }
+                if (varItr.second.isConsistent(searchVarOtherItr->second)) {
+                    apply = false;
+                    // fprintf(stderr, "Inconsistent POMOs on var %s\n", varItr.first.c_str());
+                    // printPOMO(curPomo);printPOMO(otherPomo);
+                    break;
+                }
+            }
 
-        // if the pomo already exist in the current enviornment,
-        // join it with the existing one
-        // else add it to the current environment
-        auto searchPomo = environment.find(pomo);
-        if (searchPomo != environment.end()) {
-            newDomain.joinOnVars(searchPomo->second, globalVars);
+            if (apply) {
+                map<string, options> varoptions;
+                POMO newPomo;
+                for (auto varItr: curPomo) {
+                    PartialOrder tmpPO = PartialOrder();
+                    auto searchOtherPomo = otherPomo.find(varItr.first);
+                    // don't need this search again
+                    // if (searchInterfPomo == interfpomo.end()) {
+                    //     fprintf(stderr, "ERROR: Variable mismatch in POMOs\n");
+                    //     exit(0);
+                    // }
+                    
+                    // join the two partial orders
+                    tmpPO.copy(varItr.second);
+                    // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
+                    tmpPO.join(zHelper, searchOtherPomo->second);
+                    // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
+                    // check what to do for each variable
+                    getVarOption(&varoptions, varItr.first, tmpPO, lastWrites, joinedThreadLastGlobal, curInst, zHelper);
+
+                    newPomo[varItr.first] = tmpPO;
+                    // fprintf(stderr, "Pomo so far:\n");
+                    // printPOMO(newPomo);
+                }
+
+                // create new ApDomain for this POMO
+                ApDomain tmpDomain;
+                tmpDomain.copyApDomain(curItr.second);
+                tmpDomain.applyInterference("", otherItr.second, true, &varoptions);
+                newenvironment[newPomo] = tmpDomain;
+            }
         }
-        environment[pomo] = newDomain;
     }
+    environment = newenvironment;
+    // for (auto it=other.begin(); it!=other.end(); ++it) {
+    //     POMO pomo = it->first;
+    //     ApDomain newDomain;
+    //     newDomain.copyApDomain(it->second);
+
+    //     // if the pomo already exist in the current enviornment,
+    //     // join it with the existing one
+    //     // else add it to the current environment
+    //     auto searchPomo = environment.find(pomo);
+    //     if (searchPomo != environment.end()) {
+    //         newDomain.joinOnVars(searchPomo->second, globalVars);
+    //     }
+    //     environment[pomo] = newDomain;
+    // }
+    // fprintf(stderr, "Env after joinOnVars:\n");
+    // printEnvironment();
 }
 
 void EnvironmentPOMO::applyInterference(
     string interfVar, 
     EnvironmentPOMO interfEnv, 
-    bool isSyncWith, 
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr,
     llvm::Instruction *curInst=nullptr,
@@ -965,7 +1031,7 @@ void EnvironmentPOMO::applyInterference(
     // printEnvironment();
 
     // We are assuming RA. Hence everything is RelAcqSync
-    map <POMO, ApDomain> newenvironment;
+    map <POMO, ApDomain> newenvironment=environment;
     for (auto curIt:environment) {
         for (auto interfIt:interfEnv) {
             POMO curPomo = curIt.first;
@@ -1018,35 +1084,7 @@ void EnvironmentPOMO::applyInterference(
                     }
 
                     // check what to do for each variable
-                    auto lastWritesOfCurInst = lastWrites->find(curInst);
-                    auto lastWritesOfInterfInst = lastWrites->find(interfInst);
-                    if(lastWritesOfCurInst == lastWrites->end() || lastWritesOfInterfInst == lastWrites->end()) {
-                        fprintf(stderr, "ERROR: Last Write should contain the instruction\nCheck the variable lastWrites\n");
-                        exit(0);
-                    }
-
-                    auto lastWriteOfVarCur = lastWritesOfCurInst->second.find(varIt.first);
-                    auto lastWriteOfVarInterf = lastWritesOfInterfInst->second.find(varIt.first);
-                    if (lastWriteOfVarInterf == lastWritesOfInterfInst->second.end()) {
-                        // since there is no older write in interferring thread that can change the state, do nothing
-                        varoptions.emplace(make_pair(varIt.first, DONOTHING));
-                    }
-                    else if (lastWriteOfVarCur == lastWritesOfCurInst->second.end()) {
-                        // since no older write in current thread, the variable must be uninitialized, copy
-                        varoptions.emplace(make_pair(varIt.first, COPY));
-                    }
-                    else if (tmpPO.isOrderedBefore(lastWriteOfVarInterf->second, lastWriteOfVarCur->second)) {
-                        // last write of interferring thread is ordered before last write of current thread, do nothing
-                        varoptions.emplace(make_pair(varIt.first, DONOTHING));
-                    }
-                    else if (tmpPO.isOrderedBefore(lastWriteOfVarCur->second, lastWriteOfVarInterf->second)) {
-                        // last write of current thread is ordered before last write of interferring thread, copy
-                        varoptions.emplace(make_pair(varIt.first, COPY));
-                    } 
-                    else {
-                        // last writes of current thread and interferring threads are unordered, merge
-                        varoptions.emplace(make_pair(varIt.first, MERGE));
-                    }
+                    getVarOption(&varoptions, varIt.first, tmpPO, lastWrites, interfInst, curInst, zHelper);
 
                     newPomo[varIt.first] = tmpPO;
                     // fprintf(stderr, "Pomo so far:\n");
@@ -1057,7 +1095,7 @@ void EnvironmentPOMO::applyInterference(
                 // create new ApDomain for this POMO
                 ApDomain tmpDomain;
                 tmpDomain.copyApDomain(curIt.second);
-                tmpDomain.applyInterference(interfVar, interfIt.second, isSyncWith, true, &varoptions);
+                tmpDomain.applyInterference(interfVar, interfIt.second, true, &varoptions);
                 newenvironment[newPomo] = tmpDomain;
             }
         }
@@ -1144,6 +1182,47 @@ bool EnvironmentPOMO::isUnreachable() {
         }
     }
     return isUnreach;
+}
+
+void EnvironmentPOMO::getVarOption (
+    map<string, options> *varoptions, 
+    string varName,
+    PartialOrder curPartialOrder,
+    map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites,
+    llvm::Instruction *interfInst,
+    llvm::Instruction *curInst,
+    Z3Minimal &zHelper
+) {
+    // check which one of COPY, MERGE or DONOTHIG should be done for each variable
+    auto lastWritesOfCurInst = lastWrites->find(curInst);
+    auto lastWritesOfInterfInst = lastWrites->find(interfInst);
+    if(lastWritesOfCurInst == lastWrites->end() || lastWritesOfInterfInst == lastWrites->end()) {
+        fprintf(stderr, "ERROR: Last Write should contain the instruction\nCheck the variable lastWrites\n");
+        exit(0);
+    }
+
+    auto lastWriteOfVarCur = lastWritesOfCurInst->second.find(varName);
+    auto lastWriteOfVarInterf = lastWritesOfInterfInst->second.find(varName);
+    if (lastWriteOfVarInterf == lastWritesOfInterfInst->second.end()) {
+        // since there is no older write in interferring thread that can change the state, do nothing
+        varoptions->emplace(make_pair(varName, DONOTHING));
+    }
+    else if (lastWriteOfVarCur == lastWritesOfCurInst->second.end()) {
+        // since no older write in current thread, the variable must be uninitialized, copy
+        varoptions->emplace(make_pair(varName, COPY));
+    }
+    else if (curPartialOrder.isOrderedBefore(lastWriteOfVarInterf->second, lastWriteOfVarCur->second)) {
+        // last write of interferring thread is ordered before last write of current thread, do nothing
+        varoptions->emplace(make_pair(varName, DONOTHING));
+    }
+    else if (curPartialOrder.isOrderedBefore(lastWriteOfVarCur->second, lastWriteOfVarInterf->second)) {
+        // last write of current thread is ordered before last write of interferring thread, copy
+        varoptions->emplace(make_pair(varName, COPY));
+    } 
+    else {
+        // last writes of current thread and interferring threads are unordered, merge
+        varoptions->emplace(make_pair(varName, MERGE));
+    }
 }
 
 void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO){

@@ -12,7 +12,7 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
         clEnumVal(interval , "use interval domain"),
         clEnumVal(octagon, "use octagon domain")));
 // cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
-cl::opt<bool> noPrint   ("no-print", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> noPrint   ("no-print", cl::desc("Do not print debug output"));
 cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
 cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
@@ -961,7 +961,10 @@ class VerifierPass : public ModulePass {
         for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
             for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
                 if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
-                    curEnv.joinOnVars(programState[calledFunc][retInst], globalVars);
+                    // errs() << "pthread join with: ";
+                    // printValue(retInst);
+                    curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
+                        &lastWrites, retInst, callInst, zHelper);
                 }
             }
         }
@@ -1025,7 +1028,7 @@ class VerifierPass : public ModulePass {
                         }
                     }
                     #endif
-                    curEnv.applyInterference(varName, interfEnv, isRelSeq, zHelper, interfInst, unaryInst, &lastWrites);
+                    curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, unaryInst, &lastWrites);
                 }
             }
         }
@@ -1318,7 +1321,7 @@ class VerifierPass : public ModulePass {
         fun1Env.printEnvironment();
         errs() << "To domain:\n";
         fun2Env.printEnvironment();
-        fun2Env.applyInterference("x", fun1Env, true, zHelper);
+        fun2Env.applyInterference("x", fun1Env, zHelper);
         errs() << "After applying:\n";
         fun2Env.printEnvironment();
     }

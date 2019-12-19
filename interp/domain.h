@@ -74,7 +74,7 @@ public:
     // Perform join only for the list of variables passed in arg2
     void joinOnVars(ApDomain other, vector<string> vars);
 
-    void applyInterference(string interfVar, ApDomain fromApDomain, bool isSyncWith, bool isPOMO, map<string, options> *varoptions=nullptr);
+    void applyInterference(string interfVar, ApDomain fromApDomain, bool isPOMO, map<string, options> *varoptions=nullptr);
     void joinApDomain(ApDomain other);
     void meetApDomain(ApDomain other);
     void setVar(string strVar);
@@ -122,7 +122,9 @@ public:
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-    virtual void joinOnVars(T other, vector<string> vars) = 0;
+     virtual void joinOnVars(T other, vector<string> vars, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper)=0;
     
     /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
         * interfVar: Variable on which interference is happening
@@ -132,7 +134,7 @@ public:
         * interfInst: Interferring instruction
         * curInst: Current Instruction
         */
-    virtual void applyInterference(string interfVar, T interfEnv, bool isSyncWith, Z3Minimal &zHelper, 
+    virtual void applyInterference(string interfVar, T interfEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
                 map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
@@ -191,9 +193,11 @@ public:
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-    virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars);
+     virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper);
     
-    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, 
+    virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
                 map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
@@ -209,6 +213,11 @@ public:
 
 
 class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
+
+    // relHead: var -> relHeadInstruction
+    // environment: relHead -> ApDomain
+    map <POMO, ApDomain> environment;
+    
     POMO initPOMO(vector<string> globalVars);
     
     void printPOMO(POMO pomo);
@@ -217,10 +226,11 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     map<POMO, ApDomain>::iterator begin();
 	map<POMO, ApDomain>::iterator end();
 
+    void getVarOption (map<string, options> *varoptions, string varName,PartialOrder curPartialOrder,
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                llvm::Instruction *interfInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+
 public:
-    // relHead: var -> relHeadInstruction
-    // environment: relHead -> ApDomain
-    map <POMO, ApDomain> environment;
 
     // void changeRelHeadToNull(string var, llvm::Instruction *inst);
     // void changeRelHeadIfNull(string var, llvm::Instruction *head);
@@ -256,9 +266,11 @@ public:
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-    virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars);
+    virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars, 
+                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper);
     
-    virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, bool isRelAcqSync, Z3Minimal &zHelper, 
+    virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
                 map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr);
     virtual void joinEnvironment(EnvironmentPOMO other);
