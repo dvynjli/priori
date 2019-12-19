@@ -91,7 +91,6 @@ TODO:
         thread join instruction should sync with end of thread i.e. env after thread join = cur thread env \join joined thread env
         thread create instruction should copy the env from the callee thread - change funcInitEnv
     **Check test4 (join)
-    Modification order should never be empty, at least variables should be there
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older

@@ -382,7 +382,7 @@ class VerifierPass : public ModulePass {
                 if (!noPrint) {
                     errs() << "\n******** DEBUG: Analyzing thread " << curFunc->getName() << "********\n";
                 }
-
+                
                 // find feasible interfernce for current function
                 vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
                 unordered_map<Instruction*, Environment> newFuncEnv;
@@ -391,6 +391,7 @@ class VerifierPass : public ModulePass {
                 
                 if (searchInterf != feasibleInterfences.end()) {
                     curFuncInterfs = (searchInterf->second);
+                    programStateCurItr[curFunc].clear();
                 } else {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
@@ -419,6 +420,15 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
+            
+            errs() << "------ Program state at iteration " << iterations << ": -----\n";
+            for (auto it: programStateCurItr) {
+                for (auto it2: it.second) {
+                    printValue(it2.first);
+                    it2.second.printEnvironment();
+                }
+            }
+
             // isFixedPointReached = true;
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
@@ -547,15 +557,15 @@ class VerifierPass : public ModulePass {
                 if (callInst->getCalledFunction()->getName() == "__assert_fail") {
                     // errs() << "*** found assert" << "\n";
                     // printValue(callInst);
-                    if (!curEnv.isUnreachable()) {
-                        errs() << "__________________________________________________\n";
-                        errs() << "ERROR: Assertion failed\n";
-                        if (!noPrint) {
-                            printValue(callInst);
-                            curEnv.printEnvironment();
-                        }
-                        exit(0);
-                    }
+                    // if (!curEnv.isUnreachable()) {
+                    //     errs() << "__________________________________________________\n";
+                    //     errs() << "ERROR: Assertion failed\n";
+                    //     if (!noPrint) {
+                    //         printValue(callInst);
+                    //         curEnv.printEnvironment();
+                    //     }
+                    //     exit(0);
+                    // }
                 }
                 else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
                     if (Function* newThread = dyn_cast<Function> (callInst->getArgOperand(2))) {

@@ -947,11 +947,23 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
     map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
     llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper
 ) {
-    map <POMO, ApDomain> newenvironment=environment;
+    map <POMO, ApDomain> newenvironment;
+    // fprintf(stderr,"For thread join. Other:\n");
+    // other.printEnvironment();
+    // fprintf(stderr, "Current:\n");
+    // printEnvironment();
+    
     for (auto curItr: environment) {
+        POMO curPomo = curItr.first;
+        POMO newPomo=curPomo;
+        ApDomain tmpDomain;
+        tmpDomain.copyApDomain(curItr.second);
+                
         for (auto otherItr: other) {
-            POMO curPomo = curItr.first;
             POMO otherPomo = otherItr.first;
+            tmpDomain.copyApDomain(curItr.second);
+            newPomo = curPomo;
+
             bool apply = true;
             for (auto varItr: curPomo) {
                 auto searchVarOtherItr = otherPomo.find(varItr.first);
@@ -959,7 +971,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
                     fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", varItr.first.c_str());
                     exit(0);
                 }
-                if (varItr.second.isConsistent(searchVarOtherItr->second)) {
+                if (!varItr.second.isConsistent(searchVarOtherItr->second)) {
                     apply = false;
                     // fprintf(stderr, "Inconsistent POMOs on var %s\n", varItr.first.c_str());
                     // printPOMO(curPomo);printPOMO(otherPomo);
@@ -969,7 +981,6 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
 
             if (apply) {
                 map<string, options> varoptions;
-                POMO newPomo;
                 for (auto varItr: curPomo) {
                     PartialOrder tmpPO = PartialOrder();
                     auto searchOtherPomo = otherPomo.find(varItr.first);
@@ -993,12 +1004,11 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
                 }
 
                 // create new ApDomain for this POMO
-                ApDomain tmpDomain;
-                tmpDomain.copyApDomain(curItr.second);
                 tmpDomain.applyInterference("", otherItr.second, true, &varoptions);
-                newenvironment[newPomo] = tmpDomain;
             }
+            newenvironment[newPomo] = tmpDomain;
         }
+        newenvironment[newPomo] = tmpDomain;
     }
     environment = newenvironment;
     // for (auto it=other.begin(); it!=other.end(); ++it) {
@@ -1031,7 +1041,7 @@ void EnvironmentPOMO::applyInterference(
     // printEnvironment();
 
     // We are assuming RA. Hence everything is RelAcqSync
-    map <POMO, ApDomain> newenvironment=environment;
+    map <POMO, ApDomain> newenvironment;
     for (auto curIt:environment) {
         for (auto interfIt:interfEnv) {
             POMO curPomo = curIt.first;
