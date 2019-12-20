@@ -687,7 +687,7 @@ void EnvironmentRelHead::performStoreOp(llvm::StoreInst* storeInst, string destV
 
 void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars, 
                 map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
-                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper) {
+                llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper) {
 
 }
 
@@ -945,7 +945,7 @@ void EnvironmentPOMO::performStoreOp(llvm::StoreInst *storeInst, string destVarN
 
 void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars, 
     map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
-    llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper
+    llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper
 ) {
     map <POMO, ApDomain> newenvironment;
     // fprintf(stderr,"For thread join. Other:\n");
@@ -996,7 +996,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
                     tmpPO.join(zHelper, searchOtherPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     // check what to do for each variable
-                    getVarOption(&varoptions, varItr.first, tmpPO, lastWrites, joinedThreadLastGlobal, curInst, zHelper);
+                    getVarOption(&varoptions, varItr.first, tmpPO, lastWrites, joinFromInst, curInst, zHelper);
 
                     newPomo[varItr.first] = tmpPO;
                     // fprintf(stderr, "Pomo so far:\n");

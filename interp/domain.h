@@ -195,7 +195,7 @@ public:
     // Perform join only for the list of variables passed in arg2
      virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars, 
                 map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
-                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper);
+                llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
     
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
@@ -268,7 +268,7 @@ public:
     // Perform join only for the list of variables passed in arg2
     virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars, 
                 map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
-                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper);
+                llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 

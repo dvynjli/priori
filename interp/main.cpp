@@ -569,7 +569,8 @@ class VerifierPass : public ModulePass {
                 }
                 else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
                     if (Function* newThread = dyn_cast<Function> (callInst->getArgOperand(2))) {
-                        // TODO: Chnage the funcInitEnv of newThread
+                        // Change the funcInitEnv of newThread
+                        checkThreadCreate(callInst, curEnv);
                     }
                 }
                 else if (!callInst->getCalledFunction()->getName().compare("pthread_join")) {
@@ -587,7 +588,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            // curEnv.printEnvironment();
+            curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -962,11 +963,18 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
+    void checkThreadCreate(CallInst *callInst, Environment curEnv) {
+        // Carry the environment of current thread to the newly created thread. 
+        // Need to copy only globals, discard locals.
+        if (Function* calledFunc = dyn_cast<Function> (callInst->getArgOperand(2))) {
+            funcInitEnv[calledFunc].joinOnVars(curEnv, globalVars, &lastWrites, 
+                callInst, &calledFunc->front().front() , zHelper);
+        }
+    }
+
     Environment checkThreadJoin(CallInst *callInst, Environment curEnv) {
         // Join the environments of joinee thread with this thread. 
         // Need to copy only globals, discard locals.
-        // Since current implementation of join operarion of EnvironmentPOMO does the same, 
-        // we can call join. Need to change it if join operation is changed
         Function *calledFunc = findFunctionFromPthreadJoin(callInst);
         for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
             for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
