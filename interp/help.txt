@@ -83,14 +83,10 @@ Lazy join of environment (same as Kusano-FSE16)
 TODO:
     get load store pairs only ones (from initThreadDetails) - 
         need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
-        with this assertion can be checked and stooped mid-analysis
+        with this assertion can be checked and stoped mid-analysis??
     change pthread to thread
     Fix error with octagon domain again
     See if zHelper is required in join and append
-    Check the operation for thread create/join instruction
-        thread join instruction should sync with end of thread i.e. env after thread join = cur thread env \join joined thread env
-        thread create instruction should copy the env from the callee thread - change funcInitEnv
-    **Check test4 (join)
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
@@ -100,6 +96,11 @@ TODO:
     Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
     change vector<string> globalVars to pointer
     Check the consistency of POMOs before join in meetEnvironment
+    Alias analysis
+    Support for rmw:
+        Apron interface
+        inst handling in framework - last write, po, 
+
 
 
 Other functionality that might be added
