@@ -102,6 +102,7 @@ TODO:
         inst handling in framework - last write, po, 
         need to handle function calls to provide support for rmw with another atomic variable 
     remove relations. Not required anymore
+    check environment for test10. PO has cycle.
 
 
 

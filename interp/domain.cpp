@@ -686,7 +686,7 @@ void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strO
     }
 }
 
-void EnvironmentRelHead::performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper) {
+void EnvironmentRelHead::performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper) {
     // if (getRelHead(destVarName) == nullptr)
     //     setRelHead(destVarName, storeInst);
     changeRelHeadIfNull(destVarName, storeInst);
@@ -938,7 +938,7 @@ void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2)
     }
 }
 
-void EnvironmentPOMO::performStoreOp(llvm::StoreInst *storeInst, string destVarName, Z3Minimal &zHelper) {
+void EnvironmentPOMO::performStoreOp(llvm::Instruction *storeInst, string destVarName, Z3Minimal &zHelper) {
     map <POMO, ApDomain> newEnv;
     for (auto it: environment) {
         POMO tmpPomo;
@@ -1125,8 +1125,8 @@ void EnvironmentPOMO::applyInterference(
                     getVarOption(&varoptions, varIt.first, tmpPO, lastWrites, interfInst, curInst, zHelper);
 
                     newPomo[varIt.first] = tmpPO;
-                    // fprintf(stderr, "Pomo so far:\n");
-                    // printPOMO(newPomo);
+                    fprintf(stderr, "Pomo so far:\n");
+                    printPOMO(newPomo);
 
                 }
 

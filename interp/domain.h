@@ -121,7 +121,7 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
 
     // Store Operation
-    virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper)=0;
+    virtual void performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper)=0;
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
@@ -195,7 +195,7 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
 
     // Store Operations
-    virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
+    virtual void performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper);
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
@@ -271,7 +271,7 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
 
     // Store Operations
-    virtual void performStoreOp(llvm::StoreInst* storeInst, string destVarName, Z3Minimal &zHelper);
+    virtual void performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper);
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
