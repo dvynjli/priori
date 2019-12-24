@@ -123,7 +123,7 @@ public:
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
      virtual void joinOnVars(T other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper)=0;
     
     /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
@@ -136,7 +136,7 @@ public:
         */
     virtual void applyInterference(string interfVar, T interfEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr) = 0;
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
     virtual void meetEnvironment(Z3Minimal &zHelper, T other) = 0;
@@ -194,12 +194,12 @@ public:
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
      virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
     
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr);
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
     virtual void joinEnvironment(EnvironmentRelHead other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other);
@@ -227,7 +227,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 	map<POMO, ApDomain>::iterator end();
 
     void getVarOption (map<string, options> *varoptions, string varName,PartialOrder curPartialOrder,
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *interfInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
 
 public:
@@ -267,12 +267,12 @@ public:
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
     virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr);
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr);
     virtual void joinEnvironment(EnvironmentPOMO other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other);
     // TODO: this function is not reuired for POMO. change the structure to use append instead of this

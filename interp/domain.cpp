@@ -686,7 +686,7 @@ void EnvironmentRelHead::performStoreOp(llvm::StoreInst* storeInst, string destV
 }
 
 void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper) {
 
 }
@@ -697,7 +697,7 @@ void EnvironmentRelHead::applyInterference(
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr, 
     llvm::Instruction *curInst=nullptr, 
-    map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr
+    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr
 ) {
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
@@ -944,7 +944,7 @@ void EnvironmentPOMO::performStoreOp(llvm::StoreInst *storeInst, string destVarN
 }
 
 void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars, 
-    map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites, 
+    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
     llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper
 ) {
     map <POMO, ApDomain> newenvironment;
@@ -1035,7 +1035,7 @@ void EnvironmentPOMO::applyInterference(
     Z3Minimal &zHelper, 
     llvm::Instruction *interfInst=nullptr,
     llvm::Instruction *curInst=nullptr,
-    map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites=nullptr
+    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr
 ) {
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
@@ -1198,7 +1198,7 @@ void EnvironmentPOMO::getVarOption (
     map<string, options> *varoptions, 
     string varName,
     PartialOrder curPartialOrder,
-    map<llvm::Instruction*, map<string, llvm::StoreInst*>> *lastWrites,
+    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites,
     llvm::Instruction *interfInst,
     llvm::Instruction *curInst,
     Z3Minimal &zHelper

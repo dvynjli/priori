@@ -97,9 +97,11 @@ TODO:
     change vector<string> globalVars to pointer
     Check the consistency of POMOs before join in meetEnvironment
     Alias analysis
-    Support for rmw:
+    Support for rmw: (if an rmw is acquire operation, how t treat its write part under RA???)
         Apron interface
         inst handling in framework - last write, po, 
+        need to handle function calls to provide support for rmw with another atomic variable 
+    remove relations. Not required anymore
 
 
 

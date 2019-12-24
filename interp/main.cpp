@@ -33,7 +33,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
-    map<Instruction*, map<string, StoreInst*>> lastWrites; 
+    map<Instruction*, map<string, Instruction*>> lastWrites; 
     Z3Minimal zHelper;
     vector<string> globalVars;
 
@@ -47,8 +47,8 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // testPO();
-        analyzeProgram(M);
-        checkAssertions();
+        // analyzeProgram(M);
+        // checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -175,7 +175,7 @@ class VerifierPass : public ModulePass {
 
         while(!funcQ.empty())
         {
-            map<string, StoreInst*> lastWritesCurInst;
+            map<string, Instruction*> lastWritesCurInst;
             Function *func = funcQ.front();
             funcQ.pop();
             vector<string> funcVars;
@@ -267,14 +267,12 @@ class VerifierPass : public ModulePass {
                         if (dyn_cast<GlobalVariable>(destVar)) {
                             string destVarName = getNameFromValue(destVar);
                             varToStores[destVarName].insert(storeInst);
+                            #ifdef NOTRA
                             if (storeInst->getOrdering() == llvm::AtomicOrdering::Release ||
                                 storeInst->getOrdering() == llvm::AtomicOrdering::AcquireRelease ||
                                 storeInst->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent) {
-                                #ifdef NOTRA
                                 lastRelWrite[destVarName] = storeInst;
-                                #endif
                             }
-                            #ifdef NOTRA
                             else if (lastRelWrite[destVarName]) {
                                 prevRelWriteOfSameVar[storeInst] = lastRelWrite[destVarName];
                             }
@@ -295,6 +293,36 @@ class VerifierPass : public ModulePass {
                             lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
                             lastWritesCurInst[destVarName] = storeInst;
+                        }
+                    }
+                    else if (AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(it)) {
+                        Value* destVar = rmwInst->getPointerOperand();
+                        // TODO: Require value variable for RMW with variables, will be considered as read of this variable
+                        
+                        // load part of RMW inst
+                        Instruction *inst = dyn_cast<Instruction>(it);
+                        string varName = "var" + to_string(ssaVarCounter);
+                        ssaVarCounter++;
+                        nameToValue.emplace(varName, inst);
+                        valueToName.emplace(inst, varName);
+                        funcVars.push_back(varName);
+
+                        if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+                            destVar = gepOp->getPointerOperand();
+                        }
+                        if (dyn_cast<GlobalVariable>(destVar)) {
+                            string destVarName = getNameFromValue(destVar);
+                            if (lastGlobalInst) {
+                                if (minimalZ3) zHelper.addSB(lastGlobalInst, rmwInst);
+                            }
+                            // store part of RMWInst
+                            varToStores[destVarName].insert(rmwInst);
+                            lastWritesCurInst[destVarName] = rmwInst;
+                            // load part of RMWInst
+                            varToLoads[rmwInst]=destVarName;
+
+                            lastGlobalOfVar[destVarName] = rmwInst;
+                            lastGlobalInst = rmwInst;
                         }
                     }
                     else {
@@ -359,7 +387,7 @@ class VerifierPass : public ModulePass {
         // }
     
         getFeasibleInterferences(allLoads, allStores, relations);
-        // printFeasibleInterf();
+        printFeasibleInterf();
     }
 
     void analyzeProgram(Module &M) {
@@ -1421,7 +1449,7 @@ class VerifierPass : public ModulePass {
     void printFeasibleInterf() {
         errs() << "\nFeasible Interfs\n";
         for (auto it1=feasibleInterfences.begin(); it1!=feasibleInterfences.end(); ++it1) {
-            errs() << "Interfs for function: " << it1->first->getName();
+            errs() << "Interfs for function: " << it1->first->getName() << "\n";
             auto allInterfOfFun = it1->second;
             int i = 0;
             for (auto it2=allInterfOfFun.begin(); it2!=allInterfOfFun.end(); ++it2, ++i) {
