@@ -153,7 +153,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, stri
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
             break;
         case SUB:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, -1, strOp2, AP_END);
             break;
         case MUL:
             // for multiplication of two variables, need to intervalize one
@@ -316,6 +316,13 @@ void ApDomain::joinOnVars(ApDomain other, vector<string> vars) {
     for (auto var: vars) {
         ap_var_t apVar = (ap_var_t) var.c_str();
         joinVar(other, apVar);
+    }
+}
+
+void ApDomain::copyOnVars(ApDomain other, vector<string> vars) {
+    for (auto var: vars) {
+        ap_var_t apVar = (ap_var_t) var.c_str();
+        copyVar(other, apVar);
     }
 }
 
@@ -691,6 +698,10 @@ void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> var
 
 }
 
+void EnvironmentRelHead::copyOnVars(EnvironmentRelHead other, vector<string> vars) {
+
+}
+
 void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
@@ -1027,6 +1038,23 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
     // }
     // fprintf(stderr, "Env after joinOnVars:\n");
     // printEnvironment();
+}
+
+void EnvironmentPOMO::copyOnVars(EnvironmentPOMO other, vector<string> vars) {
+    if (environment.size() > 1) {
+        fprintf(stderr, "ERROR: Please create new function for each thread create call\n");
+        exit(0);
+    }
+    map<POMO, ApDomain> newenv;
+    ApDomain funcOldApDomain;
+    funcOldApDomain.copyApDomain(environment.begin()->second);
+    for (auto it: other) {
+        ApDomain tmpApDomain;
+        tmpApDomain.copyApDomain(funcOldApDomain);
+        tmpApDomain.copyOnVars(it.second, vars);
+        newenv[it.first] = tmpApDomain;
+    }
+    environment = newenv;
 }
 
 void EnvironmentPOMO::applyInterference(

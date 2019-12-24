@@ -58,21 +58,24 @@ public:
     // Unary Operations
     void performUnaryOp(operation oper, string strTo, string strOp);
     void performUnaryOp(operation oper, string strTo, int intOp);
-    // Binary Operations
+    // Binary Operations and RMW Operations
     void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
     void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
     void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
     void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
-    // Other Operations
-    void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
     // Cmp Operations
     void performCmpOp(operation oper, string strOp1, int intOp2);
     void performCmpOp(operation oper, int intOp1,    string strOp2);
     void performCmpOp(operation oper, int intOp1,    int intOp2);
     void performCmpOp(operation oper, string strOp1, string strOp2);
+    // Other Operations
+    void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
     
     // Perform join only for the list of variables passed in arg2
     void joinOnVars(ApDomain other, vector<string> vars);
+    // Perform join only for the list of variables passed in arg2
+    void copyOnVars(ApDomain other, vector<string> vars);
+
 
     void applyInterference(string interfVar, ApDomain fromApDomain, bool isPOMO, map<string, options> *varoptions=nullptr);
     void joinApDomain(ApDomain other);
@@ -125,6 +128,9 @@ public:
      virtual void joinOnVars(T other, vector<string> vars, 
                 map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper)=0;
+    // Thread Create Operation
+    // Perform copy only for the list of variables passed in arg2
+     virtual void copyOnVars(T other, vector<string> vars)=0;
     
     /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
         * interfVar: Variable on which interference is happening
@@ -196,6 +202,9 @@ public:
      virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars, 
                 map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+    // Thread Create Operation
+    // Perform copy only for the list of variables passed in arg2
+    virtual void copyOnVars(EnvironmentRelHead other, vector<string> vars);
     
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
@@ -269,6 +278,9 @@ public:
     virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars, 
                 map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
                 llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+    // Thread Create Operation
+    // Perform copy only for the list of variables passed in arg2
+     virtual void copyOnVars(EnvironmentPOMO other, vector<string> vars);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, Z3Minimal &zHelper, 
                 llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 

@@ -5,12 +5,12 @@
 
 using namespace std;
 
-atomic<int> x,y;
+atomic<int> x;
 
 void* fun1(void * arg){
 	int t = 2;
-	int tmp1 = x.fetch_add(t,memory_order_acquire);
-	// testcase to check rmw
+	int tmp1 = x.fetch_add(t,memory_order_acq_rel);
+	// testcase to check rmw returned value
 	// tmp1 == 2 should pass
 	assert(tmp1==2);
 	return NULL;
@@ -20,10 +20,7 @@ void* fun1(void * arg){
 int main () {
 	pthread_t t1;
 	x.store(2, memory_order_release);
-	y.store(1, memory_order_release);
 	pthread_create(&t1, NULL, fun1, NULL);
-	// x.store(2, memory_order_release);
 	pthread_join(t1, NULL);
-	x.load(memory_order_acquire);
 	return 0;
 }

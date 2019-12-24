@@ -47,8 +47,8 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // testPO();
-        // analyzeProgram(M);
-        // checkAssertions();
+        analyzeProgram(M);
+        checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -449,13 +449,13 @@ class VerifierPass : public ModulePass {
                 }
             }
             
-            errs() << "------ Program state at iteration " << iterations << ": -----\n";
-            for (auto it: programStateCurItr) {
-                for (auto it2: it.second) {
-                    printValue(it2.first);
-                    it2.second.printEnvironment();
-                }
-            }
+            // errs() << "------ Program state at iteration " << iterations << ": -----\n";
+            // for (auto it: programStateCurItr) {
+            //     for (auto it2: it.second) {
+            //         printValue(it2.first);
+            //         it2.second.printEnvironment();
+            //     }
+            // }
 
             // isFixedPointReached = true;
             isFixedPointReached = isFixedPoint(programStateCurItr);
@@ -609,14 +609,19 @@ class VerifierPass : public ModulePass {
                     // curEnv.printEnvironment();
                 }
             }
+            else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
+                // errs() << "initial env:\n";
+                // curEnv.printEnvironment();
+                curEnv = checkRMWInst(rmwInst, curEnv, interf);
+            }
+            // CMPXCHG
             else {
                 
             }
-            // RMW, CMPXCHG
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            curEnv.printEnvironment();
+            // curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -995,8 +1000,7 @@ class VerifierPass : public ModulePass {
         // Carry the environment of current thread to the newly created thread. 
         // Need to copy only globals, discard locals.
         if (Function* calledFunc = dyn_cast<Function> (callInst->getArgOperand(2))) {
-            funcInitEnv[calledFunc].joinOnVars(curEnv, globalVars, &lastWrites, 
-                callInst, &calledFunc->front().front() , zHelper);
+            funcInitEnv[calledFunc].copyOnVars(curEnv, globalVars);
         }
     }
 
@@ -1017,24 +1021,81 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
+    Environment checkRMWInst(
+        AtomicRMWInst *rmwInst, 
+        Environment curEnv, 
+        unordered_map<Instruction*, Instruction*> interf
+    ) { 
+        Value *pointerVar = rmwInst->getPointerOperand();
+        string pointerVarName = getNameFromValue(pointerVar);
+        string destVarName = getNameFromValue(rmwInst);
+        
+        // what type of RMWInst
+        operation oper;
+        switch(rmwInst->getOperation()) {
+            case AtomicRMWInst::BinOp::Add:
+                oper = ADD;
+                break;
+            case AtomicRMWInst::BinOp::Sub:
+                oper = SUB;
+                break;
+            default:
+                errs() << "WARNING: unsupported operation " << rmwInst->getOpcodeName() << "\n";
+                printValue(rmwInst);
+                return curEnv;
+        }
+
+        // apply the interf on load of global for RMW
+        if (GEPOperator *gepOp = dyn_cast<GEPOperator>(pointerVar)) {
+            pointerVar = gepOp->getPointerOperand();
+        }
+        if (dyn_cast<GlobalVariable>(pointerVar)) {
+            curEnv = applyInterfToLoad(rmwInst, curEnv, interf, pointerVarName);
+        }
+        // errs() << "After applyInterf:\n";
+        // curEnv.printEnvironment();
+
+        // the old value of global is returned
+        curEnv.performUnaryOp(LOAD, destVarName.c_str(), pointerVarName.c_str());
+
+        // errs() << "After assigning to the destVar:\n";
+        // curEnv.printEnvironment();
+
+        // find the argument to perform RMW with and 
+        // update the new value of global variable
+        Value *withVar = rmwInst->getValOperand();
+        if (ConstantInt *constWithVar = dyn_cast<ConstantInt>(withVar)) {
+            int constIntWithVar= constWithVar->getValue().getSExtValue();
+            curEnv.performBinaryOp(oper, pointerVarName, pointerVarName, constIntWithVar);
+        }
+        else {
+            string withVarName = getNameFromValue(withVar);
+            curEnv.performBinaryOp(oper, pointerVarName, pointerVarName, withVarName);
+        }
+
+        // errs() << "After performing binOp:\n";
+        // curEnv.printEnvironment();
+        return curEnv;
+    }
+
     Environment applyInterfToLoad(
-        UnaryInstruction* unaryInst, 
+        Instruction* loadInst, 
         Environment curEnv, 
         unordered_map<Instruction*, Instruction*> interf,
         string varName
     ) {
         // errs() << "Applying interf\n";
         // find interfering instruction
-        auto searchInterf = interf.find(unaryInst);
+        auto searchInterf = interf.find(loadInst);
         if (searchInterf == interf.end()) {
             errs() << "ERROR: Interfernce for the load instrction not found\n";
-            printValue(unaryInst);
+            printValue(loadInst);
             return curEnv;
         }
         Instruction *interfInst = searchInterf->second;
         
         // if interfernce is from some other thread
-        if (interfInst && interfInst != unaryInst->getPrevNode()) {
+        if (interfInst && interfInst != loadInst->getPrevNode()) {
             // find the domain of interfering instruction
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
@@ -1074,7 +1135,7 @@ class VerifierPass : public ModulePass {
                         }
                     }
                     #endif
-                    curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, unaryInst, &lastWrites);
+                    curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, loadInst, &lastWrites);
                 }
             }
         }
@@ -1332,7 +1393,7 @@ class VerifierPass : public ModulePass {
             }
         }
         errs() << "___________________________________________________\n";
-        errs() << "Errors Found: " << num_errors << "\n";
+        errs() << "# Failed Asserts: " << num_errors << "\n";
     }
 
     void printLoadsToAllStores(unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores){
