@@ -1073,10 +1073,13 @@ class VerifierPass : public ModulePass {
             curEnv.performBinaryOp(oper, pointerVarName, pointerVarName, withVarName);
         }
 
+        // errs() << "After performing binOp:\n";
+        // curEnv.printEnvironment();
+
         // append the current instruction in POMO
         curEnv.performStoreOp(rmwInst, pointerVarName, zHelper);
 
-        // errs() << "After performing binOp:\n";
+        // errs() << "After appending store:\n";
         // curEnv.printEnvironment();
         return curEnv;
     }

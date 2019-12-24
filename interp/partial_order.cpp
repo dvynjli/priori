@@ -174,7 +174,7 @@ string PartialOrder::toString() {
 		for (auto itTo: itFrom.second) {
 			ss << itTo << ", ";
 		}
-		// ss << "\n";
+		ss << ";\t";
 	}
 	// cout << ss.str() << "\n";
 	return ss.str();
