@@ -9,20 +9,21 @@ atomic<int> x,y;
 
 void* fun1(void * arg){
 	y.store(1, memory_order_release);
-	x.store(1,memory_order_acq_rel);
+	x.store(1,memory_order_release);
 	return NULL;
 }
 
 void* fun2(void * arg){
-	x.fetch_add(1,memory_order_acq_rel);
+	if (x.load(memory_order_acquire)) {
+		x.store(2, memory_order_release);
+	}
 	return NULL;
 }
 
 void* fun3(void * arg){
 	int tmp1 = x.load(memory_order_acq_rel);
 	int tmp2 = y.load(memory_order_acquire);
-	// testcase for rmw synchronization with both load & store
-	// synchronization between three threads
+	// testcase for synchronization between three threads
 	// tmp1==2 => tmp==1 should pass
 	assert(tmp1!=2 || tmp2==1);
 	return NULL;
