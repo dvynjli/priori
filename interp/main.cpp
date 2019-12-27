@@ -19,11 +19,6 @@ cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3
 
 class VerifierPass : public ModulePass {
 
-    /* TODO: Should I create threads as a set or vector??
-        Vector- interferences of t1 with t1 will be explored in case more than one thread of same func are present
-        Set and interference of each thread with itself are also explored, support to inf threads of same func can be added 
-    */
-    
     typedef EnvironmentPOMO Environment;
     // typedef EnvironmentRelHead Environment;
 
@@ -162,7 +157,6 @@ class VerifierPass : public ModulePass {
     void initThreadDetails(Module &M) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
-        vector< pair <string, pair<Instruction*, Instruction*>>> relations;
 
         //find main function
         Function *mainF = getMainFunction(M);
@@ -189,7 +183,7 @@ class VerifierPass : public ModulePass {
             unordered_map<Instruction*, string> varToLoads;
             AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
         
-            for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
+            for(auto BB = func->begin(); BB != func->end(); BB++)          //iterator of Function class over BasicBlock
             {
                 Instruction *lastGlobalInst=nullptr;
                 map<string, Instruction*> lastGlobalOfVar;
@@ -198,9 +192,9 @@ class VerifierPass : public ModulePass {
                 map<string, StoreInst*> lastRelWrite;
                 #endif
 
-                for(auto it = block->begin(); it != block->end(); it++)       //iterator of BasicBlock over Instruction
+                for(auto I = BB->begin(); I != BB->end(); I++)       //iterator of BasicBlock over Instruction
                 {
-                    if (CallInst *call = dyn_cast<CallInst>(it)) {
+                    if (CallInst *call = dyn_cast<CallInst>(I)) {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
                             {  
@@ -216,19 +210,15 @@ class VerifierPass : public ModulePass {
                                     // no global instr before thread create in current function (or in newly created thread)
                                     if (lastGlobalInstBeforeCall) {
                                         if (minimalZ3) zHelper.addSB(lastGlobalInstBeforeCall, call);
-                                        relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                                     }
                                     if (nextGlobalInstAfterCall) {
                                         if (minimalZ3) zHelper.addSB(call, nextGlobalInstAfterCall);
-                                        relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                                     }
                                     if (firstGlobalInstInCalled) {
                                         if (minimalZ3) zHelper.addSB(call, firstGlobalInstInCalled);
-                                        relations.push_back(make_pair("mhb", make_pair(call, firstGlobalInstInCalled)));
                                     }
                                     if (lastGlobalInst) {
                                         if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
-                                        relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                                     }
                                 }
 
@@ -241,30 +231,26 @@ class VerifierPass : public ModulePass {
                             vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
                             if (nextGlobalInstAfterCall) {
                                 if (minimalZ3) zHelper.addSB(call, nextGlobalInstAfterCall);
-                                relations.push_back(make_pair("mhb", make_pair(call, nextGlobalInstAfterCall)));
                             }
                             if (lastGlobalInstBeforeCall) {
                                 if (minimalZ3) zHelper.addSB(lastGlobalInstBeforeCall, call);
-                                relations.push_back(make_pair("mhb", make_pair(lastGlobalInstBeforeCall, call)));
                             }
                             for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
                                 if (minimalZ3) zHelper.addSB(*it, call);
-                                relations.push_back(make_pair("mhb", make_pair(*it, call)));
                             }
                             if (lastGlobalInst) {
                                 if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
-                                relations.push_back(make_pair("po", make_pair(lastGlobalInst, call)));
                             }
                         }
                         else {
                             if (!noPrint) {
                                 errs() << "unknown function call:\n";
-                                it->print(errs());
+                                I->print(errs());
                                 errs() <<"\n";
                             }
                         }
                     }
-                    else if (StoreInst *storeInst = dyn_cast<StoreInst>(it)) {
+                    else if (StoreInst *storeInst = dyn_cast<StoreInst>(I)) {
                         Value* destVar = storeInst->getPointerOperand();
                         if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
                             destVar = gepOp->getPointerOperand();
@@ -287,31 +273,24 @@ class VerifierPass : public ModulePass {
                             // zHelper.addStoreInstr(storeInst);
                             if (lastGlobalInst) {
                                 if (minimalZ3) zHelper.addSB(lastGlobalInst, storeInst);
-                                relations.push_back(make_pair("po", make_pair(lastGlobalInst, storeInst)));
-                                if(AA->isNoAlias(destVar, lastGlobalInst->getOperand(1))) {
-                                    errs() << "No ";
-                                }
-                                errs() << "Alias: ";
-                                printValue(destVar);
-                                printValue(lastGlobalInst->getOperand(0));
+                                // if(AA->isNoAlias(destVar, lastGlobalInst->getOperand(1))) {
+                                //     errs() << "No ";
+                                // }
+                                // errs() << "Alias: ";
+                                // printValue(destVar);
+                                // printValue(lastGlobalInst->getOperand(0));
                             } 
-                            // no global operation yet. Add MHB with init
-                            else {
-                                relations.push_back(make_pair("mhb", make_pair(lastGlobalInst, storeInst)));
-                            }
-                            if (lastGlobalOfVar[destVarName])
-                                relations.push_back(make_pair("mhb", make_pair(lastGlobalOfVar[destVarName], storeInst)));
                             lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
                             lastWritesCurInst[destVarName] = storeInst;
                         }
                     }
-                    else if (AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(it)) {
+                    else if (AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(I)) {
                         Value* destVar = rmwInst->getPointerOperand();
                         // TODO: Require value variable for RMW with variables, will be considered as read of this variable
                         
                         // load part of RMW inst
-                        Instruction *inst = dyn_cast<Instruction>(it);
+                        Instruction *inst = dyn_cast<Instruction>(I);
                         string varName = "var" + to_string(ssaVarCounter);
                         ssaVarCounter++;
                         nameToValue.emplace(varName, inst);
@@ -337,14 +316,14 @@ class VerifierPass : public ModulePass {
                         }
                     }
                     else {
-                        Instruction *inst = dyn_cast<Instruction>(it);
+                        Instruction *inst = dyn_cast<Instruction>(I);
                         string varName = "var" + to_string(ssaVarCounter);
                         ssaVarCounter++;
                         nameToValue.emplace(varName, inst);
                         valueToName.emplace(inst, varName);
                         funcVars.push_back(varName);
 
-                        if (LoadInst *loadInst = dyn_cast<LoadInst>(it)) {
+                        if (LoadInst *loadInst = dyn_cast<LoadInst>(I)) {
                             
                             Value* fromVar = loadInst->getOperand(0);
                             if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
@@ -358,27 +337,21 @@ class VerifierPass : public ModulePass {
                                 // zHelper.addLoadInstr(loadInst);
                                 if (lastGlobalInst) {
                                     if (minimalZ3) zHelper.addSB(lastGlobalInst, loadInst);
-                                    relations.push_back(make_pair("po", make_pair(lastGlobalInst, loadInst)));
-                                    printValue(lastGlobalInst);
-                                    if(AA->isNoAlias(fromVar, lastGlobalInst->getOperand(1))) {
-                                        errs() << "No ";
-                                    }
-                                    errs() << "Alias: ";
-                                    printValue(fromVar);
-                                    printValue(lastGlobalInst->getOperand(1));
+                                    // printValue(lastGlobalInst);
+                                    // if(AA->isNoAlias(fromVar, lastGlobalInst->getOperand(1))) {
+                                    //     errs() << "No ";
+                                    // }
+                                    // errs() << "Alias: ";
+                                    // printValue(fromVar);
+                                    // printValue(lastGlobalInst->getOperand(1));
                                 }
                                 // no global operation yet. Add MHB with init
-                                else {
-                                    relations.push_back(make_pair("mhb", make_pair(lastGlobalInst, loadInst)));
-                                }
-                                if (lastGlobalOfVar[fromVarName])
-                                    relations.push_back(make_pair("mhb", make_pair(lastGlobalOfVar[fromVarName], loadInst)));
                                 lastGlobalOfVar[fromVarName] = loadInst;
                                 lastGlobalInst = loadInst;
                             }
                         }
                     }
-                    lastWrites.emplace(make_pair(&(*it),lastWritesCurInst));
+                    lastWrites.emplace(make_pair(&(*I),lastWritesCurInst));
                 }
 
             }
@@ -404,7 +377,7 @@ class VerifierPass : public ModulePass {
         //     }
         // }
     
-        getFeasibleInterferences(allLoads, allStores, relations);
+        getFeasibleInterferences(allLoads, allStores);
         // printFeasibleInterf();
     }
 
@@ -1212,8 +1185,7 @@ class VerifierPass : public ModulePass {
     /// Checks all possible interfernces for feasibility one by one.
     void getFeasibleInterferences (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
-        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores, 
-        vector< pair <string, pair<Instruction*, Instruction*>>> relations
+        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
     ){
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
