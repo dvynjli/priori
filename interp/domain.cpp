@@ -1125,8 +1125,8 @@ void EnvironmentPOMO::applyInterference(
                     getVarOption(&varoptions, varIt.first, tmpPO, lastWrites, interfInst, curInst, zHelper);
 
                     newPomo[varIt.first] = tmpPO;
-                    fprintf(stderr, "Pomo so far:\n");
-                    printPOMO(newPomo);
+                    // fprintf(stderr, "Pomo so far:\n");
+                    // printPOMO(newPomo);
 
                 }
 

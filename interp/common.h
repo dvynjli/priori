@@ -14,7 +14,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/IR/Instructions.h"
 
-#define DEBUG
+// #define DEBUG
 // #define NOTRA
 
 enum operation { ADD, SUB, MUL, DIV, MOD,       // Arithemetic opertions

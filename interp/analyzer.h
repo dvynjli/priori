@@ -9,6 +9,7 @@
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 
 #include "omp.h"
 

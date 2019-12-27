@@ -41,6 +41,10 @@ class VerifierPass : public ModulePass {
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
     #endif
 
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+        AU.addRequired<AAResultsWrapperPass>();
+    }
+
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
         globalVars = getGlobalIntVars(M);
@@ -183,7 +187,8 @@ class VerifierPass : public ModulePass {
             // errs() << "----analyzing funtion: " << func->getName() << "\n";
             unordered_map<string, unordered_set<Instruction*>> varToStores;
             unordered_map<Instruction*, string> varToLoads;
-                
+            AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
+        
             for(auto block = func->begin(); block != func->end(); block++)          //iterator of Function class over BasicBlock
             {
                 Instruction *lastGlobalInst=nullptr;
@@ -283,6 +288,12 @@ class VerifierPass : public ModulePass {
                             if (lastGlobalInst) {
                                 if (minimalZ3) zHelper.addSB(lastGlobalInst, storeInst);
                                 relations.push_back(make_pair("po", make_pair(lastGlobalInst, storeInst)));
+                                if(AA->isNoAlias(destVar, lastGlobalInst->getOperand(1))) {
+                                    errs() << "No ";
+                                }
+                                errs() << "Alias: ";
+                                printValue(destVar);
+                                printValue(lastGlobalInst->getOperand(0));
                             } 
                             // no global operation yet. Add MHB with init
                             else {
@@ -348,6 +359,13 @@ class VerifierPass : public ModulePass {
                                 if (lastGlobalInst) {
                                     if (minimalZ3) zHelper.addSB(lastGlobalInst, loadInst);
                                     relations.push_back(make_pair("po", make_pair(lastGlobalInst, loadInst)));
+                                    printValue(lastGlobalInst);
+                                    if(AA->isNoAlias(fromVar, lastGlobalInst->getOperand(1))) {
+                                        errs() << "No ";
+                                    }
+                                    errs() << "Alias: ";
+                                    printValue(fromVar);
+                                    printValue(lastGlobalInst->getOperand(1));
                                 }
                                 // no global operation yet. Add MHB with init
                                 else {
@@ -387,7 +405,7 @@ class VerifierPass : public ModulePass {
         // }
     
         getFeasibleInterferences(allLoads, allStores, relations);
-        printFeasibleInterf();
+        // printFeasibleInterf();
     }
 
     void analyzeProgram(Module &M) {
@@ -1642,5 +1660,5 @@ class VerifierPass : public ModulePass {
         VerifierPass() : ModulePass(ID) {}
 };
 
-char VerifierPass::ID = 0;
+char VerifierPass::ID = 10;
 static RegisterPass<VerifierPass> X("verifier", "Abstract Interpretation Verifier Pass", false, true);
