@@ -131,6 +131,19 @@ bool PartialOrder::remove(llvm::Instruction* inst) {
 	return true;
 }
 
+// get the last instructions in Partial Order
+// inst \in lasts iff nEa (inst, a) \in order
+unordered_set<llvm::Instruction*> PartialOrder::getLasts() {
+	unordered_set<llvm::Instruction*> lasts;
+	// iterate over all instructions in order
+	for (auto it:order) {
+		// if nothing is ordered after this, insert it into lasts
+		if (it.second.empty())
+			lasts.insert(it.first);
+	}
+	return lasts;
+}
+
 // update ordering relation to get transitivity
 bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instruction* to, 
 	std::map<llvm::Instruction *, std::set<llvm::Instruction *>>::iterator toItr

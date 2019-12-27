@@ -51,6 +51,10 @@ public:
 	// all (x, inst) and (inst, x) pair from order for all possible 
 	// values of x
 	bool remove(llvm::Instruction* inst);
+
+	// get the last instructions in Partial Order
+	// inst \in lasts iff nEa (inst, a) \in order
+	unordered_set<llvm::Instruction*> getLasts();
 	
 	virtual bool operator== (const PartialOrder &other) const;
 	virtual bool operator<  (const PartialOrder &other) const;
