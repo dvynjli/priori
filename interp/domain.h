@@ -21,7 +21,7 @@
 //      of current and interferring thread in POMO
 // COPY: copies the domain of interfinst, if the last write of interfering 
 //      thread comes after last write of current thread in POMO
-enum options {DONOTHING, MERGE, COPY};
+enum options {UNKNOWN, DONOTHING, MERGE, COPY};
 
 typedef map <string, llvm::Instruction*> REL_HEAD;
 typedef map <string, PartialOrder> POMO;
@@ -235,9 +235,14 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     map<POMO, ApDomain>::iterator begin();
 	map<POMO, ApDomain>::iterator end();
 
-    void getVarOption (map<string, options> *varoptions, string varName,PartialOrder curPartialOrder,
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-                llvm::Instruction *interfInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+    // void getVarOption (map<string, options> *varoptions, string varName,PartialOrder curPartialOrder,
+    //             map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
+    //             llvm::Instruction *interfInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+    void getVarOption (map<string, options> *varoptions, 
+                string varName,
+                PartialOrder curPartialOrder,
+                PartialOrder interfPartialOrder, 
+                Z3Minimal &zHelper);
 
 public:
 

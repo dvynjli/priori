@@ -102,7 +102,6 @@ TODO:
         inst handling in framework - last write, po, 
         need to handle function calls to provide support for rmw with another atomic variable 
     check T1 ret in test16. Extra env. Sb not taken care properly.
-    getvaroption in applyInterf should be based on lasts of PO. Not last write of current thread. Check test15, 13 
 
 
 

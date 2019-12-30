@@ -69,7 +69,11 @@ class VerifierPass : public ModulePass {
                 Value * varInst = &(*it);
                 nameToValue.emplace(varName, varInst);
                 valueToName.emplace(varInst, varName);
+
             }
+            // else if (PointerType* ptrTy = dyn_cast<PointerType>(it->getValueType())) {
+            //     errs() << "Pointer: "; ptrTy->getElementType()->print(errs()); errs() << "\n";
+            // }
             else if (StructType* structTy = dyn_cast<StructType>(it->getValueType())) {
                 if  (!structTy->getName().compare("struct.std::atomic")) {
                     string varName = it->getName();
@@ -1378,7 +1382,7 @@ class VerifierPass : public ModulePass {
                         // printValue(callInst);
                         Environment curEnv = it->second;
                         if (!curEnv.isUnreachable()) {
-                            errs() << "ERROR: Assertion failed\n";
+                            errs() << "Assertion failed:\n";
                             printValue(callInst);
                             if (!noPrint)
                                 curEnv.printEnvironment();

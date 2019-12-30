@@ -5,11 +5,11 @@ import subprocess
 import os
 
 domain = 'interval' 	# options are interval, octagon
-num_tests = 13
+num_tests = 15
 # if the test should fail assertion, value of test_result is false]
 test_result = 	[False, True, 	False, 	True, 	True, 
 				True, 	False, 	True, 	True, 	True, 
-				True,	True, 	True]
+				True,	True, 	True,	True,	True]
 num_correct = 0
 num_false_positive = 0
 num_missed_asserts = 0
@@ -20,7 +20,9 @@ for test_id in range(1, num_tests+1):
 	command = ['opt', '-basicaa', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, '-z3-minimal', '-no-print', '-useMOPO', 'tests/test' + str(test_id) + '.ll']
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()
-	if ('Assertion failed' in str(err)) == (not test_result[test_id-1]):
+	if ('ERROR:' in str(err)):
+		print('\033[91mTest'+str(test_id),': Something went Wrong\033[0m')
+	elif ('Assertion failed' in str(err)) == (not test_result[test_id-1]):
 		print('Test'+str(test_id),": Pass")
 		num_correct = num_correct+1
 	else:

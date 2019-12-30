@@ -1007,7 +1007,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
                     tmpPO.join(zHelper, searchOtherPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     // check what to do for each variable
-                    getVarOption(&varoptions, varItr.first, tmpPO, lastWrites, joinFromInst, curInst, zHelper);
+                    getVarOption(&varoptions, varItr.first, tmpPO, searchOtherPomo->second, zHelper);
 
                     newPomo[varItr.first] = tmpPO;
                     // fprintf(stderr, "Pomo so far:\n");
@@ -1122,7 +1122,7 @@ void EnvironmentPOMO::applyInterference(
                     }
 
                     // check what to do for each variable
-                    getVarOption(&varoptions, varIt.first, tmpPO, lastWrites, interfInst, curInst, zHelper);
+                    getVarOption(&varoptions, varIt.first, tmpPO, searchInterfPomo->second, zHelper);
 
                     newPomo[varIt.first] = tmpPO;
                     // fprintf(stderr, "Pomo so far:\n");
@@ -1222,7 +1222,54 @@ bool EnvironmentPOMO::isUnreachable() {
     return isUnreach;
 }
 
-void EnvironmentPOMO::getVarOption (
+void EnvironmentPOMO::getVarOption (map<string, options> *varoptions, 
+    string varName,
+    PartialOrder curPartialOrder,
+    PartialOrder interfPartialOrder, 
+    Z3Minimal &zHelper
+) {
+    auto lastsCurPO = curPartialOrder.getLasts();
+    auto lastsInterfPO = interfPartialOrder.getLasts();
+
+    options opt=UNKNOWN;
+    
+    if (lastsInterfPO.empty()) {
+        // since there is no older write in interferring thread that can change the state, do nothing
+        // fprintf(stderr, "%s: empty,do nothing\n", varName.c_str());
+        opt = DONOTHING;
+    }
+    else if (lastsCurPO == lastsInterfPO) {
+        // since no older write in current thread, the variable must be uninitialized, copy
+        // fprintf(stderr, "%s: empty,copy\n", varName.c_str());
+        opt = COPY;
+    }
+    else {   
+        for (auto curItr: lastsCurPO) {
+            for (auto interfItr: lastsInterfPO) {
+                if (curPartialOrder.isOrderedBefore(interfItr, curItr) && (opt == UNKNOWN || opt == DONOTHING)) {
+                    // last write of interferring thread is ordered before last write of current thread, do nothing
+                    // fprintf(stderr, "%s: sb, do nothing\n", varName.c_str());
+                    opt = DONOTHING;
+                }
+                else if (curPartialOrder.isOrderedBefore(curItr, interfItr) && (opt == UNKNOWN || opt == COPY)) {
+                    // last write of current thread is ordered before last write of interferring thread, copy
+                    // fprintf(stderr, "%s: sb, copy\n", varName.c_str());
+                    opt = COPY;
+                } 
+                else {
+                    // last writes of current thread and interferring threads are unordered, merge
+                    // fprintf(stderr, "%s: no sb, merge\n", varName.c_str());
+                    opt = MERGE;
+                    break;
+                }
+            }
+            if (opt == MERGE) break;
+        }
+    }
+    varoptions->emplace(make_pair(varName, opt));
+}
+
+/* void EnvironmentPOMO::getVarOption (
     map<string, options> *varoptions, 
     string varName,
     PartialOrder curPartialOrder,
@@ -1261,7 +1308,7 @@ void EnvironmentPOMO::getVarOption (
         // last writes of current thread and interferring threads are unordered, merge
         varoptions->emplace(make_pair(varName, MERGE));
     }
-}
+} */
 
 void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO){
     // fprintf(stderr, "joining:\n");
