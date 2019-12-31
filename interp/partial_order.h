@@ -18,6 +18,10 @@ class PartialOrder {
 		llvm::Instruction* to, 
 		std::map<llvm::Instruction *, std::set<llvm::Instruction *>>::iterator toItr);
 
+	// adds an instruction with nothing ordered after it ib the order,
+	// while deleting the older instructions from the same thread
+	bool addInst(Z3Minimal &zHelper, llvm::Instruction *inst);
+
 public:
 	// Adds (from, to) to order if not already. 
 	// Since partial order can't be cyclic, if (to, from) are already

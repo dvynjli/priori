@@ -6,20 +6,10 @@
 // in order, returns false. The behavior might be undefined 
 // in this case. Else add (from, to) and returns true
 bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::Instruction* to) {
-	// cout << "addOrder " << from << "-->" << to << "\n";
+	// fprintf(stderr, "addOrder %p --> %p\n", from, to);
 	
 	if (isOrderedBefore(from, to)) return true;
 	if (isOrderedBefore(to, from)) return false;
-
-	// Check if some inst sequenced before 'from' or 'to' is in
-	// the order. If yes, remove the older one.
-	// OPT: The check is required only if 'from' or 'to' are not 
-	// in the order already.
-	for (auto it=order.begin(); it!=order.end(); ) {
-		llvm::Instruction* inst = it->first; ++it;
-		if (inst != to && zHelper.querySB(inst, to)) {remove(inst);}
-		if (inst != from && zHelper.querySB(inst, from)) {remove(inst);}
-	}
 
 	// find 'to' in ordering
 	auto toItr = order.find(to);
@@ -27,6 +17,34 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 	if (toItr == order.end()) {
 		set<llvm::Instruction*> emptyset {};
 		order[to] = emptyset;
+	}
+
+	// Check if some inst sequenced before 'from' or 'to' is in
+	// the order. If yes, remove the older one.
+	// OPT: The check is required only if 'from' or 'to' are not 
+	// in the order already.
+	for (auto it=order.begin(); it!=order.end(); ) {
+		llvm::Instruction* inst = it->first; ++it;
+		// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
+		if (inst != to && inst != from) {
+			if (zHelper.querySB(inst, to)) {
+				addOrder(zHelper, inst, to); 
+				remove(inst);
+			}
+			else if (zHelper.querySB(to, inst)) {
+				return addOrder(zHelper, from, inst);
+			}
+			if (zHelper.querySB(inst, from)) {
+				addOrder(zHelper, inst, from); 
+				remove(inst);
+			}
+			else if (zHelper.querySB(from, inst)) {
+				bool done = makeTransitiveOrdering(from, to, toItr);
+				remove(from);
+				addInst(zHelper, to);
+				return done;
+			}
+		}
 	}
 
 	// set transitive ordering from-->to
@@ -58,21 +76,20 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
 bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
-	// cout << "joining\n";
-	// if (order.empty()) cout << "EMPTY\n";
-	// else 
+	// fprintf(stderr, "joining\n");
+	// fprintf(stderr, "%s\t and \t%s\n", toString().c_str(), other.toString().c_str());
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
 		if (fromItr->second.empty() && order.find(fromItr->first) == order.end()){
-			// TODO: need to check if E inst. fromItr --sb--> inst. No need to add from inst in this case.
-			set<llvm::Instruction*> emptyset {};
-			order[fromItr->first] = emptyset;
+			addInst(zHelper, fromItr->first);
 		}
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {
 			if (!addOrder(zHelper, fromItr->first, *toItr))
 				return false;
 		}
 	}
+	// fprintf(stderr, "after join %s\n", toString().c_str());
+
 	return true;
 }
 
@@ -174,6 +191,31 @@ bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instru
 		}
 	}
 	return true;
+}
+
+
+bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
+	for (auto it=order.begin(); it!=order.end(); ) {
+		llvm::Instruction* instItr = it->first; ++it;
+		if (instItr != inst && zHelper.querySB(inst, instItr)) {
+			// Nothing to add, a newer instruction is already there
+			return true;
+		}
+		else if (instItr != inst && zHelper.querySB(instItr, inst)) {
+			// all the instructions ordered before instItr, should also
+			// be ordered before instItr
+			makeTransitiveOrdering(instItr, inst, order.end());
+			
+			// remove older instrutcion
+			remove(instItr);
+		}
+	}
+	auto findInst = order.find(inst);
+	// add (inst,<empty>) in order 
+	if (findInst == order.end()) {
+		set<llvm::Instruction*> emptyset {};
+		order[inst] = emptyset;
+	}
 }
 
 void PartialOrder::copy (const PartialOrder &copyFrom) {
