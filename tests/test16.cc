@@ -23,8 +23,6 @@ void* fun2(void * arg){
 }
 
 
-
-
 int main () {
 	pthread_t t1,t2;
 	pthread_create(&t1, NULL, fun1, NULL);

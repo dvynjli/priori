@@ -75,6 +75,7 @@ Instructions that need Apron interface-
     UnaryOp !, load, store
             -, ~ (can be added later)
     CmpXchg
+    select
     Function calls (can be added later)
 Instructions that need Z3 interface-
     thread create, thread join, fences, lock,
@@ -95,13 +96,10 @@ TODO:
         there may be more than one lastwrites in some cases. How to handle that?
     Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
     change vector<string> globalVars to pointer
-    Check the consistency of POMOs before join in meetEnvironment
     Alias analysis
-    Support for rmw: (if an rmw is acquire operation, how t treat its write part under RA???)
-        Apron interface
-        inst handling in framework - last write, po, 
-        need to handle function calls to provide support for rmw with another atomic variable 
-    check T1 ret in test16. Extra env. Sb not taken care properly.
+    Support for rmw: need to handle function calls to provide support for rmw with another atomic variable 
+    Check if lastWrites are required now 
+    select instruction
 
 
 

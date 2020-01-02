@@ -9,26 +9,31 @@ atomic<int> x,y,z;
 atomic<int> *p;
 
 void* fun1(void * arg){
-	y.store(1, memory_order_release);
-	x.store(1,memory_order_acq_rel);
+	// y.store(1, memory_order_release);
+	// x.store(1,memory_order_acq_rel);
 	return NULL;
 }
 
 void* fun2(void * arg){
-	if (x.load(memory_order_acquire)) {
-		// p = &y;
-		x.store(2, memory_order_release);
-	}
+	p = &y;
+	if (x.load(memory_order_acquire)) p = &z;
+	// else p = &z;
+	p->store(1, memory_order_release);
 	return NULL;
 }
 
 void* fun3(void * arg){
+	atomic_int *a;
 	int tmp1 = x.load(memory_order_acquire);
+	if (tmp1) a = &y;
+	else a = &z;
 	// if (tmp1 == 2) {
-		int tmp2 = p->load(memory_order_acquire);
+		
 		// testcase for alias analysis
 		// tmp1==2 => tmp==1 should pass
 		// assert(tmp2==1);
+	int tmp2 = a->load(memory_order_acquire);
+	assert(tmp2 == 1);
 	// }
 	return NULL;
 }

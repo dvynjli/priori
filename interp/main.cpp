@@ -46,8 +46,8 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // testPO();
-        analyzeProgram(M);
-        checkAssertions();
+        // analyzeProgram(M);
+        // checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -71,9 +71,18 @@ class VerifierPass : public ModulePass {
                 valueToName.emplace(varInst, varName);
 
             }
-            // else if (PointerType* ptrTy = dyn_cast<PointerType>(it->getValueType())) {
-            //     errs() << "Pointer: "; ptrTy->getElementType()->print(errs()); errs() << "\n";
-            // }
+            else if (PointerType* ptrTy = dyn_cast<PointerType>(it->getValueType())) {
+                // errs() << "Pointer: "; ptrTy->getElementType()->print(errs()); errs() << "\n";
+                if (StructType* structTy = dyn_cast<StructType>(ptrTy->getElementType())) {
+                    if  (!structTy->getName().compare("struct.std::atomic")) {
+                        string varName = it->getName();
+                        intVars.push_back(varName);
+                        Value * varInst = &(*it);
+                        nameToValue.emplace(varName, varInst);
+                        valueToName.emplace(varInst, varName);
+                    }
+                }
+            }
             else if (StructType* structTy = dyn_cast<StructType>(it->getValueType())) {
                 if  (!structTy->getName().compare("struct.std::atomic")) {
                     string varName = it->getName();
@@ -156,6 +165,25 @@ class VerifierPass : public ModulePass {
         // printLoadsToAllStores(loadsToAllStores);
 
         return loadsToAllStores;
+    }
+
+    bool mayAliasWithGlobal(Value *ptrType, AliasAnalysis *AA) {
+        for (auto itr: globalVars) {
+            if (!AA->isNoAlias(ptrType, nameToValue[itr])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    unordered_set<Value*> getGlobalAliases(Value *ptrType, AliasAnalysis *AA) {
+        unordered_set<Value*> aliases;
+        for (auto itr: globalVars) {
+            if (!AA->isNoAlias(ptrType, nameToValue[itr])) {
+                aliases.insert(nameToValue[itr]);
+            }
+        }
+        return aliases;
     }
 
     void initThreadDetails(Module &M) {
@@ -256,6 +284,15 @@ class VerifierPass : public ModulePass {
                     }
                     else if (StoreInst *storeInst = dyn_cast<StoreInst>(I)) {
                         Value* destVar = storeInst->getPointerOperand();
+                        errs() << "** Possible global alias of: ";
+                        printValue(destVar);
+                        errs() << "from Inst: ";
+                        printValue(storeInst);
+                        if (storeInst->isAtomic()) {
+                            for (auto alias: getGlobalAliases(destVar, AA)) {
+                                printValue(alias);
+                            }
+                        }
                         if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
                             destVar = gepOp->getPointerOperand();
                         }
@@ -328,11 +365,27 @@ class VerifierPass : public ModulePass {
                         funcVars.push_back(varName);
 
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(I)) {
-                            
                             Value* fromVar = loadInst->getOperand(0);
-                            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                            // if (mayAliasWithGlobal(fromVar, AA)) {
+                                errs() << "** Possible global alias of: ";
+                                printValue(fromVar);
+                                errs() << "from Inst: ";
+                                printValue(inst);
+                                if (loadInst->isAtomic()) {
+                                    for (auto alias: getGlobalAliases(fromVar, AA)) {
+                                        printValue(alias);
+                                    }
+                                }
+                            // }
+                            if (GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
                                 fromVar = gepOp->getPointerOperand();
                             }
+                            // errs() << "Checking for global alias"; printValue(loadInst);
+                            // if (mayAliasWithGlobal(fromVar, AA)) {
+                            //     errs() << "Possible global alias of: ";
+                            //     printValue(fromVar);
+                            //     printValue(inst);
+                            // }
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
                                 varToLoads[loadInst]=fromVarName;
@@ -353,6 +406,7 @@ class VerifierPass : public ModulePass {
                                 lastGlobalOfVar[fromVarName] = loadInst;
                                 lastGlobalInst = loadInst;
                             }
+                            
                         }
                     }
                     lastWrites.emplace(make_pair(&(*I),lastWritesCurInst));
@@ -623,16 +677,19 @@ class VerifierPass : public ModulePass {
     }
 
     string getNameFromValue (Value *val) {
+        // if (val->getType()->isPointerTy()) {
+        //     errs() << "Pointer type. Skip\n";
+        //     return "";
+        // }
         if(GEPOperator *gepOp = dyn_cast<GEPOperator>(val)){
            val = gepOp->getPointerOperand();
         }
         auto searchName = valueToName.find(val);
         if (searchName == valueToName.end()) {
             errs() << "ERROR: Instrution not found in Instruction to Name map\n";
-            val->print(errs());
-            errs()<<"\n";
-            // fprintf(stderr, "ERROR: Instrution not found in Instruction to Name map\n");
-            exit(0);
+            printValue(val);
+            // exit(0);
+            return "";
         }
         return searchName->second;
     }
