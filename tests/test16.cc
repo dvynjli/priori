@@ -5,20 +5,19 @@
 
 using namespace std;
 
-atomic<int> x;
+atomic<int> x,y,a,b;
 
 void* fun1(void * arg){
-	x.load(memory_order_acquire);
-	x.store(1, memory_order_release);
-	x.store(2, memory_order_release);
-	x.load(memory_order_acquire);
+	int tmp = x.load(memory_order_acquire);
+	a.store(tmp, memory_order_release);
+	y.store(1, memory_order_release);
 	return NULL;
 }
 
 void* fun2(void * arg){
-	x.load(memory_order_acquire);
-	x.store(3, memory_order_release);
-	x.store(4, memory_order_release);
+	int tmp = y.load(memory_order_acquire);
+	b.store(tmp, memory_order_release);
+	x.store(1, memory_order_release);
 	return NULL;
 }
 
@@ -29,5 +28,10 @@ int main () {
 	pthread_create(&t2, NULL, fun2, NULL);
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
+	int tmp1 = a.load(memory_order_acquire);
+	int tmp2 = b.load(memory_order_acquire);
+	// both a and b can't be 1
+	// a==1 => b!=1 should pass
+	assert(a!=1 || b!=1);
 	return 0;
 }

@@ -46,8 +46,8 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // testPO();
-        // analyzeProgram(M);
-        // checkAssertions();
+        analyzeProgram(M);
+        checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
