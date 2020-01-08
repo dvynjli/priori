@@ -16,7 +16,7 @@ void* fun1(void * arg){
 
 void* fun2(void * arg){
 	if (x.load(memory_order_acquire)) {
-		// p = &y;
+		p = &y;
 		x.store(2, memory_order_release);
 	}
 	return NULL;
@@ -24,12 +24,12 @@ void* fun2(void * arg){
 
 void* fun3(void * arg){
 	int tmp1 = x.load(memory_order_acquire);
-	// if (tmp1 == 2) {
+	if (tmp1 == 2) {
 		int tmp2 = p->load(memory_order_acquire);
 		// testcase for alias analysis
 		// tmp1==2 => tmp==1 should pass
-		// assert(tmp2==1);
-	// }
+		assert(tmp2==1);
+	}
 	return NULL;
 }
 
