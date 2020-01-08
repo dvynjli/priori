@@ -820,6 +820,7 @@ class VerifierPass : public ModulePass {
         }
         else {
             errs() << "ERROR: env not found in branchEnv\n";
+            printValue(fromVar1);
             exit(0);
         }
         if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)) {
@@ -848,6 +849,7 @@ class VerifierPass : public ModulePass {
         }
         else {
             errs() << "ERROR: env not found in branchEnv\n";
+            printValue(fromVar2);
             exit(0);
         }
 

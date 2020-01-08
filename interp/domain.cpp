@@ -307,7 +307,7 @@ void ApDomain::performCmpOp(operation oper, int intOp1, int intOp2) {
 }
 
 void ApDomain::performCmpOp(operation oper, string strOp1, string strOp2) {
-    fprintf(stderr, "performCmpOp() with both operand of condition as constant. This function is not implemented yet!!");
+    fprintf(stderr, "performCmpOp() with both operand of condition as variables/temporary. This function is not implemented yet!!");
     exit(0);
 }
 

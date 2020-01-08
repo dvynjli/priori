@@ -32,6 +32,6 @@ int main () {
 	int tmp2 = b.load(memory_order_acquire);
 	// both a and b can't be 1
 	// a==1 => b!=1 should pass
-	assert(a!=1 || b!=1);
+	assert(tmp1!=1 || tmp2!=1);
 	return 0;
 }
