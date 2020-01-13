@@ -26,10 +26,12 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
     unordered_map <Function*, Environment> funcInitEnv;
     unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
+    Z3Minimal zHelper;
+
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
-    Z3Minimal zHelper;
+    map<Function*, AliasAnalysis*> aliasAnalyses;
     vector<string> globalVars;
 
     #ifdef NOTRA
@@ -217,6 +219,7 @@ class VerifierPass : public ModulePass {
             unordered_map<string, unordered_set<Instruction*>> varToStores;
             unordered_map<Instruction*, unordered_set<string>> varToLoads;
             AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
+            aliasAnalyses[func]=AA;
         
             for(auto BB = func->begin(); BB != func->end(); BB++)          //iterator of Function class over BasicBlock
             {
@@ -462,7 +465,7 @@ class VerifierPass : public ModulePass {
         // }
     
         getFeasibleInterferences(allLoads, allStores);
-        // printFeasibleInterf();
+        printFeasibleInterf();
     }
 
     void analyzeProgram(Module &M) {
@@ -696,7 +699,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            // curEnv.printEnvironment();
+            curEnv.printEnvironment();
         }
            
         return curEnv;
@@ -996,6 +999,13 @@ class VerifierPass : public ModulePass {
 
     Environment checkStoreInst(StoreInst* storeInst, Environment curEnv) {
         Value* destVar = storeInst->getPointerOperand();
+        // if (storeInst->isAtomic() && getGlobalAliases(destVar, aliasAnalyses[storeInst->getFunction()]).size()>1) {
+        //     // TODO: since the instruction might be storing to any of the possible aliases, 
+        //     // the domain of source var should be joined with domain of all possible 
+        //     // aliases of dest var
+        //     return curEnv;
+        // }
+
         string destVarName = getNameFromValue(destVar);
 
         #ifdef NOTRA
@@ -1047,10 +1057,22 @@ class VerifierPass : public ModulePass {
         string fromVarName = getNameFromValue(fromVar);
         string destVarName = getNameFromValue(unaryInst);
         
-        operation oper;
-        switch (unaryInst->getOpcode()) {
+        if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
+            if (loadInst->isAtomic()) {
+                if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                    fromVar = gepOp->getPointerOperand();
+                }           
+                if (dyn_cast<GlobalVariable>(fromVar)) {
+                    // errs() << "Load of global\n";
+                    // errs() << "Env before:";
+                    // curEnv.printEnvironment();
+                    curEnv = applyInterfToLoad(unaryInst, curEnv, interf, fromVarName);
+                }
+            }
+            curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str());
+        }
+        /* switch (unaryInst->getOpcode()) {
             case Instruction::Load:
-                oper = LOAD;
                 // Apply interfernce before analyzing the instruction
                 if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
                     fromVar = gepOp->getPointerOperand();
@@ -1071,7 +1093,7 @@ class VerifierPass : public ModulePass {
                 return curEnv;
         }
         
-        curEnv.performUnaryOp(oper, destVarName.c_str(), fromVarName.c_str());
+        curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str()); */
 
         return curEnv;
     }
