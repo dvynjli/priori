@@ -5,44 +5,32 @@
 
 using namespace std;
 
-atomic<int> x,y,z;
-atomic<int> *p;
+atomic<int> x,y;
 
 void* fun1(void * arg){
+	x.store(1,memory_order_release);
 	y.store(1, memory_order_release);
-	x.store(1,memory_order_acq_rel);
 	return NULL;
 }
 
 void* fun2(void * arg){
-	if (x.load(memory_order_acquire)) {
-		p = &y;
-		x.store(2, memory_order_release);
-	}
+	if (y.load(memory_order_acquire)) 	x.store(5, memory_order_release);
+	else x.store(3, memory_order_release);
+	y.store(2, memory_order_release);
 	return NULL;
 }
-
-void* fun3(void * arg){
-	int tmp1 = x.load(memory_order_acquire);
-	if (tmp1 == 2) {
-		int tmp2 = p->load(memory_order_acquire);
-		// testcase for alias analysis
-		// tmp1==2 => tmp==1 should pass
-		assert(tmp2==1);
-	}
-	return NULL;
-}
-
-
 
 
 int main () {
-	pthread_t t1,t2,t3;
+	pthread_t t1,t2;
 	pthread_create(&t1, NULL, fun1, NULL);
 	pthread_create(&t2, NULL, fun2, NULL);
-	pthread_create(&t3, NULL, fun3, NULL);
 	pthread_join(t1, NULL);
 	pthread_join(t2, NULL);
-	pthread_join(t3, NULL);
+	int tmp1 = y.load(memory_order_acquire);
+	int tmp2 = x.load(memory_order_acquire);
+	// testcase to check if mergering of branches is handled properly.
+	// y==2 => (x==2 || x==3) should pass
+	assert(tmp1!=2 || tmp2==5 || tmp2==3);
 	return 0;
 }

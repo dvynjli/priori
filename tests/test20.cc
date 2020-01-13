@@ -29,8 +29,10 @@ int main () {
 	pthread_join(t2, NULL);
 	int tmp1 = y.load(memory_order_acquire);
 	int tmp2 = x.load(memory_order_acquire);
+	int tmp3 = x.load(memory_order_acquire);
 	// testcase to check if mergering of branches is handled properly.
 	// y==2 => (x==2 || x==3) should pass
-	assert(tmp1!=2 || tmp2==5 || tmp2==3);
+	if (tmp1==2)
+		assert(tmp2==tmp3);
 	return 0;
 }

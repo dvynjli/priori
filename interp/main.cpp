@@ -31,8 +31,11 @@ class VerifierPass : public ModulePass {
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
-    map<Function*, AliasAnalysis*> aliasAnalyses;
     vector<string> globalVars;
+
+    #ifdef ALIAS
+    map<Function*, AliasAnalysis*> aliasAnalyses;
+    #endif
 
     #ifdef NOTRA
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
@@ -130,7 +133,7 @@ class VerifierPass : public ModulePass {
     }
 
     unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> getLoadsToAllStoresMap (
-        unordered_map<Function*, unordered_map<Instruction*, unordered_set<string>>> allLoads,
+        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
     ){
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
@@ -140,25 +143,23 @@ class VerifierPass : public ModulePass {
             auto curFuncLoads = allLoadsItr->second;
             for (auto curFuncLoadsItr=curFuncLoads.begin(); curFuncLoadsItr!=curFuncLoads.end(); ++curFuncLoadsItr) {
                 Instruction *load =curFuncLoadsItr->first;
-                // errs() << "For load inst: "; printValue(load);
+                string loadVar = curFuncLoadsItr->second;
+                // errs() << "coping loads of var " << loadVar << " of function " << curFunc->getName() << "\n";
                 vector<Instruction*> allStoresForCurLoad;
-                for (auto loadVar:curFuncLoadsItr->second) {
-                    // errs() << "coping loads of var " << loadVar << " of function " << curFunc->getName() << "\n";
-                    // loads of same var from all other functions
-                    for (auto allStoresItr=allStores.begin(); allStoresItr!=allStores.end(); ++allStoresItr) {
-                        Function *otherFunc = allStoresItr->first;
-                        // need interfernce only from other threads
-                        if (otherFunc != curFunc) {
-                            auto otherFuncStores = allStoresItr->second;
-                            auto searchStoresOfVar = otherFuncStores.find(loadVar);
-                            if (searchStoresOfVar != otherFuncStores.end()) {
-                                auto allStoresFromFun = searchStoresOfVar->second;
-                                // errs() << "#stores = " << allStoresFromFun.size() << "\n";
-                                copy(allStoresFromFun.begin(), 
-                                    allStoresFromFun.end(), 
-                                    inserter(allStoresForCurLoad, 
-                                    allStoresForCurLoad.end()));
-                            }
+                // loads of same var from all other functions
+                for (auto allStoresItr=allStores.begin(); allStoresItr!=allStores.end(); ++allStoresItr) {
+                    Function *otherFunc = allStoresItr->first;
+                    // need interfernce only from other threads
+                    if (otherFunc != curFunc) {
+                        auto otherFuncStores = allStoresItr->second;
+                        auto searchStoresOfVar = otherFuncStores.find(loadVar);
+                        if (searchStoresOfVar != otherFuncStores.end()) {
+                            auto allStoresFromFun = searchStoresOfVar->second;
+                            // errs() << "#stores = " << allStoresFromFun.size() << "\n";
+                            copy(allStoresFromFun.begin(), 
+                                allStoresFromFun.end(), 
+                                inserter(allStoresForCurLoad, 
+                                allStoresForCurLoad.end()));
                         }
                     }
                 }
@@ -167,11 +168,10 @@ class VerifierPass : public ModulePass {
                 loadsToAllStores[curFunc][load] = allStoresForCurLoad;
             }
         }
-        // printLoadsToAllStores(loadsToAllStores);
-
         return loadsToAllStores;
     }
 
+    #ifdef ALIAS
     bool mayAliasWithGlobal(Value *ptrType, AliasAnalysis *AA) {
         for (auto itr: globalVars) {
             if (!AA->isNoAlias(ptrType, nameToValue[itr])) {
@@ -190,9 +190,10 @@ class VerifierPass : public ModulePass {
         }
         return aliases;
     }
+    #endif
 
     void initThreadDetails(Module &M) {
-        unordered_map<Function*, unordered_map<Instruction*, unordered_set<string>>> allLoads;
+        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
 
         //find main function
@@ -217,9 +218,11 @@ class VerifierPass : public ModulePass {
             
             // errs() << "----analyzing funtion: " << func->getName() << "\n";
             unordered_map<string, unordered_set<Instruction*>> varToStores;
-            unordered_map<Instruction*, unordered_set<string>> varToLoads;
+            unordered_map<Instruction*, string> varToLoads;
+            #ifdef ALIAS
             AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
             aliasAnalyses[func]=AA;
+            #endif
         
             for(auto BB = func->begin(); BB != func->end(); BB++)          //iterator of Function class over BasicBlock
             {
@@ -294,6 +297,7 @@ class VerifierPass : public ModulePass {
                         // printValue(destVar);
                         // errs() << "from Inst: ";
                         // printValue(storeInst);
+                        #ifdef ALIAS
                         if (storeInst->isAtomic()) {
                             for (auto alias: getGlobalAliases(destVar, AA)) {
                                 // printValue(alias);
@@ -310,8 +314,9 @@ class VerifierPass : public ModulePass {
                             } 
                             lastGlobalInst = storeInst;
                         }
+                        #else
                         // Not required after alias analysis
-                        /* if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+                        if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
                             destVar = gepOp->getPointerOperand();
                         }
                         if (dyn_cast<GlobalVariable>(destVar)) {
@@ -336,7 +341,8 @@ class VerifierPass : public ModulePass {
                             lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
                             lastWritesCurInst[destVarName] = storeInst;
-                        } */
+                        }
+                        #endif
                     }
                     else if (AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(I)) {
                         Value* destVar = rmwInst->getPointerOperand();
@@ -352,6 +358,7 @@ class VerifierPass : public ModulePass {
                         valueToName.emplace(inst, varName);
                         funcVars.push_back(varName);
 
+                        #ifdef ALIAS
                         if (rmwInst->isAtomic()) {
                             for (auto alias: getGlobalAliases(destVar, AA)) {
                                 string destVarName = getNameFromValue(destVar);
@@ -367,8 +374,9 @@ class VerifierPass : public ModulePass {
                             }
                             lastGlobalInst = rmwInst;
                         }
+                        #else
                         // Not required after alias analysis
-                        /* if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+                        if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
                             destVar = gepOp->getPointerOperand();
                         }
                         if (dyn_cast<GlobalVariable>(destVar)) {
@@ -380,11 +388,12 @@ class VerifierPass : public ModulePass {
                             varToStores[destVarName].insert(rmwInst);
                             lastWritesCurInst[destVarName] = rmwInst;
                             // load part of RMWInst
-                            varToLoads[rmwInst].insert(destVarName);
+                            varToLoads[rmwInst]=destVarName;
 
                             lastGlobalOfVar[destVarName] = rmwInst;
                             lastGlobalInst = rmwInst;
-                        } */
+                        }
+                        #endif
                     }
                     else {
                         Instruction *inst = dyn_cast<Instruction>(I);
@@ -396,6 +405,7 @@ class VerifierPass : public ModulePass {
 
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(I)) {
                             Value* fromVar = loadInst->getOperand(0);
+                            #ifdef ALIAS
                             if (loadInst->isAtomic()) {
                                 // errs() << "** Possible global alias of: ";
                                 // printValue(fromVar);
@@ -412,7 +422,8 @@ class VerifierPass : public ModulePass {
                                 }
                                 lastGlobalInst = loadInst;
                             }
-                            /* if (GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                            #else
+                            if (GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
                                 fromVar = gepOp->getPointerOperand();
                             }
                             string fromVarName = getNameFromValue(fromVar);
@@ -423,19 +434,12 @@ class VerifierPass : public ModulePass {
                                 // zHelper.addLoadInstr(loadInst);
                                 if (lastGlobalInst) {
                                     if (minimalZ3) zHelper.addSB(lastGlobalInst, loadInst);
-                                    // printValue(lastGlobalInst);
-                                    // if(AA->isNoAlias(fromVar, lastGlobalInst->getOperand(1))) {
-                                    //     errs() << "No ";
-                                    // }
-                                    // errs() << "Alias: ";
-                                    // printValue(fromVar);
-                                    // printValue(lastGlobalInst->getOperand(1));
                                 }
                                 // else no global operation yet. Add MHB with init
                                 lastGlobalOfVar[fromVarName] = loadInst;
                                 lastGlobalInst = loadInst;
-                            } */
-                            
+                            }
+                            #endif
                         }
                     }
                     lastWrites.emplace(make_pair(&(*I),lastWritesCurInst));
@@ -999,12 +1003,14 @@ class VerifierPass : public ModulePass {
 
     Environment checkStoreInst(StoreInst* storeInst, Environment curEnv) {
         Value* destVar = storeInst->getPointerOperand();
+        #ifdef ALIAS
         // if (storeInst->isAtomic() && getGlobalAliases(destVar, aliasAnalyses[storeInst->getFunction()]).size()>1) {
         //     // TODO: since the instruction might be storing to any of the possible aliases, 
         //     // the domain of source var should be joined with domain of all possible 
         //     // aliases of dest var
         //     return curEnv;
         // }
+        #endif
 
         string destVarName = getNameFromValue(destVar);
 
@@ -1057,7 +1063,7 @@ class VerifierPass : public ModulePass {
         string fromVarName = getNameFromValue(fromVar);
         string destVarName = getNameFromValue(unaryInst);
         
-        if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
+        /* if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
             if (loadInst->isAtomic()) {
                 if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
                     fromVar = gepOp->getPointerOperand();
@@ -1070,8 +1076,8 @@ class VerifierPass : public ModulePass {
                 }
             }
             curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str());
-        }
-        /* switch (unaryInst->getOpcode()) {
+        } */
+        switch (unaryInst->getOpcode()) {
             case Instruction::Load:
                 // Apply interfernce before analyzing the instruction
                 if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
@@ -1093,7 +1099,7 @@ class VerifierPass : public ModulePass {
                 return curEnv;
         }
         
-        curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str()); */
+        curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str());
 
         return curEnv;
     }
@@ -1295,7 +1301,7 @@ class VerifierPass : public ModulePass {
 
     /// Checks all possible interfernces for feasibility one by one.
     void getFeasibleInterferences (
-        unordered_map<Function*, unordered_map<Instruction*, unordered_set<string>>> allLoads,
+        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
     ){
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
