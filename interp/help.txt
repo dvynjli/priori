@@ -91,15 +91,14 @@ TODO:
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
-    URGENT: Computation of SB and lastWrites for programs with branches might be wrong
+    URGENT: Computation of SB and lastWrites for programs with branches might be wrong - test21
         there may be more than one lastwrites in some cases. How to handle that?
     Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
     change vector<string> globalVars to pointer
-    Alias analysis
     Support for rmw: need to handle function calls to provide support for rmw with another atomic variable 
     Check if lastWrites are required now 
     select, switch-case instruction
-    performCmpOp on str, str
+    performCmpOp on str, str - test20
 
 
 Other functionality that might be added

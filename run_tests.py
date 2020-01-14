@@ -5,11 +5,12 @@ import subprocess
 import os
 
 domain = 'interval' 	# options are interval, octagon
-num_tests = 17
+num_tests = 22
 # if the test should fail assertion, value of test_result is false]
 test_result = 	[False, True, 	False, 	True, 	True, 
 				True, 	False, 	True, 	True, 	True, 
 				True,	True, 	True,	True,	True,
+				True, 	False, 	True, 	True, 	True,
 				True, 	False]
 num_correct = 0
 num_false_positive = 0

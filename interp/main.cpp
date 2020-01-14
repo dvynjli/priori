@@ -469,7 +469,7 @@ class VerifierPass : public ModulePass {
         // }
     
         getFeasibleInterferences(allLoads, allStores);
-        printFeasibleInterf();
+        // printFeasibleInterf();
     }
 
     void analyzeProgram(Module &M) {
@@ -545,7 +545,7 @@ class VerifierPass : public ModulePass {
         }
         if (!noPrint) {
             errs() << "_________________________________________________\n";
-            errs() << "Fized point reached in " << iterations << " iteratons\n";
+            errs() << "Fixed point reached in " << iterations << " iterations\n";
             errs() << "Final domain:\n";
             printProgramState();
         }
@@ -703,7 +703,7 @@ class VerifierPass : public ModulePass {
 
             curFuncEnv[currentInst] = curEnv;
             predEnv.copyEnvironment(curEnv);
-            curEnv.printEnvironment();
+            if (!noPrint) curEnv.printEnvironment();
         }
            
         return curEnv;

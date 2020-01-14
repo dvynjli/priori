@@ -20,7 +20,7 @@ void* fun2(void * arg){
 		// testcase to check if branching is handled proerly
 		// check the possible interfs
 		// assert x!=0 should pass
-		assert(x!=0);
+		assert(tmp2!=0);
 	}
 	return NULL;
 }
