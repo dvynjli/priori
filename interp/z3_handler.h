@@ -141,6 +141,8 @@ class Z3Minimal {
 
 	void addSB(llvm::Instruction *from, llvm::Instruction *to);
 	bool querySB(llvm::Instruction *from, llvm::Instruction *to);
+
+	string toString() {return zfp.to_string();}
 };
 
 #endif

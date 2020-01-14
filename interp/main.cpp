@@ -244,22 +244,20 @@ class VerifierPass : public ModulePass {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
                                     // need to add dominates rules
-                                    Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
-                                    Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
-                                    Instruction *firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
-                                    // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
-                                    // no global instr before thread create in current function (or in newly created thread)
-                                    if (lastGlobalInstBeforeCall) {
-                                        if (minimalZ3) zHelper.addSB(lastGlobalInstBeforeCall, call);
-                                    }
-                                    if (nextGlobalInstAfterCall) {
-                                        if (minimalZ3) zHelper.addSB(call, nextGlobalInstAfterCall);
-                                    }
-                                    if (firstGlobalInstInCalled) {
-                                        if (minimalZ3) zHelper.addSB(call, firstGlobalInstInCalled);
-                                    }
-                                    if (lastGlobalInst) {
-                                        if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
+                                    if (minimalZ3) {
+                                        vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(call);
+                                        vector<Instruction*> nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
+                                        vector<Instruction*> firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
+                                        // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
+                                        // no global instr before thread create in current function (or in newly created thread)
+                                        for (auto inst:lastGlobalInstBeforeCall)
+                                            zHelper.addSB(inst, call);
+                                        for (auto inst:nextGlobalInstAfterCall) 
+                                            zHelper.addSB(call, inst);
+                                        for (auto inst:firstGlobalInstInCalled)
+                                            zHelper.addSB(call, inst);
+                                        // if (lastGlobalInst)
+                                        //     zHelper.addSB(lastGlobalInst, call);
                                     }
                                 }
 
@@ -267,20 +265,20 @@ class VerifierPass : public ModulePass {
                         }
                         else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
                             // TODO: need to add dominates rules
-                            Instruction *lastGlobalInstBeforeCall = getLastGlobalInst(call);
-                            Instruction *nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
-                            vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
-                            if (nextGlobalInstAfterCall) {
-                                if (minimalZ3) zHelper.addSB(call, nextGlobalInstAfterCall);
-                            }
-                            if (lastGlobalInstBeforeCall) {
-                                if (minimalZ3) zHelper.addSB(lastGlobalInstBeforeCall, call);
-                            }
-                            for (auto it=lastGlobalInstInCalled.begin(); it!=lastGlobalInstInCalled.end(); ++it) {
-                                if (minimalZ3) zHelper.addSB(*it, call);
-                            }
-                            if (lastGlobalInst) {
-                                if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
+                            if (minimalZ3) {
+                                vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(call);
+                                vector<Instruction*> nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
+                                vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
+                                for (auto inst:nextGlobalInstAfterCall)
+                                    zHelper.addSB(call, inst);
+                                for (auto inst:lastGlobalInstBeforeCall)
+                                    zHelper.addSB(inst, call);
+                                for (auto inst: lastGlobalInstInCalled) {
+                                    zHelper.addSB(inst, call);
+                                }
+                                // if (lastGlobalInst) {
+                                //     if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
+                                // }
                             }
                         }
                         else {
@@ -335,9 +333,11 @@ class VerifierPass : public ModulePass {
                             // errs() << "****adding store instr for: ";
                             // printValue(storeInst);
                             // zHelper.addStoreInstr(storeInst);
-                            if (lastGlobalInst) {
-                                if (minimalZ3) zHelper.addSB(lastGlobalInst, storeInst);
-                            } 
+                            if (minimalZ3) {
+                                vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(storeInst);
+                                for (auto inst:lastGlobalInstBeforeCall)
+                                    zHelper.addSB(inst, storeInst);
+                            }
                             lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
                             lastWritesCurInst[destVarName] = storeInst;
@@ -380,10 +380,12 @@ class VerifierPass : public ModulePass {
                             destVar = gepOp->getPointerOperand();
                         }
                         if (dyn_cast<GlobalVariable>(destVar)) {
-                            string destVarName = getNameFromValue(destVar);
-                            if (lastGlobalInst) {
-                                if (minimalZ3) zHelper.addSB(lastGlobalInst, rmwInst);
+                            if (minimalZ3) {
+                                vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(rmwInst);
+                                for (auto inst:lastGlobalInstBeforeCall)
+                                    zHelper.addSB(inst, rmwInst);
                             }
+                            string destVarName = getNameFromValue(destVar);
                             // store part of RMWInst
                             varToStores[destVarName].insert(rmwInst);
                             lastWritesCurInst[destVarName] = rmwInst;
@@ -432,8 +434,10 @@ class VerifierPass : public ModulePass {
                                 // errs() << "****adding load instr for: ";
                                 // printValue(loadInst);
                                 // zHelper.addLoadInstr(loadInst);
-                                if (lastGlobalInst) {
-                                    if (minimalZ3) zHelper.addSB(lastGlobalInst, loadInst);
+                                if (minimalZ3) {
+                                    vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(loadInst);
+                                    for (auto inst:lastGlobalInstBeforeCall)
+                                        zHelper.addSB(inst, loadInst);
                                 }
                                 // else no global operation yet. Add MHB with init
                                 lastGlobalOfVar[fromVarName] = loadInst;
@@ -453,6 +457,9 @@ class VerifierPass : public ModulePass {
             // errs() << "Loads of function " << func->getName() << "\n";
             // for (auto it=varToLoads.begin(); it!=varToLoads.end(); ++it)
             //     printValue(it->first);
+
+            // errs() << "Z3 after func " << func->getName() << ":\n";
+            // errs() << zHelper.toString();
 
             Environment curFuncEnv;
             curFuncEnv.init(globalVars, funcVars);
@@ -1684,7 +1691,7 @@ class VerifierPass : public ModulePass {
         return false;
     }
 
-    Instruction* getLastGlobalInst(Instruction *inst) {
+    Instruction* getLastGlobalInstInBB(Instruction *inst) {
         Instruction *prevInst = inst->getPrevNode();
         while ( prevInst                    &&
                 ! isGlobalLoad(prevInst)    &&
@@ -1696,7 +1703,26 @@ class VerifierPass : public ModulePass {
         return prevInst;
     }
 
-    Instruction* getNextGlobalInst(Instruction *inst) {
+    vector<Instruction*> getLastGlobalInst(Instruction *inst) {
+        vector<Instruction*> lastInst;
+        list<Instruction*> findLastOf;
+        findLastOf.push_back(inst);
+
+        // loop over all terminating BasicBlocks to find the last global instructions
+        while (!findLastOf.empty()) {
+            Instruction* inst = findLastOf.front();
+            findLastOf.pop_front();
+            auto li = getLastGlobalInstInBB(inst);
+            if (li) lastInst.push_back(li);
+            else {
+                for (auto predBB: predecessors(inst->getParent())) findLastOf.push_back(predBB->getTerminator());
+            }
+        }
+        return lastInst;
+
+    }
+
+    Instruction* getNextGlobalInstInBB(Instruction *inst) {
         Instruction *nextInst = inst;
         while ( nextInst                    &&
                 ! isGlobalLoad(nextInst)    &&
@@ -1704,6 +1730,24 @@ class VerifierPass : public ModulePass {
                 ! isPthreadCreate(nextInst) &&
                 ! isPthreadJoin(nextInst)) {
             nextInst = nextInst->getNextNode ();
+        }
+        return nextInst;
+    }
+
+    vector<Instruction*> getNextGlobalInst(Instruction *inst) {
+        vector<Instruction*> nextInst;
+        list<Instruction*> findNextOf;
+        findNextOf.push_back(inst);
+
+        // loop over all terminating BasicBlocks to find the last global instructions
+        while (!findNextOf.empty()) {
+            Instruction* inst = findNextOf.front();
+            findNextOf.pop_front();
+            auto li = getNextGlobalInstInBB(inst);
+            if (li) nextInst.push_back(li);
+            else {
+                for (auto succBB: successors(inst->getParent())) findNextOf.push_back(succBB->getTerminator());
+            }
         }
         return nextInst;
     }
@@ -1723,17 +1767,42 @@ class VerifierPass : public ModulePass {
         return nullptr;
     }
 
-
     vector<Instruction*> getLastInstOfPthreadJoin(Instruction *call) {
-        vector<Instruction*> lastInstr;
+        vector<Instruction*> lastInst;
         Function *func = findFunctionFromPthreadJoin(call);
+
+        // get all return instructions
+        list<Instruction*> retInstList;
         for (auto bbItr=func->begin(); bbItr!=func->end(); ++bbItr) {
             TerminatorInst *term = bbItr->getTerminator();
             if (ReturnInst *ret = dyn_cast<ReturnInst>(term)) {
-                lastInstr.push_back(getLastGlobalInst(ret));
+                // get the last inst of return instruction and add them to lastInst
+                vector<Instruction*> li = getLastGlobalInst(ret);
+                copy(li.begin(), li.end(), inserter(lastInst, lastInst.end()));
             }
         }
-        return lastInstr;
+
+        /* // get all terminating BasicBlocks
+        list<BasicBlock*> termBBList;
+        for (auto bbItr=func->begin(); bbItr!=func->end(); ++bbItr) {
+            TerminatorInst *term = bbItr->getTerminator();
+            if (ReturnInst *ret = dyn_cast<ReturnInst>(term)) {
+                termBBList.push_back(&*bbItr);
+            }
+        }
+
+        // loop over all terminating BasicBlocks to find the last global instructions
+        while (!termBBList.empty()) {
+            BasicBlock* BB = termBBList.front();
+            termBBList.pop_front();
+            auto li = getLastGlobalInstInBB(BB->getTerminator());
+            if (li) lastInst.push_back(li);
+            else {
+                for (auto predBB: predecessors(BB)) termBBList.push_back(predBB);
+            }
+        } */
+
+        return lastInst;
     }
 
     void printValue(Value *val) {

@@ -389,6 +389,11 @@ void Z3Helper::testQuery() {
 
 
 void Z3Minimal::addSB (llvm::Instruction *from, llvm::Instruction *to) {
+    // llvm::errs() << "adding sb of intruction " << from << ": ";
+    // if (from) from->print(llvm::errs()); else llvm::errs() << "nullptr";
+    // llvm::errs() << "\n---> " << to << ": ";
+    // if(to) to->print(llvm::errs()); else llvm::errs() << "nullptr";
+    // llvm::errs() << "\n";
     const z3::expr fromExpr = getBitVec(from);
     const z3::expr toExpr = getBitVec(to);
     z3::expr app = sb(fromExpr, toExpr);

@@ -91,12 +91,10 @@ TODO:
     make Z3Helper global for all files.
     In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
-    URGENT: Computation of SB and lastWrites for programs with branches might be wrong - test21
-        there may be more than one lastwrites in some cases. How to handle that?
     Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
     change vector<string> globalVars to pointer
     Support for rmw: need to handle function calls to provide support for rmw with another atomic variable 
-    Check if lastWrites are required now 
+    Check if lastWrites, lastGlobalInst and lastGlobalOfVar are required now - no, delete it 
     select, switch-case instruction
     performCmpOp on str, str - test20
 
@@ -118,6 +116,7 @@ Possible Optimizations:
     // delete from environment if domain is bottom - optimize isUnreachable()
     create interfernce based on data and control dependecies. will result in less z3 queries
         might be also delete data dep rule from z3
+        feasibility can be checked while making the interfernces - might result in less time complexity
     reduce number of variables
     Remove env if ApDomain is bottom
     In the new approach, z3 doesn't need to initialized repeatedly
