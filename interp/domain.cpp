@@ -1134,7 +1134,7 @@ void EnvironmentPOMO::applyInterference(
                 ApDomain tmpDomain;
                 tmpDomain.copyApDomain(curIt.second);
                 tmpDomain.applyInterference(interfVar, interfIt.second, true, &varoptions);
-                newenvironment[newPomo] = tmpDomain;
+                if (!tmpDomain.isUnreachable()) newenvironment[newPomo] = tmpDomain;
             }
         }
     }
@@ -1176,7 +1176,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
         if (searchPomo != environment.end()) {
             newDomain.joinApDomain(searchPomo->second);
         }
-        environment[pomo] = newDomain;
+        if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
     }
 }
 
@@ -1218,6 +1218,7 @@ bool EnvironmentPOMO::isUnreachable() {
             isUnreach = false;
             break;
         }
+        else environment.erase(it.first);
     }
     return isUnreach;
 }

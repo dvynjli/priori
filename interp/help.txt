@@ -97,6 +97,8 @@ TODO:
     Check if lastWrites, lastGlobalInst and lastGlobalOfVar are required now - no, delete it 
     select, switch-case instruction
     performCmpOp on str, str - test20
+    bitwise or/and ?? test19
+    Environment of x in [1,-1] in test24
 
 
 Other functionality that might be added
