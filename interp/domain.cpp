@@ -301,14 +301,42 @@ void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
 }
 
 void ApDomain::performCmpOp(operation oper, int intOp1, int intOp2) {
-    // never occur
-    fprintf(stderr, "performCmpOp() with both operand of condition as constant. This function should never called!!");
+    // never occurs
+    fprintf(stderr, "ERROR: performCmpOp() with both operand of condition as constant. This function should never called!!");
     exit(0);
 }
 
 void ApDomain::performCmpOp(operation oper, string strOp1, string strOp2) {
-    fprintf(stderr, "performCmpOp() with both operand of condition as variables/temporary. This function is not implemented yet!!");
-    exit(0);
+    if (oper==LT) {
+        // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
+        performCmpOp(GT, strOp2, strOp1);
+        return;
+    }
+    else if (oper == LE) {
+        // apron doesn't have LE cons operator. Need to change it to GE by swapping the operands.
+        performCmpOp(GE, strOp2, strOp1);
+        return;
+    }
+    else if (oper == NE) {
+        // NE is commutative
+        performNECmp(strOp2, strOp1);
+        return;
+    }
+    ap_constyp_t op = getApConsType(oper);
+    // fprintf(stderr, "%d %d %s\n", oper, intOp1, strOp2.c_str());
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
+    ap_lincons1_t consExpr = ap_lincons1_make(op, &expr, NULL);
+    ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, -1, strOp2.c_str(), AP_END);
+    // fprintf(stderr, "ConsExpr: ");
+    // ap_lincons1_fprint(stderr, &consExpr);
+    ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 2);
+    // fprintf(stderr, "\nconsArray: ");
+    ap_lincons1_array_set(&consArray, 0, &consExpr);
+    // ap_lincons1_array_fprint(stderr, &consArray);
+    // printApDomain();
+    // fprintf(stderr, "\nmeet:\n");
+    absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
+    // printApDomain();
 }
 
 // Perform join only for the list of variables passed in arg2
@@ -463,6 +491,17 @@ void ApDomain::performNECmp(string strOp1, int intOp2) {
     ltDomain.performCmpOp(LT, strOp1, intOp2);
     // this = strOp1 > intOp1
     performCmpOp(GT, strOp1, intOp2);
+    // this = ltDomain join this
+    joinApDomain(ltDomain);
+}
+
+void ApDomain::performNECmp(string strOp1, string strOp2) {
+    // ltDomain = strOp1 < intOp2
+    ApDomain ltDomain;
+    ltDomain.copyApDomain(*this);
+    ltDomain.performCmpOp(LT, strOp1, strOp2);
+    // this = strOp1 > intOp1
+    performCmpOp(GT, strOp1, strOp2);
     // this = ltDomain join this
     joinApDomain(ltDomain);
 }

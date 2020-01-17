@@ -96,9 +96,8 @@ TODO:
     Support for rmw: need to handle function calls to provide support for rmw with another atomic variable 
     Check if lastWrites, lastGlobalInst and lastGlobalOfVar are required now - no, delete it 
     select, switch-case instruction
-    performCmpOp on str, str - test20
     bitwise or/and ?? test19
-    Environment of x in [1,-1] in test24
+    check if same thing is executing repeatedly, looks like instructions are repeated multiple time for same interf
 
 
 Other functionality that might be added
