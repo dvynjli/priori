@@ -98,6 +98,7 @@ TODO:
     select, switch-case instruction
     bitwise or/and ?? test19
     check if same thing is executing repeatedly, looks like instructions are repeated multiple time for same interf
+    test22 and test20 are taking too much time - check why?
 
 
 Other functionality that might be added
