@@ -32,6 +32,7 @@ class VerifierPass : public ModulePass {
     unordered_map <Value*, string> valueToName;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
     vector<string> globalVars;
+    unsigned int iterations = 0;
 
     #ifdef ALIAS
     map<Function*, AliasAnalysis*> aliasAnalyses;
@@ -60,6 +61,7 @@ class VerifierPass : public ModulePass {
             errs() << "----DONE----\n";
         }
         fprintf(stderr, "Time elapsed: %f\n", time);
+        fprintf(stderr, "#iterations: %d\n", iterations);
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -482,7 +484,6 @@ class VerifierPass : public ModulePass {
     void analyzeProgram(Module &M) {
         // call analyzThread, get interf, check fix point
         // need to addRule, check feasible interfs
-        unsigned int iterations = 0;
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
