@@ -97,8 +97,11 @@ TODO:
     Check if lastWrites, lastGlobalInst and lastGlobalOfVar are required now - no, delete it 
     select, switch-case instruction
     bitwise or/and ?? test19
-    check if same thing is executing repeatedly, looks like instructions are repeated multiple time for same interf
+    check if same thing is executing repeatedly, looks like instructions are repeated multiple time for same interf - nope
     test22 and test20 are taking too much time - check why?
+    URGENT: something wrong with applying interferce. In test20, with po a->b of variable y, the interf from a is applied again.
+    Q. If instruction a is already in po at some program location, should we apply interf from a again? 
+    Should add a rule to not have stores from conflicting branches in the same interference combination.
 
 
 Other functionality that might be added

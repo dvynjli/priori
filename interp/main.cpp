@@ -13,7 +13,7 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
         clEnumVal(octagon, "use octagon domain")));
 // cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Do not print debug output"));
-cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interferce pruning using Z3"));
+cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interference pruning using Z3"));
 cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
 cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
 
@@ -62,6 +62,7 @@ class VerifierPass : public ModulePass {
         }
         fprintf(stderr, "Time elapsed: %f\n", time);
         fprintf(stderr, "#iterations: %d\n", iterations);
+        return true;
     }
 
     vector<string> getGlobalIntVars(Module &M) {
@@ -495,6 +496,7 @@ class VerifierPass : public ModulePass {
                 errs() << "Iteration: " << iterations << "\n";
                 // printProgramState();
             }
+            // errs() << "Iteration: " << iterations << "\n";
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
                 Function *curFunc = (*funcItr);
                 if (!noPrint) {
