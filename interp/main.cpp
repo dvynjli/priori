@@ -32,8 +32,6 @@ class VerifierPass : public ModulePass {
     unordered_map <Value*, string> valueToName;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
     
-    map<Instruction*, pair<unsigned short int, unsigned int>> instToNum;
-    map<pair<unsigned short int, unsigned int>, Instruction*> numToInst;
     vector<string> globalVars;
     unsigned int iterations = 0;
 
@@ -55,10 +53,11 @@ class VerifierPass : public ModulePass {
         globalVars = getGlobalIntVars(M);
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
+        // printFeasibleInterf();
         // printInstMaps();
         // testPO();
         analyzeProgram(M);
-        // checkAssertions();
+        checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -512,7 +511,6 @@ class VerifierPass : public ModulePass {
         // }
     
         getFeasibleInterferences(allLoads, allStores);
-        // printFeasibleInterf();
     }
 
     void analyzeProgram(Module &M) {
@@ -1528,23 +1526,7 @@ class VerifierPass : public ModulePass {
     }
     #endif
 
-    bool isSeqBefore(Instruction* inst1, Instruction* inst2){
-        // printValue(inst1); errs() << " ----sb---> "; printValue(inst2);
-        
-        auto instNum1 = instToNum.find(inst1);
-        auto instNum2 = instToNum.find(inst2);
-        if (instNum1 == instToNum.end() || instNum2 == instToNum.end()) {
-            errs() << "ERROR: Instruction not found in instToNum map\n";
-            exit(0);
-        }
-        // errs() << "inst1: (" << instNum1->first << "," << instNum1->second 
-        if (instNum1->second.first == instNum2->second.first && instNum1->second.second < instNum2->second.second) { 
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
+    
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
         unordered_map<Instruction*, Environment> instrToEnvOld,

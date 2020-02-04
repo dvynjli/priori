@@ -27,18 +27,18 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 		llvm::Instruction* inst = it->first; ++it;
 		// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
 		if (inst != to && inst != from) {
-			if (zHelper.querySB(inst, to)) {
+			if (isSeqBefore(inst, to)) {
 				addOrder(zHelper, inst, to); 
 				remove(inst);
 			}
-			else if (zHelper.querySB(to, inst)) {
+			else if (isSeqBefore(to, inst)) {
 				return addOrder(zHelper, from, inst);
 			}
-			if (zHelper.querySB(inst, from)) {
+			if (isSeqBefore(inst, from)) {
 				addOrder(zHelper, inst, from); 
 				remove(inst);
 			}
-			else if (zHelper.querySB(from, inst)) {
+			else if (isSeqBefore(from, inst)) {
 				bool done = makeTransitiveOrdering(from, to, toItr);
 				remove(from);
 				addInst(zHelper, to);
@@ -58,7 +58,7 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ++it) {
-		if (zHelper.querySB(it->first, newinst)) remove(it->first);
+		if (isSeqBefore(it->first, newinst)) remove(it->first);
 	}
 
 	// If the 'newinst' is already in the order, it cannot be appended
@@ -127,11 +127,11 @@ bool PartialOrder::isConsistent(PartialOrder &other) {
 bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst) {
 	// curInst should not be ordered before any inst in interferring domain
 	for (auto it:other) {
-		if (zHelper.querySB(curInst, it.first)) return false;
+		if (isSeqBefore(curInst, it.first)) return false;
 	}
 	// interfInst should not be ordered before any inst in current domain
 	for (auto it:order) {
-		if (zHelper.querySB(interfInst, it.first)) return false;
+		if (isSeqBefore(interfInst, it.first)) return false;
 	}
 	return true;
 }
@@ -197,11 +197,11 @@ bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instru
 bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
 	for (auto it=order.begin(); it!=order.end(); ) {
 		llvm::Instruction* instItr = it->first; ++it;
-		if (instItr != inst && zHelper.querySB(inst, instItr)) {
+		if (instItr != inst && isSeqBefore(inst, instItr)) {
 			// Nothing to add, a newer instruction is already there
 			return true;
 		}
-		else if (instItr != inst && zHelper.querySB(instItr, inst)) {
+		else if (instItr != inst && isSeqBefore(instItr, inst)) {
 			// all the instructions ordered before instItr, should also
 			// be ordered before instItr
 			makeTransitiveOrdering(instItr, inst, order.end());
