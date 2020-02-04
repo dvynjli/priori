@@ -126,6 +126,7 @@ class Z3Minimal {
 			z3::params params(zcontext);
 			try {
 				params.set("engine", zcontext.str_symbol("datalog"));
+				// zfp.set("datalog.initial_restart_timeout",0);
 			} catch (z3::exception e) { cout << "Exception: " << e << endl; exit(0);}
 			zfp.register_relation(sb);
 

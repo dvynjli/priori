@@ -31,29 +31,34 @@ class VerifierPass : public ModulePass {
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
+    
+    map<Instruction*, pair<unsigned short int, unsigned int>> instToNum;
+    map<pair<unsigned short int, unsigned int>, Instruction*> numToInst;
     vector<string> globalVars;
     unsigned int iterations = 0;
-
-    #ifdef ALIAS
-    map<Function*, AliasAnalysis*> aliasAnalyses;
-    #endif
 
     #ifdef NOTRA
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
     #endif
 
+    #ifdef ALIAS
+    map<Function*, AliasAnalysis*> aliasAnalyses;
+
     void getAnalysisUsage(AnalysisUsage &AU) const override {
         AU.addRequired<AAResultsWrapperPass>();
     }
+    #endif
+
 
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
         globalVars = getGlobalIntVars(M);
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
+        // printInstMaps();
         // testPO();
         analyzeProgram(M);
-        checkAssertions();
+        // checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -195,6 +200,13 @@ class VerifierPass : public ModulePass {
     }
     #endif
 
+    void addInstToMaps(Instruction* inst, unsigned short int tid, unsigned int* instId) {
+        auto instNum = make_pair(tid,*instId);
+        instToNum.emplace(inst, instNum);
+        numToInst.emplace(instNum, inst);
+        (*instId)++;
+    }
+
     void initThreadDetails(Module &M) {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
@@ -204,13 +216,13 @@ class VerifierPass : public ModulePass {
 
         threads.push_back(mainF);
 
-        // TODO: Why queue? Is it better to take it as set
         queue<Function*> funcQ;
         unordered_set<Function*> funcSet;
         funcQ.push(mainF);
         funcSet.insert(mainF);
        
         int ssaVarCounter = 0;
+        unsigned short int tid = 0;                     // main always have tid 0
 
         while(!funcQ.empty())
         {
@@ -226,9 +238,21 @@ class VerifierPass : public ModulePass {
             AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
             aliasAnalyses[func]=AA;
             #endif
-        
-            for(auto BB = func->begin(); BB != func->end(); BB++)          //iterator of Function class over BasicBlock
-            {
+
+            unsigned int instId = 0;
+
+            queue<BasicBlock*> basicBlockQ;
+            unordered_set<BasicBlock*> basicBlockSet;
+            basicBlockQ.push(&*func->begin());
+            basicBlockSet.insert(&*func->begin());
+            
+            while (!basicBlockQ.empty()) {
+                BasicBlock* BB = basicBlockQ.front();
+                basicBlockQ.pop();
+
+                // errs() << "\nchecking basic block ";
+                // BB->print(errs());
+
                 Instruction *lastGlobalInst=nullptr;
                 map<string, Instruction*> lastGlobalOfVar;
 
@@ -238,6 +262,7 @@ class VerifierPass : public ModulePass {
 
                 for(auto I = BB->begin(); I != BB->end(); I++)       //iterator of BasicBlock over Instruction
                 {
+                    addInstToMaps(&*I, tid, &instId);
                     if (CallInst *call = dyn_cast<CallInst>(I)) {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
@@ -452,7 +477,14 @@ class VerifierPass : public ModulePass {
                     lastWrites.emplace(make_pair(&(*I),lastWritesCurInst));
                 }
 
+            
+            
+            for (auto succBB: successors(BB)) {
+                if (basicBlockSet.insert(succBB).second)
+                    basicBlockQ.push(succBB);
+                }
             }
+                // }
             // Save loads stores function wise
             allStores.emplace(func, varToStores);
             allLoads.emplace(func, varToLoads);
@@ -467,6 +499,7 @@ class VerifierPass : public ModulePass {
             Environment curFuncEnv;
             curFuncEnv.init(globalVars, funcVars);
             funcInitEnv[func] = curFuncEnv;
+            tid++;
         }
 
         // errs() << "\nAll Loads:\n";
@@ -1348,19 +1381,18 @@ class VerifierPass : public ModulePass {
             }
         }
         #endif
-        if (minimalZ3) {
-            for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
-                vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
-                for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
-                    auto interfs = *interfItr;
-                    if (isFeasibleRA(*interfItr))
+        for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
+            vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
+            for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
+                auto interfs = *interfItr;
+                if (minimalZ3) {
+                    if(isFeasibleRA(*interfItr))
                         curFuncInterfs.push_back(*interfItr);
                 }
-                feasibleInterfences[funcItr->first] = curFuncInterfs;
+                else if (isFeasibleRAWithoutZ3(*interfItr))
+                    curFuncInterfs.push_back(*interfItr);
             }
-        }
-        else {
-            feasibleInterfences = allInterfs;
+            feasibleInterfences[funcItr->first] = curFuncInterfs;
         }
     }
 
@@ -1411,6 +1443,29 @@ class VerifierPass : public ModulePass {
                     // (l --sb--> l' && s = s') reading from local context will give the same result
                     if (st == st_prime) return false;
                     else if (zHelper.querySB(st_prime, st)) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    bool isFeasibleRAWithoutZ3(unordered_map<Instruction*, Instruction*> interfs) {
+        for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
+            if (lsPair->second == nullptr)
+                continue;
+            for (auto otherLS=interfs.begin(); otherLS!=interfs.end(); ++otherLS) {
+                // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
+                if (otherLS == lsPair || otherLS->second==nullptr)
+                    continue;
+                LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
+                StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
+                LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
+                StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);        
+                // (l --sb--> l')
+                if (isSeqBefore(ld, ld_prime)) {
+                    // (l --sb--> l' && s = s') reading from local context will give the same result
+                    if (st == st_prime) return false;
+                    else if (isSeqBefore(st_prime, st)) return false;
                 }
             }
         }
@@ -1472,6 +1527,24 @@ class VerifierPass : public ModulePass {
         return true;
     }
     #endif
+
+    bool isSeqBefore(Instruction* inst1, Instruction* inst2){
+        // printValue(inst1); errs() << " ----sb---> "; printValue(inst2);
+        
+        auto instNum1 = instToNum.find(inst1);
+        auto instNum2 = instToNum.find(inst2);
+        if (instNum1 == instToNum.end() || instNum2 == instToNum.end()) {
+            errs() << "ERROR: Instruction not found in instToNum map\n";
+            exit(0);
+        }
+        // errs() << "inst1: (" << instNum1->first << "," << instNum1->second 
+        if (instNum1->second.first == instNum2->second.first && instNum1->second.second < instNum2->second.second) { 
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
         unordered_map<Instruction*, Environment> instrToEnvOld,
@@ -1784,28 +1857,15 @@ class VerifierPass : public ModulePass {
                 copy(li.begin(), li.end(), inserter(lastInst, lastInst.end()));
             }
         }
-
-        /* // get all terminating BasicBlocks
-        list<BasicBlock*> termBBList;
-        for (auto bbItr=func->begin(); bbItr!=func->end(); ++bbItr) {
-            TerminatorInst *term = bbItr->getTerminator();
-            if (ReturnInst *ret = dyn_cast<ReturnInst>(term)) {
-                termBBList.push_back(&*bbItr);
-            }
-        }
-
-        // loop over all terminating BasicBlocks to find the last global instructions
-        while (!termBBList.empty()) {
-            BasicBlock* BB = termBBList.front();
-            termBBList.pop_front();
-            auto li = getLastGlobalInstInBB(BB->getTerminator());
-            if (li) lastInst.push_back(li);
-            else {
-                for (auto predBB: predecessors(BB)) termBBList.push_back(predBB);
-            }
-        } */
-
         return lastInst;
+    }
+
+    void printInstMaps() {
+        errs() << "\n\n-----------Printing inst to inst num-----------\n";
+        for (auto it: instToNum) {
+            it.first->print(errs());
+            errs() << "\t(" << it.second.first << "," << it.second.second << ")\n";
+        }
     }
 
     void printValue(Value *val) {

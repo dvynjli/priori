@@ -102,6 +102,7 @@ TODO:
     URGENT: something wrong with applying interferce. In test20, with po a->b of variable y, the interf from a is applied again.
     Q. If instruction a is already in po at some program location, should we apply interf from a again? 
     Should add a rule to not have stores from conflicting branches in the same interference combination.
+    We will see the interference of inst before thread creates for some thread, which is redundant. How to remove this?
 
 
 Other functionality that might be added
@@ -125,6 +126,7 @@ Possible Optimizations:
     reduce number of variables
     Remove env if ApDomain is bottom
     In the new approach, z3 doesn't need to initialized repeatedly
+    remove threads (vector of functions) and use funcSet instead
     ------------ Not applicable anymore --------------------------------
     try reducing number of rules
         this will decrese time of fiexed point computation

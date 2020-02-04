@@ -216,6 +216,7 @@ bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
 		set<llvm::Instruction*> emptyset {};
 		order[inst] = emptyset;
 	}
+	return true;
 }
 
 void PartialOrder::copy (const PartialOrder &copyFrom) {
