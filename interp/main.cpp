@@ -409,8 +409,9 @@ class VerifierPass : public ModulePass {
                         if (dyn_cast<GlobalVariable>(destVar)) {
                             if (minimalZ3) {
                                 vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(rmwInst);
-                                for (auto inst:lastGlobalInstBeforeCall)
+                                for (auto inst:lastGlobalInstBeforeCall) {
                                     zHelper.addSB(inst, rmwInst);
+                                }
                             }
                             string destVarName = getNameFromValue(destVar);
                             // store part of RMWInst
@@ -509,7 +510,7 @@ class VerifierPass : public ModulePass {
         //         printValue(it2->first);
         //     }
         // }
-    
+
         getFeasibleInterferences(allLoads, allStores);
     }
 
@@ -1432,10 +1433,11 @@ class VerifierPass : public ModulePass {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
                     continue;
-                LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
-                StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
-                LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
-                StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);        
+                Instruction  *ld = lsPair->first;
+                Instruction *st = lsPair->second;
+                Instruction  *ld_prime = otherLS->first;
+                Instruction *st_prime = otherLS->second;
+                
                 // (l --sb--> l')
                 if (zHelper.querySB(ld, ld_prime)) {
                     // (l --sb--> l' && s = s') reading from local context will give the same result
@@ -1455,10 +1457,10 @@ class VerifierPass : public ModulePass {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
                     continue;
-                LoadInst  *ld = dyn_cast<LoadInst> (lsPair->first);
-                StoreInst *st = dyn_cast<StoreInst>(lsPair->second);
-                LoadInst  *ld_prime = dyn_cast<LoadInst> (otherLS->first);
-                StoreInst *st_prime = dyn_cast<StoreInst>(otherLS->second);        
+                Instruction  *ld = lsPair->first;
+                Instruction *st = lsPair->second;
+                Instruction  *ld_prime = otherLS->first;
+                Instruction *st_prime = otherLS->second;
                 // (l --sb--> l')
                 if (isSeqBefore(ld, ld_prime)) {
                     // (l --sb--> l' && s = s') reading from local context will give the same result
@@ -1731,6 +1733,19 @@ class VerifierPass : public ModulePass {
         return false;
     }
 
+    bool isGlobalRMW(Instruction *inst) {
+        if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(inst)) {
+            Value* destVar = rmwInst->getPointerOperand();
+            if(GEPOperator *gepOp = dyn_cast<GEPOperator>(destVar)){
+                destVar = gepOp->getPointerOperand();
+            }
+            if (dyn_cast<GlobalVariable>(destVar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool isPthreadCreate(Instruction *inst) {
         if (CallInst *call = dyn_cast<CallInst>(inst)) {
             if(!call->getCalledFunction()->getName().compare("pthread_create")) {
@@ -1754,6 +1769,7 @@ class VerifierPass : public ModulePass {
         while ( prevInst                    &&
                 ! isGlobalLoad(prevInst)    &&
                 ! isGlobalStore(prevInst)   &&
+                ! isGlobalRMW(prevInst)     &&
                 ! isPthreadCreate(prevInst) &&
                 ! isPthreadJoin(prevInst)) {
             prevInst = prevInst->getPrevNode();
@@ -1785,6 +1801,7 @@ class VerifierPass : public ModulePass {
         while ( nextInst                    &&
                 ! isGlobalLoad(nextInst)    &&
                 ! isGlobalStore(nextInst)   &&
+                ! isGlobalRMW(nextInst)     &&
                 ! isPthreadCreate(nextInst) &&
                 ! isPthreadJoin(nextInst)) {
             nextInst = nextInst->getNextNode ();

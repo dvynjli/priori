@@ -38,6 +38,7 @@ static map<pair<unsigned short int, unsigned int>, llvm::Instruction*> numToInst
 inline bool isSeqBefore(llvm::Instruction* inst1, llvm::Instruction* inst2){
 	// printValue(inst1); errs() << " ----sb---> "; printValue(inst2);
 	if (!inst1 || !inst2) return false;
+	if (inst1 == inst2) return true;
 	
 	auto instNum1 = instToNum.find(inst1);
 	auto instNum2 = instToNum.find(inst2);
