@@ -1429,6 +1429,7 @@ class VerifierPass : public ModulePass {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
                 continue;
+            if (zHelper.querySB(lsPair->first, lsPair->second)) return false;
             for (auto otherLS=interfs.begin(); otherLS!=interfs.end(); ++otherLS) {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
@@ -1453,6 +1454,9 @@ class VerifierPass : public ModulePass {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
                 continue;
+            
+            // TODO: need to accomodate the rules for thread create and join here
+            if (isSeqBefore(lsPair->first, lsPair->second)) return false;
             for (auto otherLS=interfs.begin(); otherLS!=interfs.end(); ++otherLS) {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
