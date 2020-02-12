@@ -1434,9 +1434,9 @@ class VerifierPass : public ModulePass {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
                     continue;
-                Instruction  *ld = lsPair->first;
+                Instruction *ld = lsPair->first;
                 Instruction *st = lsPair->second;
-                Instruction  *ld_prime = otherLS->first;
+                Instruction *ld_prime = otherLS->first;
                 Instruction *st_prime = otherLS->second;
                 
                 // (l --sb--> l')
@@ -1461,9 +1461,9 @@ class VerifierPass : public ModulePass {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
                     continue;
-                Instruction  *ld = lsPair->first;
+                Instruction *ld = lsPair->first;
                 Instruction *st = lsPair->second;
-                Instruction  *ld_prime = otherLS->first;
+                Instruction *ld_prime = otherLS->first;
                 Instruction *st_prime = otherLS->second;
                 // (l --sb--> l')
                 if (isSeqBefore(ld, ld_prime)) {
