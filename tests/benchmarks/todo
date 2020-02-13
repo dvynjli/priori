@@ -1,0 +1,6 @@
+szymanski.cc: 
+	no need to load twice during the exit protocol
+	acc to algo (wiki), the exit checking is only for proceeses numbered later, but the Tracer's testcase is doing this for all
+	sv-comp has done the same thing
+hehner_c11:
+	implement select instruction

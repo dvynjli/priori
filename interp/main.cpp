@@ -51,9 +51,11 @@ class VerifierPass : public ModulePass {
     bool runOnModule (Module &M) {
         double start_time = omp_get_wtime();
         globalVars = getGlobalIntVars(M);
+        // errs() << "#global vars:" << globalVars.size() << "\n";
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // printFeasibleInterf();
+        // printNumFeasibleInterf();
         // printInstMaps();
         // testPO();
         analyzeProgram(M);
@@ -81,6 +83,7 @@ class VerifierPass : public ModulePass {
                 Value * varInst = &(*it);
                 nameToValue.emplace(varName, varInst);
                 valueToName.emplace(varInst, varName);
+                // errs() << "added the global var\n";
 
             }
             // Pointers are not needed to be kept as global variables
@@ -97,12 +100,13 @@ class VerifierPass : public ModulePass {
                 }
             } */
             else if (StructType* structTy = dyn_cast<StructType>(it->getValueType())) {
-                if  (!structTy->getName().compare("struct.std::atomic")) {
+                if  (!structTy->getName().find("struct.std::atomic")) {
                     string varName = it->getName();
                     intVars.push_back(varName);
                     Value * varInst = &(*it);
                     nameToValue.emplace(varName, varInst);
                     valueToName.emplace(varInst, varName);
+                    // errs() << "added the global var\n";
                 }
                 else {
                     // errs() << "WARNING: found global structure:" << structTy->getName() << ". It will not be analyzed\n";
@@ -1352,6 +1356,11 @@ class VerifierPass : public ModulePass {
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
         allInterfs = getAllInterferences(loadsToAllStores);
 
+        // errs() << "# of total interference:\n";
+        // for (auto it: allInterfs) {
+        //     errs() << it.first->getName() << " : " << it.second.size() << "\n";
+        // }
+
         // Check feasibility of permutations and save them in feasibleInterfences
         // Older code. Not required for RA and Z3Minimal
         #ifdef NOTRA
@@ -1689,6 +1698,13 @@ class VerifierPass : public ModulePass {
         // errs() << "Program state size: " << programState.size();
         // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
         return (newProgramState == programState);
+    }
+
+    void printNumFeasibleInterf () {
+        errs() << "# of feasible interference:\n";
+        for (auto it: feasibleInterfences) {
+            errs() << it.first->getName() << " : " << it.second.size() << "\n";
+        }
     }
 
     void printFeasibleInterf() {

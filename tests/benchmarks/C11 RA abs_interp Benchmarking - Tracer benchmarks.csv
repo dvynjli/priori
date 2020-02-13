@@ -1,0 +1,31 @@
+SNo,Name,Can we analyze it,Interval,,,,,Octagon,,,,,Comments
+,,,Property Proved,False positive,Time,Time w/o z3,#iterations,Property Proved,False positive,Time,Time w/o z3,#iterations,
+1,Indexer_15,No,,,,,,,,,,,mutex of C11
+2,correia_ramalhete_turn,,,,,,,,,,,,
+3,exponential_bug_9,No,,,,,,,,,,,mutex of C11
+4,fib_one_variable_4,,,,,,,,,,,,
+5,clh_c11,No,,,,,,,,,,,user defined struct clh_mutex_t
+6,clh_rwlock_c11,No,,,,,,,,,,,user defined struct clh_rwlock_t
+7,fib_one_variable_2,,,,,,,,,,,,similar to fib_one_variable_4
+8,Indexer_14,No,,,,,,,,,,,mutex of C11
+9,Indexer_16,No,,,,,,,,,,,mutex of C11
+10,CO-2+2W_5,Yes,Yes,No,0.259,0.0554,3,,,,,,
+11,ticket_mutex_c11,No,,,,,,,,,,,user defined struct
+12,peterson_unrolled_1,Yes,,Yes,1.925,1.6076,5,,,,,,Can't prove the property because of its dependency over entire trace
+13,CO-2+2W_2,Yes,Yes,No,0.0154,0.0139,3,Yes,No,0.0217,0.0174,3,
+14,dijkstra_1,Yes,Yes,No,0.8491,0.1295,2,,Yes,1.2494,0.3233,3,
+15,dijkstra_10,Yes,,,,,,,,,,,
+16,queue_ok,No,,,,,,,,,,,mutex of C11
+17,stack_true,No,,,,,,,,,,,mutex of C11
+18,szymanski_1,Yes,,Yes,TO(30m),391.332,7,,,,,,Too slow due to 1764 x 2 interferences in single loop
+19,burns_1,Yes,,Yes,0.4313,0.3292,4,,Yes,0.4865,0.4099,4,
+20,hehnew_c11,No,,Yes,44.755,65.3761,5,,,,,,Select instruction in the ll file
+21,mpsc_c11,No,,,,,,,,,,,mutex of C11
+22,,,,,,,,,,,,,
+23,,,,,,,,,,,,,
+24,,,,,,,,,,,,,
+25,,,,,,,,,,,,,
+26,,,,,,,,,,,,,
+27,,,,,,,,,,,,,
+28,,,,,,,,,,,,,
+29,,,,,,,,,,,,,
