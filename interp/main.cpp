@@ -1402,18 +1402,26 @@ class VerifierPass : public ModulePass {
             }
         }
         #endif
+        // #pragma omp parallel num_threads(omp_get_num_procs()*2)
+        // #pragma omp single 
+        // {
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
             vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
             for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
                 auto interfs = *interfItr;
+                // #pragma omp task private(interfs) shared(curFuncInterfs)
+                // {
                 if (minimalZ3) {
                     if(isFeasibleRA(*interfItr))
                         curFuncInterfs.push_back(*interfItr);
                 }
                 else if (isFeasibleRAWithoutZ3(*interfItr, funcToTCreate, funcToTJoin))
                     curFuncInterfs.push_back(*interfItr);
+                // }
             }
+            // #pragma omp taskwait
             feasibleInterfences[funcItr->first] = curFuncInterfs;
+        // }
         }
     }
 
