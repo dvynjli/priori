@@ -214,6 +214,11 @@ class VerifierPass : public ModulePass {
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
 
+        // funcToTCreate: func -> tcreate of func
+        map<Function*, Instruction*> funcToTCreate;
+        // funcToTJoin: func -> tjoin of func
+        map<Function*, Instruction*> funcToTJoin;
+
         //find main function
         Function *mainF = getMainFunction(M);
 
@@ -265,7 +270,8 @@ class VerifierPass : public ModulePass {
 
                 for(auto I = BB->begin(); I != BB->end(); I++)       //iterator of BasicBlock over Instruction
                 {
-                    addInstToMaps(&*I, tid, &instId);
+                    // if (!minimalZ3) 
+                        addInstToMaps(&*I, tid, &instId);
                     if (CallInst *call = dyn_cast<CallInst>(I)) {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
@@ -290,16 +296,20 @@ class VerifierPass : public ModulePass {
                                         // if (lastGlobalInst)
                                         //     zHelper.addSB(lastGlobalInst, call);
                                     }
+                                    else {
+                                        funcToTCreate.emplace(newThread, call);
+                                    }
                                 }
 
                             }
                         }
                         else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
                             // TODO: need to add dominates rules
+                            Function* joineeThread = findFunctionFromPthreadJoin(call);
                             if (minimalZ3) {
                                 vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(call);
                                 vector<Instruction*> nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
-                                vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(call);
+                                vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(joineeThread);
                                 for (auto inst:nextGlobalInstAfterCall)
                                     zHelper.addSB(call, inst);
                                 for (auto inst:lastGlobalInstBeforeCall)
@@ -311,6 +321,7 @@ class VerifierPass : public ModulePass {
                                 //     if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
                                 // }
                             }
+                            else funcToTJoin.emplace(joineeThread, call);
                         }
                         else {
                             if (!noPrint) {
@@ -515,7 +526,7 @@ class VerifierPass : public ModulePass {
         //     }
         // }
 
-        getFeasibleInterferences(allLoads, allStores);
+        getFeasibleInterferences(allLoads, allStores, &funcToTCreate, &funcToTJoin);
     }
 
     void analyzeProgram(Module &M) {
@@ -1348,7 +1359,9 @@ class VerifierPass : public ModulePass {
     /// Checks all possible interfernces for feasibility one by one.
     void getFeasibleInterferences (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
-        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
+        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores,
+        const map<Function*, Instruction*> *funcToTCreate,
+        const map<Function*, Instruction*> *funcToTJoin
     ){
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
@@ -1397,7 +1410,7 @@ class VerifierPass : public ModulePass {
                     if(isFeasibleRA(*interfItr))
                         curFuncInterfs.push_back(*interfItr);
                 }
-                else if (isFeasibleRAWithoutZ3(*interfItr))
+                else if (isFeasibleRAWithoutZ3(*interfItr, funcToTCreate, funcToTJoin))
                     curFuncInterfs.push_back(*interfItr);
             }
             feasibleInterfences[funcItr->first] = curFuncInterfs;
@@ -1459,13 +1472,16 @@ class VerifierPass : public ModulePass {
         return true;
     }
 
-    bool isFeasibleRAWithoutZ3(unordered_map<Instruction*, Instruction*> interfs) {
+    bool isFeasibleRAWithoutZ3(unordered_map<Instruction*, Instruction*> interfs,
+        const map<Function*, Instruction*> *funcToTCreate,
+        const map<Function*, Instruction*> *funcToTJoin
+    ) {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
                 continue;
             
-            // TODO: need to accomodate the rules for thread create and join here
             if (isSeqBefore(lsPair->first, lsPair->second)) return false;
+            if (SBTCreateTJoin(lsPair->first, lsPair->second, funcToTCreate, funcToTJoin)) return false;
             for (auto otherLS=interfs.begin(); otherLS!=interfs.end(); ++otherLS) {
                 // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
                 if (otherLS == lsPair || otherLS->second==nullptr)
@@ -1542,6 +1558,53 @@ class VerifierPass : public ModulePass {
     #endif
 
     
+    bool SBTCreateTJoin(Instruction* ld, Instruction* st, 
+        const map<Function*, Instruction*> *funcToTCreate,
+        const map<Function*, Instruction*> *funcToTJoin
+    ) {
+        Function* ldFunc = ld->getFunction();
+        // lab: tcreate(f) /\ l in f /\ s--sb-->lab ==> s--nrf-->l
+        auto searchLdFuncTC = funcToTCreate->find(ldFunc);
+        if (searchLdFuncTC != funcToTCreate->end()) {
+            if(isSeqBefore(st, searchLdFuncTC->second)) return true;
+        }
+        else {
+            // since no tcreate instruction is found, the function name must be main
+            assert(ldFunc->getName()=="main");
+        }
+
+        // lab: tjoin(f) /\ l in f /\ lab--sb-->s ==> s--nrf-->l
+        auto searchldFuncTJ = funcToTJoin->find(ldFunc);
+        if (searchldFuncTJ != funcToTJoin->end()) {
+            if(isSeqBefore(searchldFuncTJ->second, st)) return true;
+        }
+        else {
+            // since no tjoin instruction is found, the function name must be main
+            assert(ldFunc->getName()=="main");
+        }
+
+        Function* stFunc = st->getFunction();
+        // lab: tcreate(f) /\ s in f /\ l--sb-->lab ==> s--nrf-->l
+        auto searchStFucnTC = funcToTCreate->find(stFunc);
+        if (searchStFucnTC != funcToTCreate->end()) {
+            if(isSeqBefore(ld, searchStFucnTC->second)) return true;
+        }
+        else {
+            // since no tcreate instruction is found, the function name must be main
+            assert(stFunc->getName()=="main");
+        }
+
+        // lab: tjoin(f) /\ s in f /\ lab--sb-->l ==> s--nrf-->l
+        auto searchStFuncTJ = funcToTJoin->find(stFunc);
+        if (searchStFuncTJ != funcToTJoin->end()) {
+            if(isSeqBefore(searchStFuncTJ->second, ld)) return true;
+        }
+        else {
+            // since no tjoin instruction is found, the function name must be main
+            assert(stFunc->getName()=="main");
+        }
+        return false;
+    }
 
     unordered_map<Instruction*, Environment> joinEnvByInstruction (
         unordered_map<Instruction*, Environment> instrToEnvOld,
@@ -1862,13 +1925,13 @@ class VerifierPass : public ModulePass {
         return nullptr;
     }
 
-    vector<Instruction*> getLastInstOfPthreadJoin(Instruction *call) {
+    vector<Instruction*> getLastInstOfPthreadJoin(Function *joineeThread) {
         vector<Instruction*> lastInst;
-        Function *func = findFunctionFromPthreadJoin(call);
+        // Function *func = findFunctionFromPthreadJoin(call);
 
         // get all return instructions
         list<Instruction*> retInstList;
-        for (auto bbItr=func->begin(); bbItr!=func->end(); ++bbItr) {
+        for (auto bbItr=joineeThread->begin(); bbItr!=joineeThread->end(); ++bbItr) {
             TerminatorInst *term = bbItr->getTerminator();
             if (ReturnInst *ret = dyn_cast<ReturnInst>(term)) {
                 // get the last inst of return instruction and add them to lastInst
