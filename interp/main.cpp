@@ -17,6 +17,9 @@ cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interference pruning usi
 cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
 cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
 
+map<llvm::Instruction*, pair<unsigned short int, unsigned int>> instToNum;
+map<pair<unsigned short int, unsigned int>, llvm::Instruction*> numToInst;
+
 class VerifierPass : public ModulePass {
 
     typedef EnvironmentPOMO Environment;
@@ -1318,6 +1321,7 @@ class VerifierPass : public ModulePass {
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
     ){
         unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
+        // printLoadsToAllStores(loadsToAllStores);
 
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
             Function *curFunc = funItr->first;
@@ -1345,7 +1349,7 @@ class VerifierPass : public ModulePass {
                 if (allItr[k] != allLS[loads[k]].end()) {
                     allItr[k]++;
                 }
-                while (allItr[k] == allLS[loads[k]].end()) {
+                while (k>=0 && allItr[k] == allLS[loads[k]].end()) {
                     allItr[k] = allLS[loads[k]].begin();
                     k--;
                     if (k>=0) allItr[k]++;
@@ -1953,6 +1957,7 @@ class VerifierPass : public ModulePass {
     void printInstMaps() {
         errs() << "\n\n-----------Printing inst to inst num-----------\n";
         for (auto it: instToNum) {
+            fprintf(stderr, "%p: ", it.first);
             it.first->print(errs());
             errs() << "\t(" << it.second.first << "," << it.second.second << ")\n";
         }
