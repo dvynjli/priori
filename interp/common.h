@@ -42,16 +42,15 @@ inline bool isSeqBefore(llvm::Instruction* inst1, llvm::Instruction* inst2){
 	
 	auto instNum1 = instToNum.find(inst1);
 	auto instNum2 = instToNum.find(inst2);
-	if (instNum1 == instToNum.end()) {
-		// errs() << "ERROR: Instruction not found in instToNum map\n";
-		fprintf(stderr, "ERROR: Instruction inst1 not found in instToNum map: %p\n", inst1);
-		exit(0);
-	}
-	else if (instNum2 == instToNum.end()) {
-		fprintf(stderr, "ERROR: Instruction inst2 not found in instToNum map: %p\n", inst2);
-		exit(0);
-	}
-	// errs() << "inst1: (" << instNum1->first << "," << instNum1->second 
+	assert(instNum1 != instToNum.end() && instNum2 != instToNum.end() && "ERROR: Instruction not found in instToNum map");
+	// if (instNum1 == instToNum.end()) {
+	// 	fprintf(stderr, "ERROR: Instruction inst1 not found in instToNum map: %p\n", inst1);
+	// 	exit(0);
+	// }
+	// else if (instNum2 == instToNum.end()) {
+	// 	fprintf(stderr, "ERROR: Instruction inst2 not found in instToNum map: %p\n", inst2);
+	// 	exit(0);
+	// }
 	if (instNum1->second.first == instNum2->second.first && instNum1->second.second < instNum2->second.second) { 
 		return true;
 	}
