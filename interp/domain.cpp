@@ -1031,7 +1031,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
 
             if (apply) {
                 map<string, options> varoptions;
-                #pragma omp parallel for shared (newPomo, otherPomo, zHelper) num_threads(omp_get_num_procs()*2)
+                // #pragma omp parallel for shared (newPomo, otherPomo, zHelper) num_threads(omp_get_num_procs()*2)
                 for (auto varItr: curPomo) {
                     PartialOrder tmpPO = PartialOrder();
                     auto searchOtherPomo = otherPomo.find(varItr.first);
@@ -1141,7 +1141,7 @@ void EnvironmentPOMO::applyInterference(
                 // ApDomain is consistent with POMO. Map from Variable --> options
                 map<string, options> varoptions;
 
-                #pragma omp parallel for shared (newPomo, interfpomo, zHelper) num_threads(omp_get_num_procs()*2)
+                // #pragma omp parallel for shared (newPomo, interfpomo, zHelper) num_threads(omp_get_num_procs()*2)
                 for (auto varIt: curPomo) {
                     PartialOrder tmpPO = PartialOrder();
                     auto searchInterfPomo = interfpomo.find(varIt.first);
