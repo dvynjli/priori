@@ -1224,7 +1224,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
 // Used for logical intructions
 void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other) {
     map <POMO, ApDomain> newenvironment;
-
+    
     for (auto curIt: environment) {
         for (auto otherIt: other) {
             // join the POMOs
@@ -1310,47 +1310,6 @@ void EnvironmentPOMO::getVarOption (map<string, options> *varoptions,
     }
     varoptions->emplace(make_pair(varName, opt));
 }
-
-/* void EnvironmentPOMO::getVarOption (
-    map<string, options> *varoptions, 
-    string varName,
-    PartialOrder curPartialOrder,
-    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites,
-    llvm::Instruction *interfInst,
-    llvm::Instruction *curInst,
-    Z3Minimal &zHelper
-) {
-    // check which one of COPY, MERGE or DONOTHIG should be done for each variable
-    auto lastWritesOfCurInst = lastWrites->find(curInst);
-    auto lastWritesOfInterfInst = lastWrites->find(interfInst);
-    if(lastWritesOfCurInst == lastWrites->end() || lastWritesOfInterfInst == lastWrites->end()) {
-        fprintf(stderr, "ERROR: Last Write should contain the instruction\nCheck the variable lastWrites\n");
-        exit(0);
-    }
-
-    auto lastWriteOfVarCur = lastWritesOfCurInst->second.find(varName);
-    auto lastWriteOfVarInterf = lastWritesOfInterfInst->second.find(varName);
-    if (lastWriteOfVarInterf == lastWritesOfInterfInst->second.end()) {
-        // since there is no older write in interferring thread that can change the state, do nothing
-        varoptions->emplace(make_pair(varName, DONOTHING));
-    }
-    else if (lastWriteOfVarCur == lastWritesOfCurInst->second.end()) {
-        // since no older write in current thread, the variable must be uninitialized, copy
-        varoptions->emplace(make_pair(varName, COPY));
-    }
-    else if (curPartialOrder.isOrderedBefore(lastWriteOfVarInterf->second, lastWriteOfVarCur->second)) {
-        // last write of interferring thread is ordered before last write of current thread, do nothing
-        varoptions->emplace(make_pair(varName, DONOTHING));
-    }
-    else if (curPartialOrder.isOrderedBefore(lastWriteOfVarCur->second, lastWriteOfVarInterf->second)) {
-        // last write of current thread is ordered before last write of interferring thread, copy
-        varoptions->emplace(make_pair(varName, COPY));
-    } 
-    else {
-        // last writes of current thread and interferring threads are unordered, merge
-        varoptions->emplace(make_pair(varName, MERGE));
-    }
-} */
 
 void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO){
     // fprintf(stderr, "joining:\n");

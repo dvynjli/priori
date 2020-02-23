@@ -82,9 +82,6 @@ Instructions that need Z3 interface-
 Lazy join of environment (same as Kusano-FSE16)
 
 TODO:
-    get load store pairs only ones (from initThreadDetails) - 
-        need to stop analysis if load reads from a store that is unreachable so far (should not be in domain map)
-        with this assertion can be checked and stoped mid-analysis??
     change pthread to thread
     Fix error with octagon domain again
     See if zHelper is required in join and append
@@ -93,16 +90,13 @@ TODO:
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
     Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
     change vector<string> globalVars to pointer
-    Support for rmw: need to handle function calls to provide support for rmw with another atomic variable 
     Check if lastWrites, lastGlobalInst and lastGlobalOfVar are required now - no, delete it 
     select, switch-case instruction
-    bitwise or/and ?? test19
-    check if same thing is executing repeatedly, looks like instructions are repeated multiple time for same interf - nope
     test22 and test20 are taking too much time - check why?
-    URGENT: something wrong with applying interferce. In test20, with po a->b of variable y, the interf from a is applied again.
     Q. If instruction a is already in po at some program location, should we apply interf from a again? 
     Should add a rule to not have stores from conflicting branches in the same interference combination.
     We will see the interference of inst before thread creates for some thread, which is redundant. How to remove this?
+    Change function analyzeThread to call analyzeBasicBlock using succ information starting from getEntryBlock
 
 
 Other functionality that might be added
