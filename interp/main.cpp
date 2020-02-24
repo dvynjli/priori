@@ -27,8 +27,9 @@ class VerifierPass : public ModulePass {
 
     vector <Function*> threads;
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
-    unordered_map <Function*, Environment> funcInitEnv;
-    unordered_map <Function*, vector< unordered_map<Instruction*, Instruction*>>> feasibleInterfences;
+    // initial environment of the function. A map from Func-->(isChanged, Environment)
+    unordered_map <Function*, pair<bool,Environment>> funcInitEnv;
+    map <Function*, vector< map<Instruction*, Instruction*>>> feasibleInterfences;
     Z3Minimal zHelper;
 
     unordered_map <string, Value*> nameToValue;
@@ -516,7 +517,7 @@ class VerifierPass : public ModulePass {
 
             Environment curFuncEnv;
             curFuncEnv.init(globalVars, funcVars);
-            funcInitEnv[func] = curFuncEnv;
+            funcInitEnv[func] = make_pair(true,curFuncEnv);
             tid++;
         }
 
@@ -538,6 +539,8 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
+        // map <Function*, map
+
         while (!isFixedPointReached) {
             programState = programStateCurItr;
 
@@ -555,41 +558,53 @@ class VerifierPass : public ModulePass {
                 }
                 
                 // find feasible interfernce for current function
-                vector <unordered_map <Instruction*, Instruction*>> curFuncInterfs;
+                vector <map <Instruction*, Instruction*>> curFuncInterfs;
                 unordered_map<Instruction*, Environment> newFuncEnv;
-
-                auto searchInterf = feasibleInterfences.find(curFunc);
                 
+                auto searchCurFuncInitEnv = funcInitEnv.find(curFunc);
+                assert(searchCurFuncInitEnv!=funcInitEnv.end() && "Intial Environment of the function not found");
+                
+                auto searchInterf = feasibleInterfences.find(curFunc);           
                 if (searchInterf != feasibleInterfences.end()) {
                     curFuncInterfs = (searchInterf->second);
                     programStateCurItr[curFunc].clear();
                 } else {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
-                        unordered_map <Instruction*, Instruction*> interf;
-                        newFuncEnv = analyzeThread(curFunc, interf);
+                        map <Instruction*, Instruction*> interf;
+                        newFuncEnv = analyzeThread(curFunc, interf, searchCurFuncInitEnv->second.second, 
+                                            searchCurFuncInitEnv->second.first);
                         programStateCurItr.emplace(curFunc, newFuncEnv);
                     }
+                    else searchCurFuncInitEnv->second.first = false;
                 }
                 
-                // errs() << "Number of interf= " << curFuncInterfs.size();
-                // analyze the Thread for each interference
-                // #pragma omp parallel for shared(programStateCurItr) private(newFuncEnv) chunksize(500)
-                for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
-                    // errs() << "\n***Forinterf\n";
+                if (searchCurFuncInitEnv->second.first) { 
+                    // init env has changed. analyze for all interfs
+                    // errs() << "Number of interf= " << curFuncInterfs.size();
+                    // analyze the Thread for each interference
+                    // #pragma omp parallel for shared(programStateCurItr) private(newFuncEnv) chunksize(500)
+                    for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
+                        // errs() << "\n***Forinterf\n";
 
-                    newFuncEnv = analyzeThread(*funcItr, *interfItr);
+                        newFuncEnv = analyzeThread(*funcItr, *interfItr, searchCurFuncInitEnv->second.second, 
+                                            searchCurFuncInitEnv->second.first);
 
-                    // join newFuncEnv of all feasibleInterfs and replace old one in state
-                    auto searchFunEnv = programStateCurItr.find(curFunc);
-                    if (searchFunEnv == programStateCurItr.end()) {
-                        // errs() << "curfunc not found in program state\n";
-                        programStateCurItr.emplace(curFunc, newFuncEnv);
+                        // join newFuncEnv of all feasibleInterfs and replace old one in state
+                        auto searchFunEnv = programStateCurItr.find(curFunc);
+                        if (searchFunEnv == programStateCurItr.end()) {
+                            // errs() << "curfunc not found in program state\n";
+                            programStateCurItr.emplace(curFunc, newFuncEnv);
+                        }
+                        else {
+                            // errs() << "curfunc already exist in program state. joining\n";
+                            programStateCurItr[curFunc] =  joinEnvByInstruction(searchFunEnv->second, newFuncEnv);
+                        }
                     }
-                    else {
-                        // errs() << "curfunc already exist in program state. joining\n";
-                        programStateCurItr[curFunc] =  joinEnvByInstruction(searchFunEnv->second, newFuncEnv);
-                    }
+                }
+                else {
+                    // init env has not changed. analyze only for new interfs
+                    
                 }
             }
             
@@ -602,6 +617,7 @@ class VerifierPass : public ModulePass {
             // }
 
             // isFixedPointReached = true;
+            // TODO: fixed point is reached when no new interf for any func found and the init env has not changed
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
         }
@@ -613,19 +629,21 @@ class VerifierPass : public ModulePass {
         }
     }
 
-    unordered_map<Instruction*, Environment> analyzeThread (Function *F, unordered_map<Instruction*, Instruction*> interf) {
+    unordered_map<Instruction*, Environment> analyzeThread (Function *F, map<Instruction*, Instruction*> interf,
+        Environment initEnv, bool hasFuncInitEnvChanged
+    ) {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
 
         unordered_map <Instruction*, Environment> curFuncEnv;
-        curFuncEnv[&(*(F->begin()->begin()))] = funcInitEnv[F];
+        curFuncEnv[&(*(F->begin()->begin()))] = funcInitEnv[F].second;
         // errs() << "CurDuncEnv before checking preds:\n";
         // printInstToEnvMap(curFuncEnv);
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
 
-            Environment predEnv = funcInitEnv[F];
+            Environment predEnv = funcInitEnv[F].second;
             
             // initial domain of pred of cur bb to join of all it's pred
             for (BasicBlock *Pred : predecessors(currentBB)){
@@ -649,7 +667,7 @@ class VerifierPass : public ModulePass {
 
     Environment analyzeBasicBlock (BasicBlock *B, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
-        unordered_map<Instruction*, Instruction*> interf
+        map <Instruction*, Instruction*> interf
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
@@ -1119,7 +1137,7 @@ class VerifierPass : public ModulePass {
     Environment checkUnaryInst(
         UnaryInstruction* unaryInst, 
         Environment curEnv, 
-        unordered_map<Instruction*, Instruction*> interf
+        map<Instruction*, Instruction*> interf
     ) {
         Value* fromVar = unaryInst->getOperand(0);
         string fromVarName = getNameFromValue(fromVar);
@@ -1167,10 +1185,12 @@ class VerifierPass : public ModulePass {
     }
 
     void checkThreadCreate(CallInst *callInst, Environment curEnv) {
+        // TODO: need to call this oper only if curEnv has changed and set changed to false
         // Carry the environment of current thread to the newly created thread. 
         // Need to copy only globals, discard locals.
         if (Function* calledFunc = dyn_cast<Function> (callInst->getArgOperand(2))) {
-            funcInitEnv[calledFunc].copyOnVars(curEnv, globalVars);
+            funcInitEnv[calledFunc].second.copyOnVars(curEnv, globalVars);
+            funcInitEnv[calledFunc].first = true;
         }
     }
 
@@ -1194,7 +1214,7 @@ class VerifierPass : public ModulePass {
     Environment checkRMWInst(
         AtomicRMWInst *rmwInst, 
         Environment curEnv, 
-        unordered_map<Instruction*, Instruction*> interf
+        map<Instruction*, Instruction*> interf
     ) { 
         Value *pointerVar = rmwInst->getPointerOperand();
         string pointerVarName = getNameFromValue(pointerVar);
@@ -1257,7 +1277,7 @@ class VerifierPass : public ModulePass {
     Environment applyInterfToLoad(
         Instruction* loadInst, 
         Environment curEnv, 
-        unordered_map<Instruction*, Instruction*> interf,
+        map<Instruction*, Instruction*> interf,
         string varName
     ) {
         // errs() << "Applying interf\n";
@@ -1319,10 +1339,10 @@ class VerifierPass : public ModulePass {
     }
 
     /// Compute all possible interferences (feasibile or infeasible)
-    unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> getAllInterferences (
+    unordered_map<Function*, vector< map<Instruction*, Instruction*>>> getAllInterferences (
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
     ){
-        unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
+        unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         // printLoadsToAllStores(loadsToAllStores);
 
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
@@ -1338,7 +1358,7 @@ class VerifierPass : public ModulePass {
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
             
-            unordered_map<Instruction*, Instruction*> curInterf;
+            map<Instruction*, Instruction*> curInterf;
             
             for (int i=0; i<noOfInterfs; i++) {
                 for (int j=0; j<allLS.size(); j++) {
@@ -1369,7 +1389,7 @@ class VerifierPass : public ModulePass {
         const map<Function*, Instruction*> *funcToTCreate,
         const map<Function*, Instruction*> *funcToTJoin
     ){
-        unordered_map<Function*, vector< unordered_map<Instruction*, Instruction*>>> allInterfs;
+        unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
         // Make all permutations
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
@@ -1416,7 +1436,7 @@ class VerifierPass : public ModulePass {
         // {
         #pragma omp parallel for shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
-            vector< unordered_map<Instruction*, Instruction*>> curFuncInterfs;
+            vector< map<Instruction*, Instruction*>> curFuncInterfs;
             for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
                 auto interfs = *interfItr;
                 // #pragma omp task private(interfs) shared(curFuncInterfs)
@@ -1469,7 +1489,7 @@ class VerifierPass : public ModulePass {
     /** This function checks the feasibility of an interference combination 
      * under RA memory model 
      */
-    bool isFeasibleRA(unordered_map<Instruction*, Instruction*> interfs) {
+    bool isFeasibleRA(map<Instruction*, Instruction*> interfs) {
         for (auto lsPair=interfs.begin(); lsPair!=interfs.end(); ++lsPair) {
             if (lsPair->second == nullptr)
                 continue;
@@ -1494,7 +1514,7 @@ class VerifierPass : public ModulePass {
         return true;
     }
 
-    bool isFeasibleRAWithoutZ3(unordered_map<Instruction*, Instruction*> interfs,
+    bool isFeasibleRAWithoutZ3(map<Instruction*, Instruction*> interfs,
         const map<Function*, Instruction*> *funcToTCreate,
         const map<Function*, Instruction*> *funcToTJoin
     ) {
@@ -1695,21 +1715,21 @@ class VerifierPass : public ModulePass {
 
     void testApplyInterf() {
         // Sample code to test applyInterference()
-        auto funIt = funcInitEnv.begin();
-        Function *fun1 = funIt->first;
-        Environment fun1Env = funIt->second;
-        fun1Env.performUnaryOp(STORE, "x", 1);
-        fun1Env.performUnaryOp(STORE, "y", 10);
-        funIt++;
-        Function *fun2 = funIt->first;
-        Environment fun2Env = funIt->second;
-        errs() << "Interf from domain:\n";
-        fun1Env.printEnvironment();
-        errs() << "To domain:\n";
-        fun2Env.printEnvironment();
-        fun2Env.applyInterference("x", fun1Env, zHelper);
-        errs() << "After applying:\n";
-        fun2Env.printEnvironment();
+        // auto funIt = funcInitEnv.begin();
+        // Function *fun1 = funIt->first;
+        // Environment fun1Env = funIt->second;
+        // fun1Env.performUnaryOp(STORE, "x", 1);
+        // fun1Env.performUnaryOp(STORE, "y", 10);
+        // funIt++;
+        // Function *fun2 = funIt->first;
+        // Environment fun2Env = funIt->second;
+        // errs() << "Interf from domain:\n";
+        // fun1Env.printEnvironment();
+        // errs() << "To domain:\n";
+        // fun2Env.printEnvironment();
+        // fun2Env.applyInterference("x", fun1Env, zHelper);
+        // errs() << "After applying:\n";
+        // fun2Env.printEnvironment();
     }
 
     void testPO() {

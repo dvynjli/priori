@@ -94,8 +94,22 @@ public:
 
 template<typename T>
 class EnvironmentBase {
+    bool modified = true;
 public:
     virtual bool operator== (const T &other) const = 0;
+
+    void setModified() {
+        modified = true;
+    }
+
+    void setNotModified() {
+        modified = false;
+    }
+
+    bool isModified() {
+        return modified;
+    }
+
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
