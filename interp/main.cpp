@@ -28,7 +28,7 @@ class VerifierPass : public ModulePass {
     vector <Function*> threads;
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
     // initial environment of the function. A map from Func-->(isChanged, Environment)
-    unordered_map <Function*, pair<bool,Environment>> funcInitEnv;
+    unordered_map <Function*, Environment> funcInitEnv;
     map <Function*, vector< map<Instruction*, Instruction*>>> feasibleInterfences;
     Z3Minimal zHelper;
 
@@ -517,7 +517,7 @@ class VerifierPass : public ModulePass {
 
             Environment curFuncEnv;
             curFuncEnv.init(globalVars, funcVars);
-            funcInitEnv[func] = make_pair(true, curFuncEnv);
+            funcInitEnv[func] = curFuncEnv;
             tid++;
         }
 
@@ -572,14 +572,14 @@ class VerifierPass : public ModulePass {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
                         map <Instruction*, Instruction*> interf;
-                        newFuncEnv = analyzeThread(curFunc, interf, searchCurFuncInitEnv->second.second, 
-                                            searchCurFuncInitEnv->second.first);
+                        newFuncEnv = analyzeThread(curFunc, interf, searchCurFuncInitEnv->second, 
+                                            searchCurFuncInitEnv->second.isModified());
                         programStateCurItr.emplace(curFunc, newFuncEnv);
                     }
-                    else searchCurFuncInitEnv->second.first = false;
+                    else searchCurFuncInitEnv->second.setNotModified();
                 }
                 
-                if (searchCurFuncInitEnv->second.first) { 
+                // if (searchCurFuncInitEnv->second.isModified()) { 
                     // init env has changed. analyze for all interfs
                     // errs() << "Number of interf= " << curFuncInterfs.size();
                     // analyze the Thread for each interference
@@ -587,8 +587,8 @@ class VerifierPass : public ModulePass {
                     for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                         // errs() << "\n***Forinterf\n";
 
-                        newFuncEnv = analyzeThread(*funcItr, *interfItr, searchCurFuncInitEnv->second.second, 
-                                            searchCurFuncInitEnv->second.first);
+                        newFuncEnv = analyzeThread(*funcItr, *interfItr, searchCurFuncInitEnv->second, 
+                                            searchCurFuncInitEnv->second.isModified());
 
                         // join newFuncEnv of all feasibleInterfs and replace old one in state
                         auto searchFunEnv = programStateCurItr.find(curFunc);
@@ -601,11 +601,11 @@ class VerifierPass : public ModulePass {
                             programStateCurItr[curFunc] =  joinEnvByInstruction(searchFunEnv->second, newFuncEnv);
                         }
                     }
-                }
-                else {
-                    // init env has not changed. analyze only for new interfs
-                    
-                }
+                // }
+            }
+            if (iterations == 0) {
+                // errs() << "MOD: setting main() init to false\n";
+                funcInitEnv[getMainFunction(M)].setNotModified();
             }
             
             // errs() << "------ Program state at iteration " << iterations << ": -----\n";
@@ -636,7 +636,8 @@ class VerifierPass : public ModulePass {
         //init for next BB with assume
 
         unordered_map <Instruction*, Environment> curFuncEnv;
-        curFuncEnv[&(F->getEntryBlock().front())] = funcInitEnv[F].second;
+        // errs() << "MOD: setting curfuncEnv, duncinitENv modified: " << funcInitEnv[F].isModified() <<"\n";
+        curFuncEnv[&(F->getEntryBlock().front())] = funcInitEnv[F];
         // errs() << "CurFuncEnv before checking preds:\n";
         // printInstToEnvMap(curFuncEnv);
 
@@ -674,6 +675,7 @@ class VerifierPass : public ModulePass {
         // check type of inst, and performTrasformations
         Environment curEnv;
         Environment predEnv = curFuncEnv[&(*(B->begin()))];
+        // errs() << "MOD: predEnv modified:" << predEnv.isModified() << "\n";
         // cmp instr will add the corresponding true and false branch environment to branchEnv. 
         // cmpVar -> (true branch env, false branch env)
         map<Instruction*, pair<Environment, Environment>> branchEnv;
@@ -730,6 +732,7 @@ class VerifierPass : public ModulePass {
             }
             // Other instructions don't need to be re-checked if modified flag is unset
             else if (!curEnv.isModified()) {
+                // errs() << "MOD: not analyzing further\n";
                 curEnv = programState[instItr->getFunction()][&(*instItr)];
                 // if(curEnv.isModified()) curEnv.setNotModified();
             }
@@ -1201,25 +1204,51 @@ class VerifierPass : public ModulePass {
         // TODO: need to call this oper only if curEnv has changed and set changed to false
         // Carry the environment of current thread to the newly created thread. 
         // Need to copy only globals, discard locals.
+        
         if (Function* calledFunc = dyn_cast<Function> (callInst->getArgOperand(2))) {
-            funcInitEnv[calledFunc].second.copyOnVars(curEnv, globalVars);
-            funcInitEnv[calledFunc].first = true;
+            if (curEnv.isModified()) {
+                funcInitEnv[calledFunc].copyOnVars(curEnv, globalVars);
+                funcInitEnv[calledFunc].setModified();
+            }
+            else {
+                funcInitEnv[calledFunc].setNotModified();
+                // errs() << "MOD: Set to false\n";
+            }
         }
     }
 
     Environment checkThreadJoin(CallInst *callInst, Environment curEnv) {
         // Join the environments of joinee thread with this thread. 
         // Need to copy only globals, discard locals.
+        bool modified = curEnv.isModified();
         Function *calledFunc = findFunctionFromPthreadJoin(callInst);
-        for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
-            for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
-                if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
-                    // errs() << "pthread join with: ";
-                    // printValue(retInst);
-                    curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
-                        &lastWrites, retInst, callInst, zHelper);
+        if (modified) {
+            for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
+                for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
+                    if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
+                        // errs() << "pthread join with: ";
+                        // printValue(retInst);
+                        curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
+                            &lastWrites, retInst, callInst, zHelper);
+                    }
                 }
             }
+        }
+        else {
+            // errs() << "MOD: joining with selective\n";
+            Environment olderEnv = programState[callInst->getFunction()][callInst];
+            for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
+                for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
+                    if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
+                        // errs() << "pthread join with: ";
+                        // printValue(retInst);
+                        if (programState[calledFunc][retInst].isModified())
+                            olderEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
+                                    &lastWrites, retInst, callInst, zHelper);
+                    }
+                }
+            }
+            curEnv = olderEnv;
         }
         return curEnv;
     }
@@ -1346,7 +1375,10 @@ class VerifierPass : public ModulePass {
                     #endif
                     if (interfEnv.isModified() || curEnv.isModified())
                         curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, loadInst, &lastWrites);
-                    else curEnv.setNotModified();
+                    else {
+                        // errs() << "MOD: not applying interf\n";
+                        curEnv.setNotModified();
+                    }
                 }
             }
         }
