@@ -517,7 +517,7 @@ class VerifierPass : public ModulePass {
 
             Environment curFuncEnv;
             curFuncEnv.init(globalVars, funcVars);
-            funcInitEnv[func] = make_pair(true,curFuncEnv);
+            funcInitEnv[func] = make_pair(true, curFuncEnv);
             tid++;
         }
 
@@ -539,7 +539,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
-        // map <Function*, map
+        map< Function*, vector< map< Instruction*, pair<Instruction*, Environment>>>> oldInterfs; 
 
         while (!isFixedPointReached) {
             programState = programStateCurItr;
@@ -636,23 +636,25 @@ class VerifierPass : public ModulePass {
         //init for next BB with assume
 
         unordered_map <Instruction*, Environment> curFuncEnv;
-        curFuncEnv[&(*(F->begin()->begin()))] = funcInitEnv[F].second;
-        // errs() << "CurDuncEnv before checking preds:\n";
+        curFuncEnv[&(F->getEntryBlock().front())] = funcInitEnv[F].second;
+        // errs() << "CurFuncEnv before checking preds:\n";
         // printInstToEnvMap(curFuncEnv);
 
         for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
 
-            Environment predEnv = funcInitEnv[F].second;
+            // This check is not required since we are setting the environment of first 
+            // instrution of BasicBlock while analyzing BarnchInst
+            // Environment predEnv = funcInitEnv[F].second;
             
-            // initial domain of pred of cur bb to join of all it's pred
-            for (BasicBlock *Pred : predecessors(currentBB)){
-                auto searchPredBBEnv = curFuncEnv.find(Pred->getTerminator());
-                if (searchPredBBEnv != curFuncEnv.end())
-                    predEnv.joinEnvironment(searchPredBBEnv->second);
-                // TODO: if the domain is empty? It means pred bb has not been analyzed so far
-                // we can't analyze current BB
-            }
+            // // initial domain of pred of cur bb to join of all it's pred
+            // for (BasicBlock *Pred : predecessors(currentBB)){
+            //     auto searchPredBBEnv = curFuncEnv.find(Pred->getTerminator());
+            //     if (searchPredBBEnv != curFuncEnv.end())
+            //         predEnv.joinEnvironment(searchPredBBEnv->second);
+            //     // TODO: if the domain is empty? It means pred bb has not been analyzed so far
+            //     // we can't analyze current BB
+            // }
             // if termination statement
                 // if coditional branching
                 // if unconditional branching
@@ -685,63 +687,13 @@ class VerifierPass : public ModulePass {
                 printValue(currentInst);
             }
 
-            if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
-                // auto searchName = valueToName.find(currentInst);
-                // if (searchName == valueToName.end()) {
-                //     fprintf(stderr, "ERROR: new mem alloca");
-                //     allocaInst->dump();
-                //     exit(0);
-                // }
-            }
-            else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(instItr)) {
-                auto oper = binOp->getOpcode();
-                if (oper == Instruction::And || oper == Instruction::Or) {
-                    curEnv = checkLogicalInstruction(binOp, curEnv, branchEnv);
-                    // errs() << "True branch Env:\n";
-                    // branchEnv[&(*instItr)].first.printEnvironment();
-                    // errs() << "False branch Env:\n";
-                    // branchEnv[&(*instItr)].second.printEnvironment();
-                }
-                else curEnv = checkBinInstruction(binOp, curEnv);
-            }
-            else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
-                curEnv = checkStoreInst(storeInst, curEnv);
-            }
-            else if (UnaryInstruction *unaryInst = dyn_cast<UnaryInstruction>(instItr)) {
-                curEnv = checkUnaryInst(unaryInst, curEnv, interf);
-            }
-            else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
-                // errs() << "cmpInst: ";
-                // cmpInst->print(errs());
-                // errs() << "\n";
-                curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
-                // errs() << "\nCmp result:\n";
-                // curEnv.printEnvironment();
-                // errs() <<"True Branch:\n";
-                // branchEnv[cmpInst].first.printEnvironment();
-                // errs() <<"Flase Branch:\n";
-                // branchEnv[cmpInst].second.printEnvironment();
-            }
-            else if (BranchInst *branchInst = dyn_cast<BranchInst>(instItr)) {
-                if (branchInst->isConditional()) {
-                    Instruction *branchCondition = dyn_cast<Instruction>(branchInst->getCondition());
-                    Instruction *trueBranch = &(*(branchInst->getSuccessor(0)->begin()));
-                    curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
-                    Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
-                    curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
-                    // errs() << "\nTrue Branch:\n";
-                    // printValue(trueBranch);
-                    // errs() << "True branch Env:\n";
-                    // curFuncEnv[trueBranch].printEnvironment();
-                    // errs() << "\nFalse Branch:\n";
-                    // printValue(falseBranch);
-                    // errs() << "False branch Env:\n";
-                    // curFuncEnv[falseBranch].printEnvironment();
-                }
-                else {
-                    Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
-                    curFuncEnv[successors].joinEnvironment(curEnv);
-                }
+            // We need to check unaryInst (loads), callInst(thread create, join) and 
+            // rmw inst even if current environmet's modified flag is unset becausee
+            // these are the instructions that are affected by interferences and the 
+            // flag might change if the corresponding flag in the other thread is set.
+            if (LoadInst *loadInst = dyn_cast<LoadInst>(instItr)) {
+                // errs() << "checking unary inst:"; printValue(loadInst);
+                curEnv = checkUnaryInst(loadInst, curEnv, interf);
             }
             else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
                 if (callInst->getCalledFunction()->getName() == "__assert_fail") {
@@ -776,6 +728,67 @@ class VerifierPass : public ModulePass {
                 // curEnv.printEnvironment();
                 curEnv = checkRMWInst(rmwInst, curEnv, interf);
             }
+            // Other instructions don't need to be re-checked if modified flag is unset
+            else if (!curEnv.isModified()) {
+                curEnv = programState[instItr->getFunction()][&(*instItr)];
+                // if(curEnv.isModified()) curEnv.setNotModified();
+            }
+            // All the instructions need to be re-analyzed if modification flag is set.
+            else if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
+                // auto searchName = valueToName.find(currentInst);
+                // if (searchName == valueToName.end()) {
+                //     fprintf(stderr, "ERROR: new mem alloca");
+                //     allocaInst->dump();
+                //     exit(0);
+                // }
+            }
+            else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(instItr)) {
+                auto oper = binOp->getOpcode();
+                if (oper == Instruction::And || oper == Instruction::Or) {
+                    curEnv = checkLogicalInstruction(binOp, curEnv, branchEnv);
+                    // errs() << "True branch Env:\n";
+                    // branchEnv[&(*instItr)].first.printEnvironment();
+                    // errs() << "False branch Env:\n";
+                    // branchEnv[&(*instItr)].second.printEnvironment();
+                }
+                else curEnv = checkBinInstruction(binOp, curEnv);
+            }
+            else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
+                curEnv = checkStoreInst(storeInst, curEnv);
+            }
+            else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
+                // errs() << "cmpInst: ";
+                // cmpInst->print(errs());
+                // errs() << "\n";
+                curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
+                // errs() << "\nCmp result:\n";
+                // curEnv.printEnvironment();
+                // errs() <<"True Branch:\n";
+                // branchEnv[cmpInst].first.printEnvironment();
+                // errs() <<"Flase Branch:\n";
+                // branchEnv[cmpInst].second.printEnvironment();
+            }
+            else if (BranchInst *branchInst = dyn_cast<BranchInst>(instItr)) {
+                if (branchInst->isConditional()) {
+                    Instruction *branchCondition = dyn_cast<Instruction>(branchInst->getCondition());
+                    Instruction *trueBranch = &(*(branchInst->getSuccessor(0)->begin()));
+                    curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
+                    Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
+                    curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
+                    // errs() << "\nTrue Branch:\n";
+                    // printValue(trueBranch);
+                    // errs() << "True branch Env:\n";
+                    // curFuncEnv[trueBranch].printEnvironment();
+                    // errs() << "\nFalse Branch:\n";
+                    // printValue(falseBranch);
+                    // errs() << "False branch Env:\n";
+                    // curFuncEnv[falseBranch].printEnvironment();
+                }
+                else {
+                    Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
+                    curFuncEnv[successors].joinEnvironment(curEnv);
+                }
+            }  
             // CMPXCHG
             else {
                 
@@ -799,7 +812,7 @@ class VerifierPass : public ModulePass {
         }
         auto searchName = valueToName.find(val);
         if (searchName == valueToName.end()) {
-            errs() << "ERROR: Instrution not found in Instruction to Name map\n";
+            errs() << "ERROR: Instrution not found in Instruction to Name map: ";
             printValue(val);
             // exit(0);
             return "";
@@ -1331,7 +1344,9 @@ class VerifierPass : public ModulePass {
                         }
                     }
                     #endif
-                    curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, loadInst, &lastWrites);
+                    if (interfEnv.isModified() || curEnv.isModified())
+                        curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, loadInst, &lastWrites);
+                    else curEnv.setNotModified();
                 }
             }
         }

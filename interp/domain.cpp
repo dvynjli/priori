@@ -1062,6 +1062,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
         newenvironment[newPomo] = tmpDomain;
     }
     environment = newenvironment;
+    if (other.isModified() && !isModified()) setModified();
     // for (auto it=other.begin(); it!=other.end(); ++it) {
     //     POMO pomo = it->first;
     //     ApDomain newDomain;
@@ -1095,6 +1096,7 @@ void EnvironmentPOMO::copyOnVars(EnvironmentPOMO other, vector<string> vars) {
         newenv[it.first] = tmpApDomain;
     }
     environment = newenv;
+    if (other.isModified() && !isModified()) setModified();
 }
 
 void EnvironmentPOMO::applyInterference(
@@ -1218,6 +1220,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
             newDomain.joinApDomain(searchPomo->second);
         }
         if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
+        if (other.isModified() && !isModified()) setModified();
     }
 }
 
@@ -1248,6 +1251,7 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
         }
     }
     environment = newenvironment;
+    if (other.isModified() && !isModified()) setModified();
     // fprintf(stderr, "Env after meet:\n");
     // printEnvironment();
 }
@@ -1331,6 +1335,7 @@ void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO
 
 void EnvironmentPOMO::printEnvironment() {
     fprintf(stderr, "\n--Environment--\n");
+    fprintf(stderr, "Modified: %d", isModified());
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         POMO pomo = it->first;
         fprintf (stderr, "Modification Order:\n");
