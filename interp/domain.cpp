@@ -1335,7 +1335,7 @@ void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO
 
 void EnvironmentPOMO::printEnvironment() {
     fprintf(stderr, "\n--Environment--\n");
-    fprintf(stderr, "Modified: %d", isModified());
+    fprintf(stderr, "Modified: %d\n", isModified());
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         POMO pomo = it->first;
         fprintf (stderr, "Modification Order:\n");
