@@ -1481,7 +1481,7 @@ class VerifierPass : public ModulePass {
         // #pragma omp parallel num_threads(omp_get_num_procs()*2)
         // #pragma omp single 
         // {
-        #pragma omp parallel for shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
+        // #pragma omp parallel for shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
             vector< map<Instruction*, Instruction*>> curFuncInterfs;
             for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
