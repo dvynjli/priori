@@ -1,0 +1,7 @@
+Name, Time, Iterations
+CO-2+2W_2 , 0.001458
+CO-2+2W_3 , 0.001220
+CO-2+2W_5 , 0.001677
+fibonacci , 3.707414
+szymanski , 6_64-linux-gnu/libLLVM-6.0.so.1(_ZN4llvm3sys15PrintStackTraceERNS_11raw_ostreamE+0x2a)[0x7fcd6a6fa5ca]
+dijkstra , 0.019762

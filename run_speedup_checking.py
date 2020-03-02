@@ -5,7 +5,7 @@ import subprocess
 import os
 
 domain = 'interval' 	# options are interval, octagon
-# num_tests = 29
+num_runs = 4
 benchmarks = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 'szymanski', 'dijkstra']
 # benchmarks = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci']
 print('Name, Time, Iterations')
@@ -20,7 +20,17 @@ for benchmark in benchmarks:
 	else:
 		start_index_of_time = str(err).find('Time elapsed: ') + len('Time elapsed: ')
 		end_index_of_time = start_index_of_time + str(err)[start_index_of_time: ].find(r'\n')
-		print(benchmark, ',', str(err)[start_index_of_time: end_index_of_time])
+		time = float(str(err)[start_index_of_time: end_index_of_time])
+		runs = 1
+		for i in range(num_runs-1):
+			process = Popen(command, stdout=PIPE, stderr=PIPE)
+			out, err = process.communicate()
+			start_index_of_time = str(err).find('Time elapsed: ') + len('Time elapsed: ')
+			end_index_of_time = start_index_of_time + str(err)[start_index_of_time: ].find(r'\n')
+			time = time + float(str(err)[start_index_of_time: end_index_of_time])
+			runs = runs + 1
+		print(benchmark, ',', time/runs)
+		
 		# start_index_of_iter = end_index_of_time + str(err)[end_index_of_time: ].find('#iterations: ') + len('#iterations: ')
 		# end_index_of_iter = start_index_of_iter + str(err)[start_index_of_iter: ].find(r'\n')
 		# print(benchmark, ',', str(err)[start_index_of_time : end_index_of_time], ',', str(err)[start_index_of_iter : end_index_of_iter])

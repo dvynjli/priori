@@ -60,7 +60,7 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // printFeasibleInterf();
-        countNumFeasibleInterf();
+        // countNumFeasibleInterf();
         // printInstMaps();
         // testPO();
         analyzeProgram(M);
@@ -552,7 +552,7 @@ class VerifierPass : public ModulePass {
             }
             // errs() << "Iteration: " << iterations << "\n";
             // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
-            #pragma omp parallel num_threads(omp_get_num_procs()*2) if (maxFeasibleInterfs > 1000)
+            #pragma omp parallel num_threads(threads.size()) if (maxFeasibleInterfs > 200)
             #pragma omp single
             {
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
@@ -589,7 +589,8 @@ class VerifierPass : public ModulePass {
                     // errs() << "Number of interf= " << curFuncInterfs.size();
                     // analyze the Thread for each interference
                     // #pragma omp parallel for shared(programStateCurItr) private(newFuncEnv) chunksize(500)
-                    #pragma omp task if(curFuncInterfs.size() > 1000)
+                    #pragma omp task if(curFuncInterfs.size() > 200) \
+                    shared(programStateCurItr) firstprivate(curFuncInterfs,funcItr,searchCurFuncInitEnv,curFunc) private(newFuncEnv)
                     {
                     for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                         // errs() << "\n***Forinterf\n";
@@ -1395,12 +1396,12 @@ class VerifierPass : public ModulePass {
     }
 
     /// Compute all possible interferences (feasibile or infeasible)
-    pair<unordered_map<Function*, vector< map<Instruction*, Instruction*>>>, int> getAllInterferences (
+    unordered_map<Function*, vector< map<Instruction*, Instruction*>>> getAllInterferences (
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
     ){
         unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         // printLoadsToAllStores(loadsToAllStores);
-        int maxInterfs = 0;
+        // int maxInterfs = 0;
 
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
             Function *curFunc = funItr->first;
@@ -1414,7 +1415,7 @@ class VerifierPass : public ModulePass {
                 allItr[i] = itr->second.begin();
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
-            if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
+            // if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
 
             map<Instruction*, Instruction*> curInterf;
             
@@ -1437,7 +1438,7 @@ class VerifierPass : public ModulePass {
             }
         }
         
-        return make_pair(allInterfs, maxInterfs);
+        return allInterfs;
     }
 
     /// Checks all possible interfernces for feasibility one by one.
@@ -1447,19 +1448,27 @@ class VerifierPass : public ModulePass {
         const map<Function*, Instruction*> *funcToTCreate,
         const map<Function*, Instruction*> *funcToTJoin
     ){
+        map <Function*, vector< map<Instruction*, Instruction*>>> *feasibleInterfs = &feasibleInterfences;
         unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
-        int maxInterfs;
+        int maxInterfs=0;
         // Make all permutations
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
-        auto tmp = getAllInterferences(loadsToAllStores);
-        allInterfs = tmp.first; maxInterfs = tmp.second;
-        // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 500000) << "\n";
+        allInterfs = getAllInterferences(loadsToAllStores);
+        // allInterfs = tmp.first; maxInterfs = tmp.second;
+        // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 600000) << "\n";
 
         // errs() << "# of total interference:\n";
         // for (auto it: allInterfs) {
         //     errs() << it.first->getName() << " : " << it.second.size() << "\n";
         // }
+        // double st = omp_get_wtime();
+        for (auto it: allInterfs) {
+            auto tmp = it.second.size();
+            if (maxInterfs < tmp) maxInterfs = tmp;
+        }
+        // double t = omp_get_wtime()-st;
+        // errs() << "time to compute maxInterfs: " << t <<"\n";
 
         // Check feasibility of permutations and save them in feasibleInterfences
         // Older code. Not required for RA and Z3Minimal
@@ -1492,32 +1501,33 @@ class VerifierPass : public ModulePass {
 
         // errs() << "#interfs: " << allInterfs.size() << "\n";
 
-        #pragma omp parallel num_threads(threads.size()) if (maxInterfs > 500000)
-        #pragma omp single 
-        {
+        // #pragma omp parallel num_threads(threads.size()) if (maxInterfs > 10000000)
+        // #pragma omp single 
+        // {
         // #pragma omp parallel for //shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
         for (auto funcItr: allInterfs) {
-            #pragma omp task if (funcItr.second.size() > 500000)
-            {
+            // #pragma omp task if (funcItr.second.size() > 10000000) \
+            // shared(minimalZ3, instToNum, numToInst, feasibleInterfs, funcToTCreate,funcToTJoin) firstprivate(funcItr)
+            // {
             // errs() << "TID: " << omp_get_thread_num() << ", func: " << funcItr.first->getName() << "\n";
             vector< map<Instruction*, Instruction*>> curFuncInterfs;
-            for (auto interfItr=funcItr.second.begin(); interfItr!=funcItr.second.end(); ++interfItr) {
-                auto interfs = *interfItr;
+            for (auto interfItr : funcItr.second) {
+                // auto interfs = *interfItr;
                 if (minimalZ3) {
-                    if(isFeasibleRA(*interfItr))
-                        curFuncInterfs.push_back(*interfItr);
+                    if(isFeasibleRA(interfItr))
+                        curFuncInterfs.push_back(interfItr);
                 }
                 else {
                     // double start_time = omp_get_wtime();
-                    bool isFeasible = isFeasibleRAWithoutZ3(*interfItr, funcToTCreate, funcToTJoin);
+                    bool isFeasible = isFeasibleRAWithoutZ3(interfItr, funcToTCreate, funcToTJoin);
                     // errs() << "time: " << (omp_get_wtime() - start_time) << "\n";
-                    if (isFeasible) curFuncInterfs.push_back(*interfItr);
+                    if (isFeasible) curFuncInterfs.push_back(interfItr);
                 } 
             }
-            feasibleInterfences[funcItr.first] = curFuncInterfs;
-            }
+            (*feasibleInterfs)[funcItr.first] = curFuncInterfs;
+            // }
         }
-        }
+        // }
     }
 
     /// Older function. Used with UseZ3 flag. 

@@ -1,0 +1,10 @@
+Parallelization in Feasible Interfs:
+	Any paallelization done for interf is causing slow-down in even in szymanski
+	even if the size to actually do parallization is > 10,000,000 i.e. 
+	no benchmarks are actually running in paralle. Overhead is too much
+
+Parallilization in analysis
+	Works for #feasible interfs > 200
+	Very small benchmarks have overhead
+	Try for other smaller values
+	Try dividing in chuncks of 200 for bigger (szymanki) benchmarks	
