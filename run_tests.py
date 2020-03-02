@@ -45,3 +45,6 @@ if (num_missed_asserts != 0):
 else:
 	print('Tests with MISSED ASSERT:', num_missed_asserts)
 
+duration = .05  # seconds
+freq = 440  # Hz
+os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
