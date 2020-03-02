@@ -30,6 +30,7 @@ class VerifierPass : public ModulePass {
     // initial environment of the function. A map from Func-->(isChanged, Environment)
     unordered_map <Function*, Environment> funcInitEnv;
     map <Function*, vector< map<Instruction*, Instruction*>>> feasibleInterfences;
+    int maxFeasibleInterfs;
     Z3Minimal zHelper;
 
     unordered_map <string, Value*> nameToValue;
@@ -59,7 +60,7 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // printFeasibleInterf();
-        // printNumFeasibleInterf();
+        countNumFeasibleInterf();
         // printInstMaps();
         // testPO();
         analyzeProgram(M);
@@ -550,8 +551,12 @@ class VerifierPass : public ModulePass {
                 // printProgramState();
             }
             // errs() << "Iteration: " << iterations << "\n";
-            // #pragma omp paralle for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
+            // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
+            #pragma omp parallel num_threads(omp_get_num_procs()*2) if (maxFeasibleInterfs > 1000)
+            #pragma omp single
+            {
             for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
+            // for(vector<Function*>::iterator funcItr = std::begin(threads); funcItr != std::end(threads); funcItr++) {
                 Function *curFunc = (*funcItr);
                 if (!noPrint) {
                     errs() << "\n******** DEBUG: Analyzing thread " << curFunc->getName() << "********\n";
@@ -584,6 +589,8 @@ class VerifierPass : public ModulePass {
                     // errs() << "Number of interf= " << curFuncInterfs.size();
                     // analyze the Thread for each interference
                     // #pragma omp parallel for shared(programStateCurItr) private(newFuncEnv) chunksize(500)
+                    #pragma omp task if(curFuncInterfs.size() > 1000)
+                    {
                     for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                         // errs() << "\n***Forinterf\n";
 
@@ -602,6 +609,8 @@ class VerifierPass : public ModulePass {
                         }
                     }
                 // }
+                    }
+            }
             }
             if (iterations == 0) {
                 // errs() << "MOD: setting main() init to false\n";
@@ -1386,11 +1395,12 @@ class VerifierPass : public ModulePass {
     }
 
     /// Compute all possible interferences (feasibile or infeasible)
-    unordered_map<Function*, vector< map<Instruction*, Instruction*>>> getAllInterferences (
+    pair<unordered_map<Function*, vector< map<Instruction*, Instruction*>>>, int> getAllInterferences (
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
     ){
         unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         // printLoadsToAllStores(loadsToAllStores);
+        int maxInterfs = 0;
 
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
             Function *curFunc = funItr->first;
@@ -1404,7 +1414,8 @@ class VerifierPass : public ModulePass {
                 allItr[i] = itr->second.begin();
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
-            
+            if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
+
             map<Instruction*, Instruction*> curInterf;
             
             for (int i=0; i<noOfInterfs; i++) {
@@ -1426,7 +1437,7 @@ class VerifierPass : public ModulePass {
             }
         }
         
-        return allInterfs;
+        return make_pair(allInterfs, maxInterfs);
     }
 
     /// Checks all possible interfernces for feasibility one by one.
@@ -1438,9 +1449,12 @@ class VerifierPass : public ModulePass {
     ){
         unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
+        int maxInterfs;
         // Make all permutations
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
-        allInterfs = getAllInterferences(loadsToAllStores);
+        auto tmp = getAllInterferences(loadsToAllStores);
+        allInterfs = tmp.first; maxInterfs = tmp.second;
+        // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 500000) << "\n";
 
         // errs() << "# of total interference:\n";
         // for (auto it: allInterfs) {
@@ -1478,16 +1492,17 @@ class VerifierPass : public ModulePass {
 
         // errs() << "#interfs: " << allInterfs.size() << "\n";
 
-        // #pragma omp parallel num_threads(omp_get_num_procs()*2)
-        // #pragma omp single 
-        // {
-        // #pragma omp parallel for shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
-        for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); ++funcItr) {
+        #pragma omp parallel num_threads(threads.size()) if (maxInterfs > 500000)
+        #pragma omp single 
+        {
+        // #pragma omp parallel for //shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
+        for (auto funcItr: allInterfs) {
+            #pragma omp task if (funcItr.second.size() > 500000)
+            {
+            // errs() << "TID: " << omp_get_thread_num() << ", func: " << funcItr.first->getName() << "\n";
             vector< map<Instruction*, Instruction*>> curFuncInterfs;
-            for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); ++interfItr) {
+            for (auto interfItr=funcItr.second.begin(); interfItr!=funcItr.second.end(); ++interfItr) {
                 auto interfs = *interfItr;
-                // #pragma omp task private(interfs) shared(curFuncInterfs)
-                // {
                 if (minimalZ3) {
                     if(isFeasibleRA(*interfItr))
                         curFuncInterfs.push_back(*interfItr);
@@ -1497,13 +1512,12 @@ class VerifierPass : public ModulePass {
                     bool isFeasible = isFeasibleRAWithoutZ3(*interfItr, funcToTCreate, funcToTJoin);
                     // errs() << "time: " << (omp_get_wtime() - start_time) << "\n";
                     if (isFeasible) curFuncInterfs.push_back(*interfItr);
-                }   
-                // }
+                } 
             }
-            // #pragma omp taskwait
-            feasibleInterfences[funcItr->first] = curFuncInterfs;
+            feasibleInterfences[funcItr.first] = curFuncInterfs;
+            }
         }
-        // }
+        }
     }
 
     /// Older function. Used with UseZ3 flag. 
@@ -1853,10 +1867,13 @@ class VerifierPass : public ModulePass {
         return (newProgramState == programState);
     }
 
-    void printNumFeasibleInterf () {
-        errs() << "# of feasible interference:\n";
+    void countNumFeasibleInterf () {
+        // errs() << "# of feasible interference:\n";
+        maxFeasibleInterfs = 0;
         for (auto it: feasibleInterfences) {
-            errs() << it.first->getName() << " : " << it.second.size() << "\n";
+            if (it.second.size()>maxFeasibleInterfs)
+                maxFeasibleInterfs = it.second.size();
+            // errs() << it.first->getName() << " : " << it.second.size() << "\n";
         }
     }
 
