@@ -60,10 +60,10 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // printFeasibleInterf();
-        // countNumFeasibleInterf();
+        countNumFeasibleInterf();
         // printInstMaps();
         // testPO();
-        analyzeProgram(M);
+        // analyzeProgram(M);
         checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
@@ -1416,6 +1416,7 @@ class VerifierPass : public ModulePass {
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
             // if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
+            // errs() <<  curFunc->getName() << ": " << noOfInterfs << "\n";
 
             map<Instruction*, Instruction*> curInterf;
             
@@ -1878,12 +1879,12 @@ class VerifierPass : public ModulePass {
     }
 
     void countNumFeasibleInterf () {
-        // errs() << "# of feasible interference:\n";
+        errs() << "# of feasible interference:\n";
         maxFeasibleInterfs = 0;
         for (auto it: feasibleInterfences) {
             if (it.second.size()>maxFeasibleInterfs)
                 maxFeasibleInterfs = it.second.size();
-            // errs() << it.first->getName() << " : " << it.second.size() << "\n";
+            errs() << it.first->getName() << " : " << it.second.size() << "\n";
         }
     }
 
