@@ -11,6 +11,8 @@
 #include "llvm/IR/Operator.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 
+#include <forward_list>
+
 #include "omp.h"
 
 using namespace llvm;
