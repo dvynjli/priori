@@ -62,10 +62,10 @@ class VerifierPass : public ModulePass {
         // zHelper.initZ3(globalVars);
         initThreadDetails(M);
         // printFeasibleInterf();
-        countNumFeasibleInterf();
+        // countNumFeasibleInterf();
         // printInstMaps();
         // testPO();
-        // analyzeProgram(M);
+        analyzeProgram(M);
         checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
@@ -1399,15 +1399,16 @@ class VerifierPass : public ModulePass {
     }
 
 
-    /// Compute all possible interferences (feasibile or infeasible)
-    void getAllInterferences (
-        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores
+    /// Compute all possible interferences (feasibile or infeasible) 
+    /// returns maximum number of interferneces in any function
+    int getAllInterferences (
+        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores,
+        map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs
     ){
         // unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
-        // map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfsNew;
 
         // printLoadsToAllStores(loadsToAllStores);
-        // int maxInterfs = 0;
+        int maxInterfs = 0;
         
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
             Function *curFunc = funItr->first;
@@ -1421,8 +1422,8 @@ class VerifierPass : public ModulePass {
                 allItr[i] = itr->second.begin();
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
-            // if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
-            errs() <<  curFunc->getName() << ": " << noOfInterfs << "\n";
+            if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
+            // errs() <<  curFunc->getName() << ": " << noOfInterfs << "\n";
 
             // map<Instruction*, Instruction*> curInterf;
             forward_list< const pair< Instruction*, Instruction* >* > curInterfNew;
@@ -1440,7 +1441,7 @@ class VerifierPass : public ModulePass {
                 }
                 
                 // allInterfs[curFunc].push_back(curInterf);
-                feasibleInterfences[curFunc].push_back(curInterfNew);
+                (*allInterfs)[curFunc].push_back(curInterfNew);
                 curInterfNew.resize(0);
 
                 int k = allLS.size()-1;
@@ -1454,8 +1455,7 @@ class VerifierPass : public ModulePass {
                 }
             }
         }
-        
-        // return allInterfsNew;
+        return maxInterfs;
     }
 
     /// Checks all possible interfernces for feasibility one by one.
@@ -1466,21 +1466,25 @@ class VerifierPass : public ModulePass {
         const map<Function*, Instruction*> *funcToTJoin
     ){
         // map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *feasibleInterfs = &feasibleInterfences;
-        // map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfs;
+        map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfs;
         unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
-        int maxInterfs=0;
         // Make all permutations
         loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
-        getAllInterferences(loadsToAllStores);
+        allLoads.clear();
+        allStores.clear();
+        double start_time = omp_get_wtime();
+        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs);
+        errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
+        loadsToAllStores.clear();
         // allInterfs = tmp.first; maxInterfs = tmp.second;
         // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 600000) << "\n";
 
-        errs() << "# of total interference:\n";
-        for (auto it: feasibleInterfences) {
-            auto tmp = it.second.size();
-            errs() << it.first->getName() << " : " << tmp << "\n";
-            if (maxInterfs < tmp) maxInterfs = tmp;
-        }
+        // errs() << "# of total interference:\n";
+        // for (auto it: feasibleInterfences) {
+        //     auto tmp = it.second.size();
+        //     errs() << it.first->getName() << " : " << tmp << "\n";
+        //     if (maxInterfs < tmp) maxInterfs = tmp;
+        // }
 
         // errs() << "Interfs:\n";
         // for (auto funcIt: allInterfs) {
@@ -1528,18 +1532,18 @@ class VerifierPass : public ModulePass {
 
         // errs() << "#interfs: " << allInterfs.size() << "\n";
 
-        // #pragma omp parallel num_threads(threads.size()) if (maxInterfs > 10000000)
+        // #pragma omp parallel num_threads(threads.size()) if (maxInterfs > 300)
         // #pragma omp single 
         // {
         // #pragma omp parallel for //shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
-        for (auto funcItr=feasibleInterfences.begin(); funcItr!=feasibleInterfences.end(); funcItr++) {
-            // #pragma omp task if (funcItr.second.size() > 10000000) \
-            // shared(minimalZ3, instToNum, numToInst, feasibleInterfs, funcToTCreate,funcToTJoin) firstprivate(funcItr)
+        for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); funcItr++) {
+            // #pragma omp task if (funcItr->second.size() > 300) \
+            // shared(minimalZ3, instToNum, numToInst, funcToTCreate,funcToTJoin) firstprivate(funcItr)
             // {
             // errs() << "TID: " << omp_get_thread_num() << ", func: " << funcItr.first->getName() << "\n";
             // vector< forward_list<const pair<Instruction*, Instruction*>*>> curFuncInterfs;
             int i = 0;
-            for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); i++) {
+            for (auto interfItr=funcItr->second.begin(); interfItr!=funcItr->second.end(); i++,interfItr++) {
                 // auto interfs = *interfItr;
                 // errs() << "checking " << i << "\n" ;
                 // for (auto listIt: (*interfItr)) {
@@ -1547,27 +1551,32 @@ class VerifierPass : public ModulePass {
                 //     printValue(listIt->second); errs() << "\n";
                 // }
                 // errs() << "\n";
-                if (minimalZ3) {
-                    if(!isFeasibleRA(&(*interfItr)))
-                        interfItr =  funcItr->second.erase(interfItr);
-                        // curFuncInterfs.push_back(interfItr);
-                    else interfItr++;
-                }
-                else {
+                // if (minimalZ3) {
+                //     if(!isFeasibleRA(&(*interfItr)))
+                //         interfItr =  funcItr->second.erase(interfItr);
+                //         // curFuncInterfs.push_back(interfItr);
+                //     else interfItr++;
+                // }
+                // else {
                     bool isFeasible = isFeasibleRAWithoutZ3(&(*interfItr), funcToTCreate, funcToTJoin);
-                    if (!isFeasible) {
-                        // errs() << "deleting " << i << "\n";
-                        // for (auto listItr: (*interfItr)) {
-                        //     printValue(listItr->first); errs() << "--->";
-                        //     printValue(listItr->second); errs() << "\n";
-                        // }
-                        interfItr = funcItr->second.erase(interfItr);
-                        // errs() << "deleted\n";
+                    if (isFeasible) {
+                        feasibleInterfences[funcItr->first].push_back(*interfItr);
                     }
-                    else ++interfItr;
+                    // if (!isFeasible) {
+                    //     // errs() << "deleting " << i << "\n";
+                    //     // for (auto listItr: (*interfItr)) {
+                    //     //     printValue(listItr->first); errs() << "--->";
+                    //     //     printValue(listItr->second); errs() << "\n";
+                    //     // }
+                    //     interfItr = funcItr->second.erase(interfItr);
+                    //     // errs() << "deleted\n";
+                    // }
+                    // else ++interfItr;
                     // if (isFeasible) curFuncInterfs.push_back(interfItr);
-                } 
+                // } 
             }
+            // allInterfs[funcItr->first].clear();
+            // funcItr->second.shrink_to_fit();
             // }
         }
         // }
