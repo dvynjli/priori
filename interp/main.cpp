@@ -462,9 +462,9 @@ class VerifierPass : public ModulePass {
 
             
             
-            for (auto succBB: successors(BB)) {
-                if (basicBlockSet.insert(succBB).second)
-                    basicBlockQ.push(succBB);
+                for (auto succBB: successors(BB)) {
+                    if (basicBlockSet.insert(succBB).second)
+                        basicBlockQ.push(succBB);
                 }
             }
                 // }
@@ -540,7 +540,7 @@ class VerifierPass : public ModulePass {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
                         forward_list<const pair<Instruction*, Instruction*>*> interf;
-                        newFuncEnv = analyzeThread(curFunc, interf, searchCurFuncInitEnv->second, 
+                        newFuncEnv = analyzeThread(curFunc, &interf, searchCurFuncInitEnv->second, 
                                             searchCurFuncInitEnv->second.isModified());
                         programStateCurItr.emplace(curFunc, newFuncEnv);
                     }
@@ -557,8 +557,13 @@ class VerifierPass : public ModulePass {
                     {
                     for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                         // errs() << "\n***Forinterf\n";
+                        // errs() << "analyzing with interf:\n";
+                        // for (auto listItr: (*interfItr)){
+                        //     printValue(listItr->first); errs() << " ---> ";
+                        //     printValue(listItr->second); errs() << "\n";
+                        // }
 
-                        newFuncEnv = analyzeThread(*funcItr, *interfItr, searchCurFuncInitEnv->second, 
+                        newFuncEnv = analyzeThread(*funcItr, &(*interfItr), searchCurFuncInitEnv->second, 
                                             searchCurFuncInitEnv->second.isModified());
 
                         // join newFuncEnv of all feasibleInterfs and replace old one in state
@@ -603,7 +608,7 @@ class VerifierPass : public ModulePass {
     }
 
     unordered_map<Instruction*, Environment> analyzeThread (Function *F, 
-        forward_list<const pair<Instruction*, Instruction*>*> interf,
+        forward_list<const pair<Instruction*, Instruction*>*> *interf,
         Environment initEnv, bool hasFuncInitEnvChanged
     ) {
         //call analyze BB, do the merging of BB depending upon term condition
@@ -612,6 +617,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Instruction*, Environment> curFuncEnv;
         // errs() << "MOD: setting curfuncEnv, duncinitENv modified: " << funcInitEnv[F].isModified() <<"\n";
         curFuncEnv[&(F->getEntryBlock().front())] = funcInitEnv[F];
+        auto curInterfItr = interf->begin();
         // errs() << "CurFuncEnv before checking preds:\n";
         // printInstToEnvMap(curFuncEnv);
 
@@ -636,7 +642,7 @@ class VerifierPass : public ModulePass {
 
             // errs() << "CurFuncEnv before calling analyzeBB:\n";
             // printInstToEnvMap(curFuncEnv);
-            analyzeBasicBlock(currentBB, curFuncEnv, interf);
+            analyzeBasicBlock(currentBB, curFuncEnv, &curInterfItr);
         }
 
         return curFuncEnv;
@@ -644,7 +650,7 @@ class VerifierPass : public ModulePass {
 
     Environment analyzeBasicBlock (BasicBlock *B, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
-        forward_list<const pair<Instruction*, Instruction*>*> interf
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
@@ -669,7 +675,7 @@ class VerifierPass : public ModulePass {
             // flag might change if the corresponding flag in the other thread is set.
             if (LoadInst *loadInst = dyn_cast<LoadInst>(instItr)) {
                 // errs() << "checking unary inst:"; printValue(loadInst);
-                curEnv = checkUnaryInst(loadInst, curEnv, interf);
+                curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr);
             }
             else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
                 if (callInst->getCalledFunction()->getName() == "__assert_fail") {
@@ -702,7 +708,7 @@ class VerifierPass : public ModulePass {
             else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
                 // errs() << "initial env:\n";
                 // curEnv.printEnvironment();
-                curEnv = checkRMWInst(rmwInst, curEnv, interf);
+                curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr);
             }
             // Other instructions don't need to be re-checked if modified flag is unset
             else if (!curEnv.isModified()) {
@@ -1127,7 +1133,7 @@ class VerifierPass : public ModulePass {
     Environment checkUnaryInst(
         UnaryInstruction* unaryInst, 
         Environment curEnv, 
-        forward_list<const pair<Instruction*, Instruction*>*> interf
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr
     ) {
         Value* fromVar = unaryInst->getOperand(0);
         string fromVarName = getNameFromValue(fromVar);
@@ -1157,7 +1163,7 @@ class VerifierPass : public ModulePass {
                     // errs() << "Load of global\n";
                     // errs() << "Env before:";
                     // curEnv.printEnvironment();
-                    curEnv = applyInterfToLoad(unaryInst, curEnv, interf, fromVarName);
+                    curEnv = applyInterfToLoad(unaryInst, curEnv, curInterfItr, fromVarName);
                 }
                 break;
             // TODO: add more cases
@@ -1230,7 +1236,7 @@ class VerifierPass : public ModulePass {
     Environment checkRMWInst(
         AtomicRMWInst *rmwInst, 
         Environment curEnv, 
-        forward_list<const pair<Instruction*, Instruction*>*> interf
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr
     ) { 
         Value *pointerVar = rmwInst->getPointerOperand();
         string pointerVarName = getNameFromValue(pointerVar);
@@ -1256,7 +1262,7 @@ class VerifierPass : public ModulePass {
             pointerVar = gepOp->getPointerOperand();
         }
         if (dyn_cast<GlobalVariable>(pointerVar)) {
-            curEnv = applyInterfToLoad(rmwInst, curEnv, interf, pointerVarName);
+            curEnv = applyInterfToLoad(rmwInst, curEnv, curInterfItr, pointerVarName);
         }
         // errs() << "After applyInterf:\n";
         // curEnv.printEnvironment();
@@ -1293,18 +1299,26 @@ class VerifierPass : public ModulePass {
     Environment applyInterfToLoad(
         Instruction* loadInst, 
         Environment curEnv, 
-        forward_list<const pair<Instruction*, Instruction*>*> interf,
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
         string varName
     ) {
-        /* // errs() << "Applying interf\n";
+        // errs() << "Applying interf\n";
         // find interfering instruction
-        auto searchInterf = interf.find(loadInst);
-        if (searchInterf == interf.end()) {
-            errs() << "ERROR: Interfernce for the load instrction not found\n";
-            printValue(loadInst);
-            return curEnv;
+        // auto searchInterf = interf.find(loadInst);
+        // if (searchInterf == interf.end()) {
+        //     errs() << "ERROR: Interfernce for the load instrction not found\n";
+        //     printValue(loadInst);
+        //     return curEnv;
+        // }
+        auto curLsPair = (**curInterfItr);
+        if (loadInst != curLsPair->first) {
+            errs() << "ERROR: Ordering of load instruction in interf is worng\n";
+            errs() << "expected: "; printValue(loadInst);
+            errs() << "found: "; printValue(curLsPair->first);
+            exit(0);
         }
-        Instruction *interfInst = searchInterf->second;
+        Instruction *interfInst = curLsPair->second;
+        (*curInterfItr)++;
         
         // if interfernce is from some other thread
         if (interfInst && interfInst != loadInst->getPrevNode()) {
@@ -1355,16 +1369,15 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
-        } */
+        }
         return curEnv;
     }
 
-     unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> getLoadsToAllStoresMap (
+    void getLoadsToAllStoresMap (
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
-        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores
+        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores,
+        unordered_map<Function*, map<Instruction*, vector<Instruction*>>> *loadsToAllStores
     ){
-        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
-
         for (auto allLoadsItr=allLoads.begin(); allLoadsItr!=allLoads.end(); ++allLoadsItr) {
             Function* curFunc = allLoadsItr->first;
             auto curFuncLoads = allLoadsItr->second;
@@ -1392,17 +1405,17 @@ class VerifierPass : public ModulePass {
                 }
                 // Push the current context to read from self envionment
                 allStoresForCurLoad.push_back(nullptr);
-                loadsToAllStores[curFunc][load] = allStoresForCurLoad;
+                (*loadsToAllStores)[curFunc][load] = allStoresForCurLoad;
             }
         }
-        return loadsToAllStores;
+        // return loadsToAllStores;
     }
 
 
     /// Compute all possible interferences (feasibile or infeasible) 
     /// returns maximum number of interferneces in any function
     int getAllInterferences (
-        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores,
+        unordered_map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores,
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs
     ){
         // unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
@@ -1467,9 +1480,9 @@ class VerifierPass : public ModulePass {
     ){
         // map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *feasibleInterfs = &feasibleInterfences;
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfs;
-        unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores;
+        unordered_map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores;
         // Make all permutations
-        loadsToAllStores = getLoadsToAllStoresMap(allLoads, allStores);
+        getLoadsToAllStoresMap(allLoads, allStores, &loadsToAllStores);
         allLoads.clear();
         allStores.clear();
         double start_time = omp_get_wtime();
