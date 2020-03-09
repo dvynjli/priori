@@ -30,7 +30,7 @@ class VerifierPass : public ModulePass {
     // initial environment of the function. A map from Func-->(isChanged, Environment)
     unordered_map <Function*, Environment> funcInitEnv;
     map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
-    int maxFeasibleInterfs;
+    int maxFeasibleInterfs=0;
     Z3Minimal zHelper;
 
     unordered_map <string, Value*> nameToValue;
@@ -1447,12 +1447,12 @@ class VerifierPass : public ModulePass {
         
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
             Function *curFunc = funItr->first;
-            auto allLS = funItr->second;
-            Instruction* loads[allLS.size()];
-            vector<Instruction*>::iterator allItr[allLS.size()];
+            auto allLS = &(funItr->second);
+            Instruction* loads[allLS->size()];
+            vector<Instruction*>::iterator allItr[allLS->size()];
             int noOfInterfs = 1;
             int i=0;
-            for (auto itr=allLS.begin(); itr!=allLS.end(); ++itr, i++) {
+            for (auto itr=allLS->begin(); itr!=allLS->end(); ++itr, i++) {
                 loads[i] = itr->first;
                 allItr[i] = itr->second.begin();
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
@@ -1465,8 +1465,8 @@ class VerifierPass : public ModulePass {
             
             for (int i=0; i<noOfInterfs; i++) {
                 auto insertPt = curInterfNew.before_begin();
-                for (int j=0; j<allLS.size(); j++) {
-                    if (allItr[j] != allLS[loads[j]].end()) {
+                for (int j=0; j<allLS->size(); j++) {
+                    if (allItr[j] != (*allLS)[loads[j]].end()) {
                         auto lsPairPtr = allLSPair.insert(make_pair(loads[j], (*allItr[j])));
                         // curInterfNew.push_front(&(*lsPairPtr.first));
                         // errs() << "insertinf "; printValue(lsPairPtr.first->first); errs() << "\n";
@@ -1479,12 +1479,12 @@ class VerifierPass : public ModulePass {
                 (*allInterfs)[curFunc].push_back(curInterfNew);
                 curInterfNew.resize(0);
 
-                int k = allLS.size()-1;
-                if (allItr[k] != allLS[loads[k]].end()) {
+                int k = allLS->size()-1;
+                if (allItr[k] != (*allLS)[loads[k]].end()) {
                     allItr[k]++;
                 }
-                while (k>=0 && allItr[k] == allLS[loads[k]].end()) {
-                    allItr[k] = allLS[loads[k]].begin();
+                while (k>=0 && allItr[k] == (*allLS)[loads[k]].end()) {
+                    allItr[k] = (*allLS)[loads[k]].begin();
                     k--;
                     if (k>=0) allItr[k]++;
                 }

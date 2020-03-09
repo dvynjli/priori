@@ -57,8 +57,9 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 	// cout << "appending Partial order " << newinst << "\n";
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
-	for (auto it=order.begin(); it!=order.end(); ++it) {
-		if (isSeqBefore(it->first, newinst)) remove(it->first);
+	for (auto it=order.begin(); it!=order.end(); ) {
+		if (isSeqBefore(it->first, newinst)) {auto ittmp = it++; remove(ittmp->first);}
+		else it++;
 	}
 
 	// If the 'newinst' is already in the order, it cannot be appended
@@ -144,6 +145,7 @@ bool PartialOrder::remove(llvm::Instruction* inst) {
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
+	order[inst].clear();
 	order.erase(inst);
 	return true;
 }

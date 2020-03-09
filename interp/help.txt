@@ -160,3 +160,5 @@ export LD_LIBRARY_PATH=/usr/local/lib/
 Running ASAN:
 export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/7/libasan.so
 cmake with cmake .. -DCMAKE_CXX_FLAGS="-fsanitize=address  -fsanitize=leak -g" -DCMAKE_C_FLAGS="-fsanitize=address  -fsanitize=leak -g" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address  -fsanitize=leak" -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=address  -fsanitize=leak"
+Use Valgrind:
+valgrind --leak-check=yes --track-origins=yes opt -load build/interp/VerifierPass.so -verifier -interval -useMOPO -no-print tests/benchmarks/fibonacci.ll 
