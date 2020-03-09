@@ -179,7 +179,7 @@ class VerifierPass : public ModulePass {
     }
 
     void initThreadDetails(Module &M) {
-        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads;
+        unordered_map<Function*, forward_list<pair<Instruction*, string>>> allLoads;
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores;
 
         // funcToTCreate: func -> tcreate of func
@@ -209,7 +209,9 @@ class VerifierPass : public ModulePass {
             
             // errs() << "----analyzing funtion: " << func->getName() << "\n";
             unordered_map<string, unordered_set<Instruction*>> varToStores;
-            unordered_map<Instruction*, string> varToLoads;
+            forward_list<pair<Instruction*, string>> varToLoads;
+            auto varToLoadsIntertPt = varToLoads.before_begin();
+
             #ifdef ALIAS
             AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
             aliasAnalyses[func]=AA;
@@ -239,7 +241,7 @@ class VerifierPass : public ModulePass {
                 for(auto I = BB->begin(); I != BB->end(); I++)       //iterator of BasicBlock over Instruction
                 {
                     // if (!minimalZ3) 
-                        addInstToMaps(&*I, tid, &instId);
+                    addInstToMaps(&*I, tid, &instId);
                     if (CallInst *call = dyn_cast<CallInst>(I)) {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
@@ -401,8 +403,7 @@ class VerifierPass : public ModulePass {
                             varToStores[destVarName].insert(rmwInst);
                             lastWritesCurInst[destVarName] = rmwInst;
                             // load part of RMWInst
-                            varToLoads[rmwInst]=destVarName;
-
+                            varToLoadsIntertPt = varToLoads.insert_after(varToLoadsIntertPt, make_pair(rmwInst, destVarName));
                             lastGlobalOfVar[destVarName] = rmwInst;
                             lastGlobalInst = rmwInst;
                         }
@@ -441,7 +442,7 @@ class VerifierPass : public ModulePass {
                             }
                             string fromVarName = getNameFromValue(fromVar);
                             if (dyn_cast<GlobalVariable>(fromVar)) {
-                                varToLoads[loadInst]=fromVarName;
+                                varToLoadsIntertPt = varToLoads.insert_after(varToLoadsIntertPt, make_pair(loadInst, fromVarName));
                                 // errs() << "****adding load instr for: ";
                                 // printValue(loadInst);
                                 // zHelper.addLoadInstr(loadInst);
@@ -494,7 +495,7 @@ class VerifierPass : public ModulePass {
         //     }
         // }
 
-        getFeasibleInterferences(allLoads, allStores, &funcToTCreate, &funcToTJoin);
+        getFeasibleInterferences(&allLoads, &allStores, &funcToTCreate, &funcToTJoin);
     }
 
     void analyzeProgram(Module &M) {
@@ -620,8 +621,24 @@ class VerifierPass : public ModulePass {
         auto curInterfItr = interf->begin();
         // errs() << "CurFuncEnv before checking preds:\n";
         // printInstToEnvMap(curFuncEnv);
+        queue<BasicBlock*> basicBlockQ;
+        unordered_set<BasicBlock*> basicBlockSet;
+        basicBlockQ.push(&*F->begin());
+        basicBlockSet.insert(&*F->begin());
 
-        for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
+        while (!basicBlockQ.empty()) {
+            BasicBlock* BB = basicBlockQ.front();
+            basicBlockQ.pop();
+
+            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr);
+
+            for (auto succBB: successors(BB)) {
+                if (basicBlockSet.insert(succBB).second)
+                    basicBlockQ.push(succBB);
+            }
+        }
+
+        /* for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
             BasicBlock *currentBB = &(*bbItr);
 
             // This check is not required since we are setting the environment of first 
@@ -643,7 +660,7 @@ class VerifierPass : public ModulePass {
             // errs() << "CurFuncEnv before calling analyzeBB:\n";
             // printInstToEnvMap(curFuncEnv);
             analyzeBasicBlock(currentBB, curFuncEnv, &curInterfItr);
-        }
+        } */
 
         return curFuncEnv;
     }
@@ -1374,11 +1391,11 @@ class VerifierPass : public ModulePass {
     }
 
     void getLoadsToAllStoresMap (
-        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
-        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores,
+        unordered_map<Function*, forward_list<pair<Instruction*, string>>> *allLoads,
+        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> *allStores,
         unordered_map<Function*, map<Instruction*, vector<Instruction*>>> *loadsToAllStores
     ){
-        for (auto allLoadsItr=allLoads.begin(); allLoadsItr!=allLoads.end(); ++allLoadsItr) {
+        for (auto allLoadsItr=allLoads->begin(); allLoadsItr!=allLoads->end(); ++allLoadsItr) {
             Function* curFunc = allLoadsItr->first;
             auto curFuncLoads = allLoadsItr->second;
             for (auto curFuncLoadsItr=curFuncLoads.begin(); curFuncLoadsItr!=curFuncLoads.end(); ++curFuncLoadsItr) {
@@ -1387,7 +1404,7 @@ class VerifierPass : public ModulePass {
                 // errs() << "coping loads of var " << loadVar << " of function " << curFunc->getName() << "\n";
                 vector<Instruction*> allStoresForCurLoad;
                 // loads of same var from all other functions
-                for (auto allStoresItr=allStores.begin(); allStoresItr!=allStores.end(); ++allStoresItr) {
+                for (auto allStoresItr=allStores->begin(); allStoresItr!=allStores->end(); ++allStoresItr) {
                     Function *otherFunc = allStoresItr->first;
                     // need interfernce only from other threads
                     if (otherFunc != curFunc) {
@@ -1404,9 +1421,14 @@ class VerifierPass : public ModulePass {
                     }
                 }
                 // Push the current context to read from self envionment
+                // errs() << "adding load "; printValue(load);
                 allStoresForCurLoad.push_back(nullptr);
                 (*loadsToAllStores)[curFunc][load] = allStoresForCurLoad;
             }
+            // errs() << "Load to all stores:\n";
+            // for (auto it: (*loadsToAllStores)[curFunc]) {
+            //     printValue(it.first);
+            // }
         }
         // return loadsToAllStores;
     }
@@ -1473,8 +1495,8 @@ class VerifierPass : public ModulePass {
 
     /// Checks all possible interfernces for feasibility one by one.
     void getFeasibleInterferences (
-        unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
-        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> allStores,
+        unordered_map<Function*, forward_list<pair<Instruction*, string>>>  *allLoads,
+        unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> *allStores,
         const map<Function*, Instruction*> *funcToTCreate,
         const map<Function*, Instruction*> *funcToTJoin
     ){
@@ -1483,11 +1505,11 @@ class VerifierPass : public ModulePass {
         unordered_map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores;
         // Make all permutations
         getLoadsToAllStoresMap(allLoads, allStores, &loadsToAllStores);
-        allLoads.clear();
-        allStores.clear();
-        double start_time = omp_get_wtime();
+        allLoads->clear();
+        allStores->clear();
+        // double start_time = omp_get_wtime();
         int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs);
-        errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
+        // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
         loadsToAllStores.clear();
         // allInterfs = tmp.first; maxInterfs = tmp.second;
         // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 600000) << "\n";
