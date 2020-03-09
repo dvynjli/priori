@@ -1393,7 +1393,7 @@ class VerifierPass : public ModulePass {
     void getLoadsToAllStoresMap (
         unordered_map<Function*, forward_list<pair<Instruction*, string>>> *allLoads,
         unordered_map<Function*, unordered_map<string, unordered_set<Instruction*>>> *allStores,
-        unordered_map<Function*, map<Instruction*, vector<Instruction*>>> *loadsToAllStores
+        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> *loadsToAllStores
     ){
         for (auto allLoadsItr=allLoads->begin(); allLoadsItr!=allLoads->end(); ++allLoadsItr) {
             Function* curFunc = allLoadsItr->first;
@@ -1423,7 +1423,7 @@ class VerifierPass : public ModulePass {
                 // Push the current context to read from self envionment
                 // errs() << "adding load "; printValue(load);
                 allStoresForCurLoad.push_back(nullptr);
-                (*loadsToAllStores)[curFunc][load] = allStoresForCurLoad;
+                (*loadsToAllStores)[curFunc].push_back(make_pair(load, allStoresForCurLoad));
             }
             // errs() << "Load to all stores:\n";
             // for (auto it: (*loadsToAllStores)[curFunc]) {
@@ -1437,7 +1437,7 @@ class VerifierPass : public ModulePass {
     /// Compute all possible interferences (feasibile or infeasible) 
     /// returns maximum number of interferneces in any function
     int getAllInterferences (
-        unordered_map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores,
+        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores,
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs
     ){
         // unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
@@ -1450,11 +1450,15 @@ class VerifierPass : public ModulePass {
             auto allLS = &(funItr->second);
             Instruction* loads[allLS->size()];
             vector<Instruction*>::iterator allItr[allLS->size()];
+            vector<Instruction*>::iterator loadsBeg[allLS->size()];
+            vector<Instruction*>::iterator loadsEnd[allLS->size()];
             int noOfInterfs = 1;
             int i=0;
             for (auto itr=allLS->begin(); itr!=allLS->end(); ++itr, i++) {
                 loads[i] = itr->first;
                 allItr[i] = itr->second.begin();
+                loadsBeg[i] = itr->second.begin();
+                loadsEnd[i] = itr->second.end();
                 if (!itr->second.empty()) noOfInterfs *= itr->second.size();
             }
             if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
@@ -1466,7 +1470,7 @@ class VerifierPass : public ModulePass {
             for (int i=0; i<noOfInterfs; i++) {
                 auto insertPt = curInterfNew.before_begin();
                 for (int j=0; j<allLS->size(); j++) {
-                    if (allItr[j] != (*allLS)[loads[j]].end()) {
+                    if (allItr[j] != loadsEnd[j]) {
                         auto lsPairPtr = allLSPair.insert(make_pair(loads[j], (*allItr[j])));
                         // curInterfNew.push_front(&(*lsPairPtr.first));
                         // errs() << "insertinf "; printValue(lsPairPtr.first->first); errs() << "\n";
@@ -1480,11 +1484,11 @@ class VerifierPass : public ModulePass {
                 curInterfNew.resize(0);
 
                 int k = allLS->size()-1;
-                if (allItr[k] != (*allLS)[loads[k]].end()) {
+                if (allItr[k] != loadsEnd[k]) {
                     allItr[k]++;
                 }
-                while (k>=0 && allItr[k] == (*allLS)[loads[k]].end()) {
-                    allItr[k] = (*allLS)[loads[k]].begin();
+                while (k>=0 && allItr[k] == loadsEnd[k]) {
+                    allItr[k] = loadsBeg[k];
                     k--;
                     if (k>=0) allItr[k]++;
                 }
@@ -1502,7 +1506,7 @@ class VerifierPass : public ModulePass {
     ){
         // map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *feasibleInterfs = &feasibleInterfences;
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfs;
-        unordered_map<Function*, map<Instruction*, vector<Instruction*>>> loadsToAllStores;
+        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores;
         // Make all permutations
         getLoadsToAllStoresMap(allLoads, allStores, &loadsToAllStores);
         allLoads->clear();
