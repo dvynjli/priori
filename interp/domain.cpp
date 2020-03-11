@@ -1256,14 +1256,38 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
     // printEnvironment();
 }
 
+void EnvironmentPOMO::setVar(string strVar) {
+    for (auto it=environment.begin(); it!=environment.end();) {
+        if (it->second.isUnreachable()) {
+            it = environment.erase(it);
+        }
+        else {
+            it->second.setVar(strVar);
+            it++;
+        }
+    }
+}
+
+void EnvironmentPOMO::unsetVar(string strVar) {
+   for (auto it=environment.begin(); it!=environment.end();) {
+        if (it->second.isUnreachable()) {
+            it = environment.erase(it);
+        }
+        else {
+            it->second.unsetVar(strVar);
+            it++;
+        }
+    }
+}
+
 bool EnvironmentPOMO::isUnreachable() {
     bool isUnreach = true;
-    for (auto it:environment) {
-        if (!it.second.isUnreachable()) {
+    for (auto it=environment.begin(); it!=environment.end();) {
+        if (!it->second.isUnreachable()) {
             isUnreach = false;
             break;
         }
-        else environment.erase(it.first);
+        else {it = environment.erase(it);}
     }
     return isUnreach;
 }

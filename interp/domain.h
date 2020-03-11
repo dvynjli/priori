@@ -161,6 +161,8 @@ public:
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
     virtual void meetEnvironment(Z3Minimal &zHelper, T other) = 0;
+    virtual void setVar(string strVar) = 0;
+    virtual void unsetVar(string strVar) = 0;
     virtual bool isUnreachable() = 0;
 
     virtual void printEnvironment() = 0;
@@ -227,8 +229,8 @@ public:
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
     virtual void joinEnvironment(EnvironmentRelHead other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other);
-    void setVar(string strVar);
-    void unsetVar(string strVar);
+    virtual void setVar(string strVar);
+    virtual void unsetVar(string strVar);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();
@@ -310,6 +312,8 @@ public:
     // TODO: this function is not required for POMO. change the structure to use append instead of this
     virtual void carryEnvironment(string interfVar, EnvironmentPOMO fromEnv);
     // virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
+    virtual void setVar(string strVar);
+    virtual void unsetVar(string strVar);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();

@@ -7,11 +7,16 @@
 
 using namespace std;
 
-atomic<int> arr[2], x;
+extern void assume(bool);
+
+atomic<int> arr[2], x,y;
 
 void* fun1(void * arg){
 	x.store(1, memory_order_release);
 	// x.store(2, memory_order_release);
+	int t1 = x.load(memory_order_acquire) == 1;
+	int t2 = y.load(memory_order_acquire)==1;
+	assume(t1|| !t2);
 	return NULL;
 }
 
@@ -19,6 +24,7 @@ void* fun2(void * arg){
 	int tmp = x.load(memory_order_acquire);
 	// assertion should pass
 	arr[tmp].store(1, memory_order_release);
+	assume(x.load(memory_order_acquire)==1);
 	return NULL;
 }
 

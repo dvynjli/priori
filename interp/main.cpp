@@ -721,6 +721,15 @@ class VerifierPass : public ModulePass {
                     // errs() << "Env after thread join:\n";
                     // curEnv.printEnvironment();
                 }
+                else if (callInst->getCalledFunction()->getName() == "_Z6assumeb") {
+                    // errs() << "Assume function call: "; printValue(callInst);
+                    // errs() << "Env before Assume call:\n";
+                    // curEnv.printEnvironment();
+                    curEnv = checkAssumeCall(callInst, curEnv, branchEnv);
+                    // errs() << "Env after Assume call:\n";
+                    // curEnv.printEnvironment();
+
+                }
             }
             else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
                 // errs() << "initial env:\n";
@@ -757,9 +766,8 @@ class VerifierPass : public ModulePass {
                 curEnv = checkStoreInst(storeInst, curEnv);
             }
             else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
-                // errs() << "cmpInst: ";
-                // cmpInst->print(errs());
-                // errs() << "\n";
+                // errs() << "Env before cmp:\n";
+                // curEnv.printEnvironment();
                 curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
                 // errs() << "\nCmp result:\n";
                 // curEnv.printEnvironment();
@@ -905,14 +913,14 @@ class VerifierPass : public ModulePass {
         }
 
         // set the value of destination variable in Environment
-        // if (trueBranchEnv.isUnreachable()) {
-        //     curEnv.unsetVar(destVarName);
-        // } else {
-        //     curEnv.setVar(destVarName);
-        // }
-        // trueBranchEnv.setVar(destVarName);
-        // falseBranchEnv.unsetVar(destVarName);
-
+        if (trueBranchEnv.isUnreachable()) {
+            curEnv.unsetVar(destVarName);
+        } else if (falseBranchEnv.isUnreachable()) {
+            curEnv.setVar(destVarName);
+        }
+        trueBranchEnv.setVar(destVarName);
+        falseBranchEnv.unsetVar(destVarName);
+        
         branchEnv[cmpInst] = make_pair(trueBranchEnv, falseBranchEnv);
         return curEnv;
     }
@@ -1247,6 +1255,14 @@ class VerifierPass : public ModulePass {
             }
             curEnv = olderEnv;
         }
+        return curEnv;
+    }
+
+    Environment checkAssumeCall(CallInst *callInst, Environment curEnv,
+        map<Instruction*, pair<Environment, Environment>> &branchEnv
+    ) {
+        if (Instruction* assumedInst = dyn_cast<Instruction>(callInst->getArgOperand(0)))
+        curEnv = branchEnv[assumedInst].first;
         return curEnv;
     }
 
