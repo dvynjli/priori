@@ -1027,11 +1027,17 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
                     // printPOMO(curPomo);printPOMO(otherPomo);
                     break;
                 }
+                if (!varItr.second.isConsistentRMW(searchVarOtherItr->second)) {
+                    apply=false;
+                    break;
+                }
             }
 
             if (apply) {
                 map<string, options> varoptions;
                 // #pragma omp parallel for shared (newPomo, otherPomo, zHelper) num_threads(omp_get_num_procs()*2)
+                // fprintf(stderr, "Join interf with: ");
+                // printPOMO(otherPomo);
                 for (auto varItr: curPomo) {
                     PartialOrder tmpPO = PartialOrder();
                     auto searchOtherPomo = otherPomo.find(varItr.first);
@@ -1133,10 +1139,17 @@ void EnvironmentPOMO::applyInterference(
                 if (!varIt.second.isFeasible(zHelper, searchInterfPomo->second, interfInst, curInst)) {
                     apply=false;
                     break;
-                } 
+                }
+                if (!varIt.second.isConsistentRMW(searchInterfPomo->second)) {
+                    apply=false;
+                    break;
+                }
             }
 
             if (apply) {
+                // fprintf(stderr, "Join interf with: ");
+                // printPOMO(interfpomo);
+                
                 // merge the two partial orders
                 POMO newPomo;
                 // passed to applyinterf of ApDomain to make sure the copy/merging of 

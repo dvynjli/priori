@@ -12,6 +12,7 @@ class PartialOrder {
 	// instruction in partial order so far, order[inst] will be empty 
 	// set and ~E x. inst \in order[x]
 	map<llvm::Instruction*, set<llvm::Instruction*>> order;
+	set<llvm::Instruction*> rmws;
 
 	// update ordering relation to get transitivity
 	bool makeTransitiveOrdering(llvm::Instruction* from, 
@@ -47,6 +48,8 @@ public:
 	// Two parial orders are consistent only if Va.Vb (a,b) \in order
 	// (b,a) \notin other.order, or wiseversa
 	bool isConsistent(PartialOrder &other);
+
+	bool isConsistentRMW(PartialOrder &other);
 
 	// domain-level feasibility checking
 	bool isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst);

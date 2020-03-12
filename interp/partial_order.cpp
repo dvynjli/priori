@@ -28,19 +28,23 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 		// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
 		if (inst != to && inst != from) {
 			if (isSeqBefore(inst, to)) {
+				// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
 				addOrder(zHelper, inst, to); 
 				remove(inst);
 			}
 			else if (isSeqBefore(to, inst)) {
+				// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
 				return addOrder(zHelper, from, inst);
 			}
 			if (isSeqBefore(inst, from)) {
+				// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
 				addOrder(zHelper, inst, from); 
 				remove(inst);
 			}
 			else if (isSeqBefore(from, inst)) {
 				bool done = makeTransitiveOrdering(from, to, toItr);
 				remove(from);
+				// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
 				addInst(zHelper, to);
 				return done;
 			}
@@ -70,6 +74,11 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 			it->second.insert(newinst);
 		}
 	}
+
+	// if(llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(newinst)) {
+	// 	rmws.insert(newinst);
+	// }
+
 	return true;
 }
 
@@ -88,6 +97,8 @@ bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 			if (!addOrder(zHelper, fromItr->first, *toItr))
 				return false;
 		}
+		// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(fromItr->first))
+		// 	rmws.insert(fromItr->first);
 	}
 	// fprintf(stderr, "after join %s\n", toString().c_str());
 
@@ -123,6 +134,36 @@ bool PartialOrder::isConsistent(PartialOrder &other) {
 	return true;
 }
 
+bool PartialOrder::isConsistentRMW(PartialOrder &other) {
+	// fprintf(stderr, "checking consistent rmw:\n");
+	// fprintf(stderr, "this: %s", toString().c_str());
+	// fprintf(stderr, "other: %s\n", other.toString().c_str());
+	// fprintf(stderr, "This rmws: ");
+	// for(auto it:rmws) {
+	// 	fprintf(stderr, "%p,", it);
+	// }
+	// fprintf(stderr, "\nOther rmws: ");
+	// for(auto it:other.rmws) {
+	// 	fprintf(stderr, "%p,", it);
+	// }
+	// fprintf(stderr, "\n");
+	// for (auto itCur: rmws) {
+	// 	for (auto itOther: other.rmws) {
+	// 		if (!(isExists(itOther) || other.isExists(itCur))) {
+	// 			// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
+	// 				// itOther,isExists(itOther),itCur,other.isExists(itCur));
+	// 			return false;
+	// 		}
+	// 		// if (isOrderedBefore(itCur, itOther) || isOrderedBefore(itOther, itCur) ||
+	// 		// 	other.isOrderedBefore(itCur, itOther) ||
+	// 		// 	other.isOrderedBefore(itOther, itCur)) 
+	// 		// 	return false;
+	// 	}
+	// }
+	// fprintf(stderr, "consistent\n");
+	return true;
+}
+
 
 // domain-level feasibility checking
 bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst) {
@@ -142,11 +183,16 @@ bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Ins
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
 bool PartialOrder::remove(llvm::Instruction* inst) {
+	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+	// 	return true;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
 	order[inst].clear();
 	order.erase(inst);
+	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+	// 	rmws.erase(inst);
+	
 	return true;
 }
 
@@ -223,6 +269,7 @@ bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
 
 void PartialOrder::copy (const PartialOrder &copyFrom) {
 	order = copyFrom.order;
+	rmws = copyFrom.rmws;
 }
 
 string PartialOrder::toString() {
