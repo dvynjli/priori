@@ -38,8 +38,8 @@ void *p1(void *arg)
 	assume(t1!=1 || t2==0);
 
 	var.store(1, memory_order_release);
-	int tmp = var.load(memory_order_acquire);
-    assert(tmp==1);
+	// int tmp = var.load(memory_order_acquire);
+    // assert(tmp==1);
 
 	return NULL;
 }
