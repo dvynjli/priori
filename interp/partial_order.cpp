@@ -14,10 +14,10 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 	// find 'to' in ordering
 	auto toItr = order.find(to);
 	// if 'to' does not exist, add an (to,<empty>) in order 
-	if (toItr == order.end()) {
-		set<llvm::Instruction*> emptyset {};
-		order[to] = emptyset;
-	}
+	// if (toItr == order.end()) {
+	// 	set<llvm::Instruction*> emptyset {};
+	// 	order[to] = emptyset;
+	// }
 
 	// Check if some inst sequenced before 'from' or 'to' is in
 	// the order. If yes, remove the older one.
@@ -147,19 +147,19 @@ bool PartialOrder::isConsistentRMW(PartialOrder &other) {
 	// 	fprintf(stderr, "%p,", it);
 	// }
 	// fprintf(stderr, "\n");
-	// for (auto itCur: rmws) {
-	// 	for (auto itOther: other.rmws) {
-	// 		if (!(isExists(itOther) || other.isExists(itCur))) {
-	// 			// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
-	// 				// itOther,isExists(itOther),itCur,other.isExists(itCur));
-	// 			return false;
-	// 		}
-	// 		// if (isOrderedBefore(itCur, itOther) || isOrderedBefore(itOther, itCur) ||
-	// 		// 	other.isOrderedBefore(itCur, itOther) ||
-	// 		// 	other.isOrderedBefore(itOther, itCur)) 
-	// 		// 	return false;
-	// 	}
-	// }
+	for (auto itCur: rmws) {
+		for (auto itOther: other.rmws) {
+			if (!(isExists(itOther) || other.isExists(itCur))) {
+				// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
+					// itOther,isExists(itOther),itCur,other.isExists(itCur));
+				return false;
+			}
+			// else if (!(isOrderedBefore(itCur, itOther) || isOrderedBefore(itOther, itCur) ||
+			// 	other.isOrderedBefore(itCur, itOther) ||
+			// 	other.isOrderedBefore(itOther, itCur)))
+			// 	return false;
+		}
+	}
 	// fprintf(stderr, "consistent\n");
 	return true;
 }
@@ -190,8 +190,8 @@ bool PartialOrder::remove(llvm::Instruction* inst) {
 	}
 	order[inst].clear();
 	order.erase(inst);
-	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
-	// 	rmws.erase(inst);
+	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+		rmws.erase(inst);
 	
 	return true;
 }

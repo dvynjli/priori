@@ -63,7 +63,7 @@ class VerifierPass : public ModulePass {
         initThreadDetails(M);
         // printFeasibleInterf();
         // countNumFeasibleInterf();
-        printInstMaps();
+        // printInstMaps();
         // testPO();
         analyzeProgram(M);
         checkAssertions();
