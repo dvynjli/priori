@@ -1,0 +1,47 @@
+RESULTS
+
+peterson_3_fenced
+
+
+real	0m1.559s
+user	0m1.456s
+sys	0m0.028s
+
+
+
+peterson_4_fenced
+
+
+real	0m4.083s
+user	0m3.924s
+sys	0m0.088s
+
+
+
+peterson_5_fenced
+
+
+real	0m11.101s
+user	0m10.568s
+sys	0m0.108s
+
+
+
+peterson_6_fenced
+
+
+real	0m28.432s
+user	0m25.484s
+sys	0m0.320s
+
+
+
+peterson_7_fenced
+
+
+real	0m51.513s
+user	0m50.416s
+sys	0m0.516s
+
+
+

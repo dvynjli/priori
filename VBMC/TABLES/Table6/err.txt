@@ -1,0 +1,2 @@
+file compiled/_cs_tbar_3_fenced.c line 266 function __cs_safe_malloc: function `malloc' is not declared
+file compiled/_cs_tbar_3_fenced.c line 846 function t0_0: function `assert' is not declared

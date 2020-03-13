@@ -1,0 +1,65 @@
+RESULTS
+
+bakery_fenced
+
+
+real	0m1.369s
+user	0m1.284s
+sys	0m0.028s
+
+
+
+dekker_fenced
+
+
+real	0m1.982s
+user	0m1.856s
+sys	0m0.056s
+
+
+
+lamport_fenced
+
+
+real	0m6.478s
+user	0m6.300s
+sys	0m0.104s
+
+
+
+peterson_3_fenced
+
+
+real	0m2.710s
+user	0m2.608s
+sys	0m0.036s
+
+
+
+peterson_fenced
+
+
+real	0m0.720s
+user	0m0.644s
+sys	0m0.008s
+
+
+
+tbar_2_fenced
+
+
+real	0m0.542s
+user	0m0.448s
+sys	0m0.028s
+
+
+
+tbar_3_fenced
+
+
+real	0m1.518s
+user	0m1.424s
+sys	0m0.028s
+
+
+

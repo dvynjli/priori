@@ -1,0 +1,74 @@
+RESULTS
+
+bakery
+
+
+real	0m0.717s
+user	0m0.620s
+sys	0m0.016s
+
+
+
+burns
+
+
+real	0m0.326s
+user	0m0.260s
+sys	0m0.004s
+
+
+
+dekker
+
+
+real	0m1.193s
+user	0m1.088s
+sys	0m0.016s
+
+
+
+dekker_simple
+
+
+real	0m0.288s
+user	0m0.216s
+sys	0m0.000s
+
+
+
+lamport
+
+
+real	0m4.596s
+user	0m3.632s
+sys	0m0.136s
+
+
+
+peterson_3
+
+
+real	0m1.412s
+user	0m1.184s
+sys	0m0.016s
+
+
+
+peterson
+
+
+real	0m0.346s
+user	0m0.308s
+sys	0m0.016s
+
+
+
+szymanski
+
+
+real	0m0.570s
+user	0m0.484s
+sys	0m0.028s
+
+
+

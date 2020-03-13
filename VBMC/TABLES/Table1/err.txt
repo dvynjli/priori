@@ -1,0 +1,2 @@
+file compiled/_cs_szymanski.c line 146 function __cs_safe_malloc: function `malloc' is not declared
+file compiled/_cs_szymanski.c line 587 function t0_0: function `assert' is not declared

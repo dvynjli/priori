@@ -1,0 +1,47 @@
+RESULTS
+
+szymanski_3_fenced
+
+
+real	0m1.349s
+user	0m1.244s
+sys	0m0.016s
+
+
+
+szymanski_4_fenced
+
+
+real	0m2.954s
+user	0m2.780s
+sys	0m0.048s
+
+
+
+szymanski_5_fenced
+
+
+real	0m5.112s
+user	0m4.848s
+sys	0m0.096s
+
+
+
+szymanski_6_fenced
+
+
+real	0m9.879s
+user	0m9.104s
+sys	0m0.496s
+
+
+
+szymanski_7_fenced
+
+
+real	0m13.119s
+user	0m12.856s
+sys	0m0.124s
+
+
+
