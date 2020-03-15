@@ -75,9 +75,9 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 		}
 	}
 
-	// if(llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(newinst)) {
-	// 	rmws.insert(newinst);
-	// }
+	if(llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(newinst)) {
+		rmws.insert(newinst);
+	}
 
 	return true;
 }
@@ -154,10 +154,10 @@ bool PartialOrder::isConsistentRMW(PartialOrder &other) {
 					// itOther,isExists(itOther),itCur,other.isExists(itCur));
 				return false;
 			}
-			// else if (!(isOrderedBefore(itCur, itOther) || isOrderedBefore(itOther, itCur) ||
-			// 	other.isOrderedBefore(itCur, itOther) ||
-			// 	other.isOrderedBefore(itOther, itCur)))
-			// 	return false;
+			else if (!(isOrderedBefore(itCur, itOther) || isOrderedBefore(itOther, itCur) ||
+				other.isOrderedBefore(itCur, itOther) ||
+				other.isOrderedBefore(itOther, itCur)))
+				return false;
 		}
 	}
 	// fprintf(stderr, "consistent\n");
@@ -183,15 +183,15 @@ bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Ins
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
 bool PartialOrder::remove(llvm::Instruction* inst) {
-	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
-	// 	return true;
+	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+		return true;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
 	order[inst].clear();
 	order.erase(inst);
-	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
-		rmws.erase(inst);
+	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+	// 	rmws.erase(inst);
 	
 	return true;
 }
@@ -264,6 +264,8 @@ bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
 		set<llvm::Instruction*> emptyset {};
 		order[inst] = emptyset;
 	}
+	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+		rmws.insert(inst);
 	return true;
 }
 
@@ -282,6 +284,10 @@ string PartialOrder::toString() {
 		ss << ";\t";
 	}
 	// cout << ss.str() << "\n";
+	ss << "\nRMWs: ";
+	for (auto it: rmws) {
+		ss << it << ",";
+	}
 	return ss.str();
 }
 
