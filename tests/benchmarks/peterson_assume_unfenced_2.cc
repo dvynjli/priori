@@ -23,6 +23,22 @@ void *p0(void *arg)
 
 	flag0.store(0, memory_order_release);
 
+
+	// Unrolled #iter=2
+	flag0.store(1, memory_order_release);
+	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	turn.store(1, memory_order_release);
+	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	t1 = flag1.load(memory_order_acquire);
+	t2 = turn.load(memory_order_acquire);
+
+	assume(t1!=1 || t2!=1);
+
+	var.store(0, memory_order_release);
+	tmp = var.load(memory_order_acquire);
+    assert(tmp==0);
+
+	flag0.store(0, memory_order_release);
 	return NULL;
 }
 
@@ -43,6 +59,22 @@ void *p1(void *arg)
 
 	flag1.store(0, memory_order_release);
 
+
+	// Unrolled #iter=2
+	flag1.store(1, memory_order_release);
+	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	turn.store(0, memory_order_release);
+	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	t1 = flag0.load(memory_order_acquire);
+	t2 = turn.load(memory_order_acquire);
+
+	assume(t1!=1 || t2==0);
+
+	var.store(1, memory_order_release);
+	tmp = var.load(memory_order_acquire);
+    assert(tmp==1);
+
+	flag1.store(0, memory_order_release);
 	return NULL;
 }
 
