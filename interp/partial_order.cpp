@@ -284,7 +284,7 @@ string PartialOrder::toString() {
 		ss << ";\t";
 	}
 	// cout << ss.str() << "\n";
-	ss << "\nRMWs: ";
+	ss << "\tRMWs: ";
 	for (auto it: rmws) {
 		ss << it << ",";
 	}
