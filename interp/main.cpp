@@ -2,6 +2,7 @@
 #include "domain.h"
 #include "analyzer.h"
 #include "z3_handler.h"
+#include "interfernce.h"
 
 
 // Processing command line arguments
@@ -30,6 +31,7 @@ class VerifierPass : public ModulePass {
     // initial environment of the function. A map from Func-->(isChanged, Environment)
     unordered_map <Function*, Environment> funcInitEnv;
     map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
+    forward_list<InterfNode*> newFeasibleInterfs;
     int maxFeasibleInterfs=0;
     Z3Minimal zHelper;
 
@@ -1454,11 +1456,13 @@ class VerifierPass : public ModulePass {
     /// returns maximum number of interferneces in any function
     int getAllInterferences (
         unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores,
-        map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs
+        map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs,
+        forward_list<InterfNode> *newAllInterfs
     ){
         // unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
 
         // printLoadsToAllStores(loadsToAllStores);
+        auto newAllInterfsItr = newAllInterfs->before_begin;
         int maxInterfs = 0;
         
         for (auto funItr=loadsToAllStores.begin(); funItr!=loadsToAllStores.end(); ++funItr) {
@@ -1480,7 +1484,6 @@ class VerifierPass : public ModulePass {
             if (maxInterfs < noOfInterfs) maxInterfs = noOfInterfs;
             // errs() <<  curFunc->getName() << ": " << noOfInterfs << "\n";
 
-            // map<Instruction*, Instruction*> curInterf;
             forward_list< const pair< Instruction*, Instruction* >* > curInterfNew;
             
             for (int i=0; i<noOfInterfs; i++) {
@@ -1488,6 +1491,7 @@ class VerifierPass : public ModulePass {
                 for (int j=0; j<allLS->size(); j++) {
                     if (allItr[j] != loadsEnd[j]) {
                         auto lsPairPtr = allLSPair.insert(make_pair(loads[j], (*allItr[j])));
+                        InterfNode curNode(loads[j], (*allItr[j]));
                         // curInterfNew.push_front(&(*lsPairPtr.first));
                         // errs() << "insertinf "; printValue(lsPairPtr.first->first); errs() << "\n";
                         insertPt = curInterfNew.insert_after(insertPt, &(*lsPairPtr.first));
@@ -1522,13 +1526,14 @@ class VerifierPass : public ModulePass {
     ){
         // map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *feasibleInterfs = &feasibleInterfences;
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfs;
+        forward_list<InterfNode> newAllInterfs;
         unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores;
         // Make all permutations
         getLoadsToAllStoresMap(allLoads, allStores, &loadsToAllStores);
         allLoads->clear();
         allStores->clear();
         // double start_time = omp_get_wtime();
-        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs);
+        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs, &newAllInterfs);
         // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
         loadsToAllStores.clear();
         // allInterfs = tmp.first; maxInterfs = tmp.second;

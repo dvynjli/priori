@@ -2,52 +2,34 @@
 #define __INTERF__
 
 #include "common.h"
+#include <forward_list>
 
-class ThreadNodeToEnv {
-    //Tuple <n,e>, where n is node in the program graph of thread and e is environment 
-    map<Value*, ap_abstract1_t> TE;
-    public:
-        ThreadNodeToEnv() {}
-        // ThreadNodeToEnv(Value* n, ap_abstract1_t e)  {
-        //     TE.insert(pair<Value*, ap_abstract1_t> (n, e));
-        // }
-       
-        //Join the current enviornment with other on matching nodes
-         ap_abstract1_t insertOrJoinOnNode(ap_manager_t *man, Value* node, ap_abstract1_t env){
-            auto result = TE.find(node);
-            if (result != TE.end()){
-                ap_abstract1_t new_env = ap_abstract1_join(man, false, &(result->second), &env);
-                return new_env;
-            }
-            else {
-                TE.insert(pair<Value*, ap_abstract1_t> (node, env));
-                return env;
-            }
-        }
+// Node of an interf
+class InterfNode {
+public:
+    InterfNode() {}
+    InterfNode(llvm::Instruction *ld, llvm::Instruction *st) : load(ld), store(st) {}
+    
+    forward_list<InterfNode*>::iterator begin() {
+        return child_list.begin();
+    }
 
-        ap_abstract1_t getEnv(Value* node) {
-            auto result = TE.find(node);
-            if (result != TE.end())
-                return result->second;
-            else
-                return ;
-        }  
-};
+    forward_list<InterfNode*>::iterator end() {
+        return child_list.end();
+    }
 
-class Intrefernce {
-    //Interfernces from each thread. For each thread set of pairs of 'store' statements and their associated environment
-    Function *thread;
-    ThreadNodeToEnv interfs;
+    llvm::Instruction* getLoadInst() {
+        return load;
+    }
 
-    public: 
-        Intrefernce() {}
-        Intrefernce(Function* thread, ThreadNodeToEnv interfs) : thread(thread), interfs(interfs) {}
+    llvm::Instruction* getStoreInst() {
+        return store;
+    }
 
-        void insertOrJoinInterference(ap_manager_t* man, Value* node, ap_abstract1_t env) {
-            interfs.insertOrJoinOnNode(man, node, env);
-        }
-
-
+private:
+    llvm::Instruction *load;
+    llvm::Instruction *store;
+    forward_list<InterfNode*> child_list;
 };
 
 #endif
