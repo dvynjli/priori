@@ -1002,6 +1002,10 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
     // other.printEnvironment();
     // fprintf(stderr, "Current:\n");
     // printEnvironment();
+    if (other.isUnreachable()) {
+        environment.clear();
+        return;
+    }
     
     for (auto curItr: environment) {
         POMO curPomo = curItr.first;
