@@ -17,6 +17,7 @@ cl::opt<bool> noPrint   ("no-print", cl::desc("Do not print debug output"));
 cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interference pruning using Z3"));
 cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
 cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
+cl::opt<bool> stopOnFail("stop-on-fail", cl::desc("Stop as soon as assertion is failed"));
 
 map<llvm::Instruction*, pair<unsigned short int, unsigned int>> instToNum;
 map<pair<unsigned short int, unsigned int>, llvm::Instruction*> numToInst;
@@ -43,6 +44,7 @@ class VerifierPass : public ModulePass {
     
     vector<string> globalVars;
     unsigned int iterations = 0;
+    double start_time;
 
     #ifdef NOTRA
     map<StoreInst*, StoreInst*> prevRelWriteOfSameVar;
@@ -56,9 +58,9 @@ class VerifierPass : public ModulePass {
     }
     #endif
 
-
+    
     bool runOnModule (Module &M) {
-        double start_time = omp_get_wtime();
+        start_time = omp_get_wtime();
         globalVars = getGlobalIntVars(M);
         // errs() << "#global vars:" << globalVars.size() << "\n";
         // zHelper.initZ3(globalVars);
@@ -697,18 +699,22 @@ class VerifierPass : public ModulePass {
                 curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr);
             }
             else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
-                if (callInst->getCalledFunction()->getName() == "__assert_fail") {
+                if (stopOnFail && callInst->getCalledFunction()->getName() == "__assert_fail") {
                     // errs() << "*** found assert" << "\n";
                     // printValue(callInst);
-                    // if (!curEnv.isUnreachable()) {
-                    //     errs() << "__________________________________________________\n";
-                    //     errs() << "ERROR: Assertion failed\n";
-                    //     if (!noPrint) {
-                    //         printValue(callInst);
-                    //         curEnv.printEnvironment();
-                    //     }
-                    //     exit(0);
-                    // }
+                    if (!curEnv.isUnreachable()) {
+                        errs() << "Assertion failed:\n";
+                        printValue(callInst);
+                        if (!noPrint) {
+                            curEnv.printEnvironment();
+                        }
+                        errs() << "___________________________________________________\n";
+                        errs() << "# Failed Asserts: 1\n";
+                        double time = omp_get_wtime() - start_time;
+                        fprintf(stderr, "Time elapsed: %f\n", time);
+                        fprintf(stderr, "#iterations: %d\n", iterations+1);
+                        exit(0);
+                    }
                 }
                 else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
                     if (Function* newThread = dyn_cast<Function> (callInst->getArgOperand(2))) {
@@ -1513,46 +1519,48 @@ class VerifierPass : public ModulePass {
         return maxInterfs;
     }
 
-    // void addAllChoicesOfLoad(
-    //     vector<pair<Instruction*, vector<Instruction*>>>::iterator loadItr,
-    //     vector<pair<Instruction*, vector<Instruction*>>> &loadsToAllStores,
-    //     forward_list<InterfNode*>::iterator insertPoint, forward_list<InterfNode*> *interfs
-    // ) {
-    //     for (auto storeItr: loadItr->second) {
-    //         // errs() << "LOAD: "; printValue(loadItr->first);
-    //         // errs() << "STORE: "; printValue(storeItr);
-    //         auto curNode = new InterfNode(loadItr->first, storeItr);
-    //         insertPoint = (*interfs).insert_after(insertPoint, curNode);
-    //         if (loadItr+1 != loadsToAllStores.end()) {
-    //             addAllChoicesOfLoad(loadItr+1, loadsToAllStores, curNode->before_begin(), curNode->getChildList());
-    //         }
-    //         // errs() << "After insertion: \n";
-    //         // errs() << "LOAD: "; printValue(curNode->getLoadInst());
-    //         // errs() << "STORE: "; printValue(curNode->getStoreInst());
-    //         // errs() << "\n";
-    //     }
-    // }
+    /* 
+    void addAllChoicesOfLoad(
+        vector<pair<Instruction*, vector<Instruction*>>>::iterator loadItr,
+        vector<pair<Instruction*, vector<Instruction*>>> &loadsToAllStores,
+        forward_list<InterfNode*>::iterator insertPoint, forward_list<InterfNode*> *interfs
+    ) {
+        for (auto storeItr: loadItr->second) {
+            // errs() << "LOAD: "; printValue(loadItr->first);
+            // errs() << "STORE: "; printValue(storeItr);
+            auto curNode = new InterfNode(loadItr->first, storeItr);
+            insertPoint = (*interfs).insert_after(insertPoint, curNode);
+            if (loadItr+1 != loadsToAllStores.end()) {
+                addAllChoicesOfLoad(loadItr+1, loadsToAllStores, curNode->before_begin(), curNode->getChildList());
+            }
+            // errs() << "After insertion: \n";
+            // errs() << "LOAD: "; printValue(curNode->getLoadInst());
+            // errs() << "STORE: "; printValue(curNode->getStoreInst());
+            // errs() << "\n";
+        }
+    }
 
-    // void getAllInterfsNew (
-    //     unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> &loadsToAllStores,
-    //     map<Function*, forward_list<InterfNode*>> *newAllInterfs
-    // ) {
-    //     for (auto funcItr: loadsToAllStores) {
-    //         // errs() << "Interfs for function " << funcItr.first->getName() << ":\n";
-    //         auto insertPoint = (*newAllInterfs)[funcItr.first].before_begin();
-    //         addAllChoicesOfLoad(funcItr.second.begin(), funcItr.second, insertPoint, &(*newAllInterfs)[funcItr.first]);
-    //     }
-    // }
+    void getAllInterfsNew (
+        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> &loadsToAllStores,
+        map<Function*, forward_list<InterfNode*>> *newAllInterfs
+    ) {
+        for (auto funcItr: loadsToAllStores) {
+            // errs() << "Interfs for function " << funcItr.first->getName() << ":\n";
+            auto insertPoint = (*newAllInterfs)[funcItr.first].before_begin();
+            addAllChoicesOfLoad(funcItr.second.begin(), funcItr.second, insertPoint, &(*newAllInterfs)[funcItr.first]);
+        }
+    }
 
-    // void printAllInterfsNew (map<Function*, forward_list<InterfNode*>> &newAllInterfs) {
-    //     for (auto funcItr: newAllInterfs) {
-    //         errs() << "# Interfs for function " << funcItr.first->getName() << ":\n";
-    //         for (auto interfItr: funcItr.second) {
-    //             errs() << "LOAD: "; printValue(interfItr->getLoadInst());
-    //             errs() << "STORE: "; printValue(interfItr->getStoreInst());
-    //         }
-    //     }
-    // }
+    void printAllInterfsNew (map<Function*, forward_list<InterfNode*>> &newAllInterfs) {
+        for (auto funcItr: newAllInterfs) {
+            errs() << "# Interfs for function " << funcItr.first->getName() << ":\n";
+            for (auto interfItr: funcItr.second) {
+                errs() << "LOAD: "; printValue(interfItr->getLoadInst());
+                errs() << "STORE: "; printValue(interfItr->getStoreInst());
+            }
+        }
+    } 
+    */
 
 
     /// Checks all possible interfernces for feasibility one by one.

@@ -4,7 +4,7 @@ from subprocess import Popen, PIPE
 import subprocess
 import os
 
-domain = 'interval' 	# options are interval, octagon
+domain = 'octagon' 	# options are interval, octagon
 num_tests = 29
 # if the test should fail assertion, value of test_result is false]
 test_result = 	[False, True, 	False, 	True, 	True, 
@@ -21,9 +21,10 @@ num_missed_asserts = 0
 
 for test_id in range(1, num_tests+1):
 	command = ['opt', '-basicaa', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-				'-no-print', '-useMOPO', 'tests/litmus/test' + str(test_id) + '.ll']
+				'-no-print', '-stop-on-fail', '-useMOPO', 'tests/litmus/test' + str(test_id) + '.ll']
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()
+	# print(err)
 	if ('ERROR:' in str(err)):
 		print('\033[91mTest'+str(test_id),': Something went Wrong\033[0m')
 	elif ('Assertion failed' in str(err)) == (not test_result[test_id-1]):
