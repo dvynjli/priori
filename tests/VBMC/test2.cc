@@ -1,3 +1,6 @@
+// A modified version of test2.cc. 
+// VBMC cannot catch the bug with 1 view switches
+
 #include <iostream>
 #include <pthread.h>
 #include <assert.h>
@@ -21,9 +24,8 @@ void* fun2(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = y.load(memory_order_acquire);
 	int c = z.load(memory_order_acquire);
-	// (x>=2 && z>=1) => y>=2 should hold
 	// (x==2 && z==1) => y=2 should hold
-	assert((a<2 || c<1) || b>=2);
+	assert((a!=2 || c!=1) || b!=2);
 	return NULL;
 }
 
