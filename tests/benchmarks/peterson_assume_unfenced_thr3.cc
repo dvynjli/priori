@@ -11,9 +11,9 @@ void *p0(void *arg)
 	level0.store(0, REL);
 	waiting0.store(0, REL);
 	rwaiting = waiting0.load(ACQ);
-	rlevel1 = level1.load(ACQ);
-	rlevel2 = level2.load(ACQ);
-	assume(rwaiting != 0 || (rlevel1 < 0 && rlevel2 < 0));
+	// rlevel1 = level1.load(ACQ);
+	// rlevel2 = level2.load(ACQ);
+	assume(rwaiting != 0);
 	level0.store(1, REL);
 	waiting1.store(0, REL);
 
@@ -46,7 +46,7 @@ void *p1(void *arg)
 	rwaiting = waiting1.load(ACQ);
 	rlevel2 = level2.load(ACQ);
 	rlevel0 = level0.load(ACQ);
-	assume(rwaiting != 1 || (rlevel2 < 1 && rlevel0 < 1));
+	assume(rwaiting != 1);
 	_cc_x.store(1, REL);
 	rx = _cc_x.load(ACQ);
 	assert(rx==1);
@@ -61,9 +61,9 @@ void *p2(void *arg) {
 	waiting0.store(2, REL);
 
 	rwaiting = waiting0.load(ACQ);
-	rlevel1 = level1.load(ACQ);
-	rlevel0 = level0.load(ACQ);
-	assume(rwaiting != 2 || (rlevel1 < 0 && rlevel0 < 0));
+	// rlevel1 = level1.load(ACQ);
+	// rlevel0 = level0.load(ACQ);
+	assume(rwaiting != 2);
 	level2.store(1, REL);
 	waiting1.store(2, REL);
 
