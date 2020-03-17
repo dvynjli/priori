@@ -2,7 +2,7 @@
 #include "domain.h"
 #include "analyzer.h"
 #include "z3_handler.h"
-#include "interfernce.h"
+// #include "interfernce.h"
 
 
 // Processing command line arguments
@@ -32,7 +32,8 @@ class VerifierPass : public ModulePass {
     // initial environment of the function. A map from Func-->(isChanged, Environment)
     unordered_map <Function*, Environment> funcInitEnv;
     map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
-    forward_list<InterfNode*> newFeasibleInterfs;
+    set<pair<Instruction*, Instruction*>> allLSPair;
+    // map <Function*, forward_list<InterfNode*>> newFeasibleInterfs;
     int maxFeasibleInterfs=0;
     Z3Minimal zHelper;
 
@@ -66,8 +67,8 @@ class VerifierPass : public ModulePass {
         // countNumFeasibleInterf();
         // printInstMaps();
         // testPO();
-        // analyzeProgram(M);
-        // checkAssertions();
+        analyzeProgram(M);
+        checkAssertions();
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -1454,7 +1455,7 @@ class VerifierPass : public ModulePass {
     /// Compute all possible interferences (feasibile or infeasible) 
     /// returns maximum number of interferneces in any function
     int getAllInterferences (
-        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores,
+        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> &loadsToAllStores,
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs
     ){
         // unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
@@ -1512,46 +1513,46 @@ class VerifierPass : public ModulePass {
         return maxInterfs;
     }
 
-    void addAllChoicesOfLoad(
-        vector<pair<Instruction*, vector<Instruction*>>>::iterator loadItr,
-        vector<pair<Instruction*, vector<Instruction*>>> &loadsToAllStores,
-        forward_list<InterfNode*>::iterator insertPoint, forward_list<InterfNode*> *interfs
-    ) {
-        for (auto storeItr: loadItr->second) {
-            // errs() << "LOAD: "; printValue(loadItr->first);
-            // errs() << "STORE: "; printValue(storeItr);
-            auto curNode = new InterfNode(loadItr->first, storeItr);
-            insertPoint = (*interfs).insert_after(insertPoint, curNode);
-            if (loadItr+1 != loadsToAllStores.end()) {
-                addAllChoicesOfLoad(loadItr+1, loadsToAllStores, curNode->before_begin(), curNode->getChildList());
-            }
-            // errs() << "After insertion: \n";
-            // errs() << "LOAD: "; printValue(curNode->getLoadInst());
-            // errs() << "STORE: "; printValue(curNode->getStoreInst());
-            // errs() << "\n";
-        }
-    }
+    // void addAllChoicesOfLoad(
+    //     vector<pair<Instruction*, vector<Instruction*>>>::iterator loadItr,
+    //     vector<pair<Instruction*, vector<Instruction*>>> &loadsToAllStores,
+    //     forward_list<InterfNode*>::iterator insertPoint, forward_list<InterfNode*> *interfs
+    // ) {
+    //     for (auto storeItr: loadItr->second) {
+    //         // errs() << "LOAD: "; printValue(loadItr->first);
+    //         // errs() << "STORE: "; printValue(storeItr);
+    //         auto curNode = new InterfNode(loadItr->first, storeItr);
+    //         insertPoint = (*interfs).insert_after(insertPoint, curNode);
+    //         if (loadItr+1 != loadsToAllStores.end()) {
+    //             addAllChoicesOfLoad(loadItr+1, loadsToAllStores, curNode->before_begin(), curNode->getChildList());
+    //         }
+    //         // errs() << "After insertion: \n";
+    //         // errs() << "LOAD: "; printValue(curNode->getLoadInst());
+    //         // errs() << "STORE: "; printValue(curNode->getStoreInst());
+    //         // errs() << "\n";
+    //     }
+    // }
 
-    void getAllInterfsNew (
-        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> &loadsToAllStores,
-        map<Function*, forward_list<InterfNode*>> *newAllInterfs
-    ) {
-        for (auto funcItr: loadsToAllStores) {
-            // errs() << "Interfs for function " << funcItr.first->getName() << ":\n";
-            auto insertPoint = (*newAllInterfs)[funcItr.first].before_begin();
-            addAllChoicesOfLoad(funcItr.second.begin(), funcItr.second, insertPoint, &(*newAllInterfs)[funcItr.first]);
-        }
-    }
+    // void getAllInterfsNew (
+    //     unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> &loadsToAllStores,
+    //     map<Function*, forward_list<InterfNode*>> *newAllInterfs
+    // ) {
+    //     for (auto funcItr: loadsToAllStores) {
+    //         // errs() << "Interfs for function " << funcItr.first->getName() << ":\n";
+    //         auto insertPoint = (*newAllInterfs)[funcItr.first].before_begin();
+    //         addAllChoicesOfLoad(funcItr.second.begin(), funcItr.second, insertPoint, &(*newAllInterfs)[funcItr.first]);
+    //     }
+    // }
 
-    void printAllInterfsNew (map<Function*, forward_list<InterfNode*>> &newAllInterfs) {
-        for (auto funcItr: newAllInterfs) {
-            errs() << "# Interfs for function " << funcItr.first->getName() << ":\n";
-            for (auto interfItr: funcItr.second) {
-                errs() << "LOAD: "; printValue(interfItr->getLoadInst());
-                errs() << "STORE: "; printValue(interfItr->getStoreInst());
-            }
-        }
-    }
+    // void printAllInterfsNew (map<Function*, forward_list<InterfNode*>> &newAllInterfs) {
+    //     for (auto funcItr: newAllInterfs) {
+    //         errs() << "# Interfs for function " << funcItr.first->getName() << ":\n";
+    //         for (auto interfItr: funcItr.second) {
+    //             errs() << "LOAD: "; printValue(interfItr->getLoadInst());
+    //             errs() << "STORE: "; printValue(interfItr->getStoreInst());
+    //         }
+    //     }
+    // }
 
 
     /// Checks all possible interfernces for feasibility one by one.
@@ -1563,16 +1564,16 @@ class VerifierPass : public ModulePass {
     ){
         // map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *feasibleInterfs = &feasibleInterfences;
         map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> allInterfs;
-        map<Function* ,forward_list<InterfNode*>> newAllInterfs;
+        // map<Function* ,forward_list<InterfNode*>> newAllInterfs;
         unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores;
         // Make all permutations
         getLoadsToAllStoresMap(allLoads, allStores, &loadsToAllStores);
         allLoads->clear();
         allStores->clear();
-        double start_time = omp_get_wtime();
-        // int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs);
-        getAllInterfsNew(loadsToAllStores, &newAllInterfs);
-        errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
+        // double start_time = omp_get_wtime();
+        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs);
+        // getAllInterfsNew(loadsToAllStores, &newAllInterfs);
+        // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
         loadsToAllStores.clear();
         // printAllInterfsNew(newAllInterfs);
         // allInterfs = tmp.first; maxInterfs = tmp.second;
