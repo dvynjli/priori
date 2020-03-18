@@ -8,3 +8,7 @@ tbar_unfenenced:
 	Doesn't have bug in 2 unrolling
 peterson_assume_unfenced_thr3
 	some redundent loads and assume conditions are removed
+lamport_assume_fenced
+	the three comments fencess are not required
+	VBMC K=4, L=6 is not giving error without those
+	checked with tracer
