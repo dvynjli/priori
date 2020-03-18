@@ -18,6 +18,8 @@ cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interference pruning usi
 cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
 cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
 cl::opt<bool> stopOnFail("stop-on-fail", cl::desc("Stop as soon as assertion is failed"));
+cl::opt<bool> eagerPruning("eager", cl::desc("Eagerly prune infeasible interference combinations"));
+
 
 map<llvm::Instruction*, pair<unsigned short int, unsigned int>> instToNum;
 map<pair<unsigned short int, unsigned int>, llvm::Instruction*> numToInst;
@@ -70,7 +72,11 @@ class VerifierPass : public ModulePass {
         // printInstMaps();
         // testPO();
         analyzeProgram(M);
-        checkAssertions();
+        if (!stopOnFail) checkAssertions();
+        else {
+            errs() << "___________________________________________________\n";
+            errs() << "# Failed Asserts: 0\n";
+        }
         double time = omp_get_wtime() - start_time;
         // testApplyInterf();
         // unsat_core_example1();
@@ -1490,22 +1496,39 @@ class VerifierPass : public ModulePass {
 
             forward_list< const pair< Instruction*, Instruction* >* > curInterfNew;
             
-            for (int i=0; i<noOfInterfs; i++) {
+            for (int k=0; k>=0; ) {
                 auto insertPt = curInterfNew.before_begin();
-                for (int j=0; j<allLS->size(); j++) {
+                bool feasible = true;
+                int j;
+                // errs() << "\ninterf" << i << "\n";
+                for (j=0; j<allLS->size(); j++) {
                     if (allItr[j] != loadsEnd[j]) {
-                        auto lsPairPtr = allLSPairs.insert(make_pair(loads[j], (*allItr[j])));
-                        // errs() << "insertinf "; printValue(lsPairPtr.first->first); errs() << "\n";
+                        // Check eager SB to prune out interference
+                        // if (l',s') \in insertPt and cur is (l,s),
+                        // since loads are ordered acc to sb, 
+                        // s --sb--> s' means infeasible interference
+                        auto stCur = (*allItr[j]);
+                        if (eagerPruning && j!=0) {
+                            auto stOld = (*insertPt)->second;
+                            // errs() << "checking sb";
+                            if (isSeqBefore(stCur, stOld)) {
+                                // infeasible. Increment cur st iterator and start new inter
+                                feasible = false;
+                                // errs() << "infeasible\n";
+                                break;
+                            }
+                        }
+                        auto lsPairPtr = allLSPairs.insert(make_pair(loads[j], stCur));
                         insertPt = curInterfNew.insert_after(insertPt, &(*lsPairPtr.first));
-                        // curInterf[loads[j]] = (*allItr[j]);
                     }
                 }
-                
-                // allInterfs[curFunc].push_back(curInterf);
-                (*allInterfs)[curFunc].push_back(curInterfNew);
+                // int k;
+                if (feasible) {
+                    k = allLS->size()-1;
+                    (*allInterfs)[curFunc].push_back(curInterfNew);
+                }
+                else k = j; // update the store iterator for infeasible interf
                 curInterfNew.resize(0);
-
-                int k = allLS->size()-1;
                 if (allItr[k] != loadsEnd[k]) {
                     allItr[k]++;
                 }
@@ -1514,6 +1537,7 @@ class VerifierPass : public ModulePass {
                     k--;
                     if (k>=0) allItr[k]++;
                 }
+                // if (k < 0) break;
             }
         }
         return maxInterfs;
@@ -1583,12 +1607,12 @@ class VerifierPass : public ModulePass {
         // getAllInterfsNew(loadsToAllStores, &newAllInterfs);
         // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
         loadsToAllStores.clear();
-        // printAllInterfsNew(newAllInterfs);
+        // printAllInterfsNew(&allInterfs);
         // allInterfs = tmp.first; maxInterfs = tmp.second;
         // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 600000) << "\n";
 
         // errs() << "# of total interference:\n";
-        // for (auto it: feasibleInterfences) {
+        // for (auto it: allInterfs) {
         //     auto tmp = it.second.size();
         //     errs() << it.first->getName() << " : " << tmp << "\n";
         //     if (maxInterfs < tmp) maxInterfs = tmp;
@@ -1927,7 +1951,9 @@ class VerifierPass : public ModulePass {
         errs() << "# Failed Asserts: " << num_errors << "\n";
     }
 
-    void printLoadsToAllStores(unordered_map<Function*, unordered_map<Instruction*, vector<Instruction*>>> loadsToAllStores){
+    void printLoadsToAllStores(
+        unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores
+    ){
         errs() << "All load-store pair in the program\n";
         for (auto it1=loadsToAllStores.begin(); it1!=loadsToAllStores.end(); ++it1) {
             errs () << "***Function " << it1->first->getName() << ":\n";
