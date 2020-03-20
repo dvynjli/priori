@@ -1468,7 +1468,9 @@ class VerifierPass : public ModulePass {
     /// returns maximum number of interferneces in any function
     int getAllInterferences (
         unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> &loadsToAllStores,
-        map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs
+        map<Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> *allInterfs,
+        const map<Function*, Instruction*> *funcToTCreate,
+        const map<Function*, Instruction*> *funcToTJoin
     ){
         // unordered_map<Function*, vector< map<Instruction*, Instruction*>>> allInterfs;
 
@@ -1509,8 +1511,12 @@ class VerifierPass : public ModulePass {
                         // s --sb--> s' means infeasible interference
                         auto stCur = (*allItr[j]);
                         if (eagerPruning) {
+                            if (SBTCreateTJoin(loads[j], stCur, funcToTCreate, funcToTJoin)) {
+                                feasible = false;
+                                break;
+                            }
                             for (auto curInterfItr: curInterfNew) {
-                                if (isSeqBefore(stCur, curInterfItr->second)) {
+                                if(isSeqBefore(stCur, curInterfItr->second)) {
                                     // infeasible. Increment cur st iterator and start new inter
                                     feasible = false;
                                     // errs() << "infeasible\n";
@@ -1606,7 +1612,7 @@ class VerifierPass : public ModulePass {
         allLoads->clear();
         allStores->clear();
         // double start_time = omp_get_wtime();
-        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs);
+        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs, funcToTCreate, funcToTCreate);
         // getAllInterfsNew(loadsToAllStores, &newAllInterfs);
         // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
         loadsToAllStores.clear();
@@ -1671,6 +1677,10 @@ class VerifierPass : public ModulePass {
         // #pragma omp single 
         // {
         // #pragma omp parallel for //shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
+        if (eagerPruning) {
+            feasibleInterfences = allInterfs;
+            return;
+        }
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); funcItr++) {
             // #pragma omp task if (funcItr->second.size() > 300) \
             // shared(minimalZ3, instToNum, numToInst, funcToTCreate,funcToTJoin) firstprivate(funcItr)
