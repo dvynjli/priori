@@ -1522,7 +1522,6 @@ class VerifierPass : public ModulePass {
                             auto lsPairPtr = allLSPairs.insert(make_pair(loads[j], stCur));
                             insertPt = curInterfNew.insert_after(insertPt, &(*lsPairPtr.first));
                         }
-                        else break;
                     }
                 }
                 // int k;
