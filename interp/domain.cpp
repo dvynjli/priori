@@ -915,6 +915,8 @@ void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO copyFrom){
         newDomain.copyApDomain(it->second);
         environment[it->first]=newDomain;
     }
+   if (copyFrom.isModified()) setModified();
+   else setNotModified();
 }
 
 void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, string strOp) {
