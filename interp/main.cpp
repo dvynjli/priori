@@ -1612,7 +1612,13 @@ class VerifierPass : public ModulePass {
         allLoads->clear();
         allStores->clear();
         // double start_time = omp_get_wtime();
-        int maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs, funcToTCreate, funcToTCreate);
+        int maxInterfs;
+        if (eagerPruning) {
+            maxInterfs = getAllInterferences(loadsToAllStores, &feasibleInterfences, funcToTCreate, funcToTCreate);
+        }
+        else {
+            maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs, funcToTCreate, funcToTCreate);
+        }
         // getAllInterfsNew(loadsToAllStores, &newAllInterfs);
         // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
         loadsToAllStores.clear();
@@ -1678,7 +1684,7 @@ class VerifierPass : public ModulePass {
         // {
         // #pragma omp parallel for //shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
         if (eagerPruning) {
-            feasibleInterfences = allInterfs;
+            // feasibleInterfences = allInterfs;
             return;
         }
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); funcItr++) {
