@@ -1511,7 +1511,7 @@ class VerifierPass : public ModulePass {
                         // s --sb--> s' means infeasible interference
                         auto stCur = (*allItr[j]);
                         if (eagerPruning) {
-                            if (SBTCreateTJoin(loads[j], stCur, funcToTCreate, funcToTJoin)) {
+                            if (stCur && SBTCreateTJoin(loads[j], stCur, funcToTCreate, funcToTJoin)) {
                                 feasible = false;
                                 break;
                             }
@@ -1549,6 +1549,7 @@ class VerifierPass : public ModulePass {
                 // if (k < 0) break;
             }
         }
+        loadsToAllStores.clear();
         return maxInterfs;
     }
 
@@ -1615,13 +1616,13 @@ class VerifierPass : public ModulePass {
         int maxInterfs;
         if (eagerPruning) {
             maxInterfs = getAllInterferences(loadsToAllStores, &feasibleInterfences, funcToTCreate, funcToTCreate);
+            return;
         }
         else {
             maxInterfs = getAllInterferences(loadsToAllStores, &allInterfs, funcToTCreate, funcToTCreate);
         }
         // getAllInterfsNew(loadsToAllStores, &newAllInterfs);
         // errs() << "Time to compute all interfs: " << (omp_get_wtime() - start_time) << "\n";
-        loadsToAllStores.clear();
         // printAllInterfsNew(&allInterfs);
         // allInterfs = tmp.first; maxInterfs = tmp.second;
         // errs() << "maxInterfs: " << maxInterfs << ", will paralllelize: " << (maxInterfs > 600000) << "\n";
@@ -1683,10 +1684,6 @@ class VerifierPass : public ModulePass {
         // #pragma omp single 
         // {
         // #pragma omp parallel for //shared(feasibleInterfences, minimalZ3,funcToTCreate,funcToTJoin) num_threads(allInterfs.size())
-        if (eagerPruning) {
-            // feasibleInterfences = allInterfs;
-            return;
-        }
         for (auto funcItr=allInterfs.begin(); funcItr!=allInterfs.end(); funcItr++) {
             // #pragma omp task if (funcItr->second.size() > 300) \
             // shared(minimalZ3, instToNum, numToInst, funcToTCreate,funcToTJoin) firstprivate(funcItr)
