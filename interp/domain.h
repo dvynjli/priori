@@ -23,7 +23,7 @@
 //      thread comes after last write of current thread in POMO
 enum options {UNKNOWN, DONOTHING, MERGE, COPY};
 
-typedef map <string, llvm::Instruction*> REL_HEAD;
+typedef map <string, InstNum> REL_HEAD;
 typedef map <string, PartialOrder> POMO;
 
 extern llvm::cl::opt<DomainTypes> AbsDomType;
@@ -32,7 +32,7 @@ class ApDomain {
     ap_manager_t *man;
     ap_environment_t *env;
     ap_abstract1_t absValue;
-    // map<string, llvm::Instruction*> relHead;
+    // map<string, InstNum> relHead;
     map<string, bool> hasChanged;
     
     ap_manager_t* initApManager();
@@ -45,8 +45,8 @@ class ApDomain {
     void performNECmp(string strOp1, string strOp2);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t abs_val);
-    // llvm::Instruction* getRelHead(string var);
-    // void setRelHead(string var, llvm::Instruction *head);
+    // InstNum getRelHead(string var);
+    // void setRelHead(string var, InstNum head);
     void copyVar(ApDomain fromApDomain, ap_var_t apVar);
     void joinVar(ApDomain fromApDomain, ap_var_t apVar);
 
@@ -136,13 +136,11 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
 
     // Store Operation
-    virtual void performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper)=0;
+    virtual void performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper)=0;
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-     virtual void joinOnVars(T other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-                llvm::Instruction *joinedThreadLastGlobal, llvm::Instruction *curInst, Z3Minimal &zHelper)=0;
+     virtual void joinOnVars(T other, vector<string> vars, Z3Minimal &zHelper)=0;
     // Thread Create Operation
     // Perform copy only for the list of variables passed in arg2
      virtual void copyOnVars(T other, vector<string> vars)=0;
@@ -156,8 +154,7 @@ public:
         * curInst: Current Instruction
         */
     virtual void applyInterference(string interfVar, T interfEnv, Z3Minimal &zHelper, 
-                llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr) = 0;
+                InstNum &curInst, InstNum &interfInst) = 0;
     virtual void carryEnvironment(string interfVar, T fromEnv) = 0;
     virtual void joinEnvironment(T other) = 0;
     virtual void meetEnvironment(Z3Minimal &zHelper, T other) = 0;
@@ -174,16 +171,16 @@ class EnvironmentRelHead : public EnvironmentBase<EnvironmentRelHead> {
     REL_HEAD initRelHead(vector<string> globalVars);
     
     void printRelHead(REL_HEAD relHead);
-    void addRelHead(string var, llvm::Instruction *head);
-    void changeRelHead(string var, llvm::Instruction *head);
-    void changeRelHeadIfNull(string var, llvm::Instruction *head);
+    void addRelHead(string var, InstNum &head);
+    void changeRelHead(string var, InstNum &head);
+    void changeRelHeadIfNull(string var, InstNum &head);
 
 public:
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain
     map <REL_HEAD, ApDomain> environment;
 
-    void changeRelHeadToNull(string var, llvm::Instruction *inst);
+    void changeRelHeadToNull(string var, InstNum &inst);
     
     virtual bool operator== (const EnvironmentRelHead &other) const;
     // map <REL_HEAD, ApDomain>::iterator begin();
@@ -212,20 +209,17 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
 
     // Store Operations
-    virtual void performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper);
+    virtual void performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper);
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-     virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-                llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+     virtual void joinOnVars(EnvironmentRelHead other, vector<string> vars, Z3Minimal &zHelper);
     // Thread Create Operation
     // Perform copy only for the list of variables passed in arg2
     virtual void copyOnVars(EnvironmentRelHead other, vector<string> vars);
     
     virtual void applyInterference(string interfVar, EnvironmentRelHead fromEnv, Z3Minimal &zHelper, 
-                llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr);
+                InstNum &curInst, InstNum &interfInst);
     virtual void carryEnvironment(string interfVar, EnvironmentRelHead fromEnv);
     virtual void joinEnvironment(EnvironmentRelHead other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other);
@@ -253,8 +247,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 	map<POMO, ApDomain>::iterator end();
 
     // void getVarOption (map<string, options> *varoptions, string varName,PartialOrder curPartialOrder,
-    //             map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-    //             llvm::Instruction *interfInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+    //             map<InstNum, map<string, InstNum>> *lastWrites, 
+    //             InstNum interfInst, InstNum curInst, Z3Minimal &zHelper);
     void getVarOption (map<string, options> *varoptions, 
                 string varName,
                 PartialOrder curPartialOrder,
@@ -263,8 +257,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 
 public:
 
-    // void changeRelHeadToNull(string var, llvm::Instruction *inst);
-    // void changeRelHeadIfNull(string var, llvm::Instruction *head);
+    // void changeRelHeadToNull(string var, InstNum inst);
+    // void changeRelHeadIfNull(string var, InstNum head);
     
     virtual bool operator== (const EnvironmentPOMO &other) const;
     // map <REL_HEAD, ApDomain>::iterator begin();
@@ -293,20 +287,17 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
 
     // Store Operations
-    virtual void performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper);
+    virtual void performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper);
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-    virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-                llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper);
+    virtual void joinOnVars(EnvironmentPOMO other, vector<string> vars, Z3Minimal &zHelper);
     // Thread Create Operation
     // Perform copy only for the list of variables passed in arg2
      virtual void copyOnVars(EnvironmentPOMO other, vector<string> vars);
     
     virtual void applyInterference(string interfVar, EnvironmentPOMO fromEnv, Z3Minimal &zHelper, 
-                llvm::Instruction *interfInst=nullptr, llvm::Instruction *curInst=nullptr, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr);
+                InstNum &curInst, InstNum &interfInst);
     virtual void joinEnvironment(EnvironmentPOMO other);
     virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other);
     // TODO: this function is not required for POMO. change the structure to use append instead of this

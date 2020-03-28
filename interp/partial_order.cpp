@@ -5,17 +5,19 @@
 // Since partial order can't be cyclic, if (to, from) are already
 // in order, returns false. The behavior might be undefined 
 // in this case. Else add (from, to) and returns true
-bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::Instruction* to) {
+bool PartialOrder::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
 	// fprintf(stderr, "addOrder %p --> %p\n", from, to);
 	
 	if (isOrderedBefore(from, to)) return true;
 	if (isOrderedBefore(to, from)) return false;
 
+	// find instNum of from and to
+	
 	// find 'to' in ordering
 	auto toItr = order.find(to);
 	// if 'to' does not exist, add an (to,<empty>) in order 
 	// if (toItr == order.end()) {
-	// 	set<llvm::Instruction*> emptyset {};
+	// 	set<InstNum> emptyset {};
 	// 	order[to] = emptyset;
 	// }
 
@@ -24,24 +26,24 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 	// OPT: The check is required only if 'from' or 'to' are not 
 	// in the order already.
 	for (auto it=order.begin(); it!=order.end(); ) {
-		llvm::Instruction* inst = it->first; ++it;
+		InstNum inst = it->first; ++it;
 		// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
 		if (inst != to && inst != from) {
-			if (isSeqBefore(inst, to)) {
+			if (inst.isSeqBefore(to)) {
 				// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
 				addOrder(zHelper, inst, to); 
 				remove(inst);
 			}
-			else if (isSeqBefore(to, inst)) {
+			else if (to.isSeqBefore(inst)) {
 				// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
 				return addOrder(zHelper, from, inst);
 			}
-			if (isSeqBefore(inst, from)) {
+			if (inst.isSeqBefore(from)) {
 				// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
 				addOrder(zHelper, inst, from); 
 				remove(inst);
 			}
-			else if (isSeqBefore(from, inst)) {
+			else if (from.isSeqBefore(inst)) {
 				bool done = makeTransitiveOrdering(from, to, toItr);
 				remove(from);
 				// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
@@ -57,12 +59,12 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::I
 
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
-bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
+bool PartialOrder::append(Z3Minimal &zHelper, InstNum newinst) {
 	// cout << "appending Partial order " << newinst << "\n";
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ) {
-		if (isSeqBefore(it->first, newinst)) {auto ittmp = it++; remove(ittmp->first);}
+		if (it->first.isSeqBefore(newinst)) {auto ittmp = it++; remove(ittmp->first);}
 		else it++;
 	}
 
@@ -75,7 +77,7 @@ bool PartialOrder::append(Z3Minimal &zHelper, llvm::Instruction* newinst) {
 		}
 	}
 
-	if(llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(newinst)) {
+	if(isRMWInst(newinst)) {
 		rmws.insert(newinst);
 	}
 
@@ -97,7 +99,7 @@ bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 			if (!addOrder(zHelper, fromItr->first, *toItr))
 				return false;
 		}
-		// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(fromItr->first))
+		// if (isRMWInst(fromItr->first))
 		// 	rmws.insert(fromItr->first);
 	}
 	// fprintf(stderr, "after join %s\n", toString().c_str());
@@ -106,7 +108,7 @@ bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
 }
 
 // checks if (inst1, inst2) \in order
-bool PartialOrder::isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* inst2) {
+bool PartialOrder::isOrderedBefore(InstNum inst1, InstNum inst2) {
 	if (!isExists(inst1)) return false;
 	auto search = order[inst1].find(inst2);
 	if (search == order[inst1].end()) return false;
@@ -114,7 +116,7 @@ bool PartialOrder::isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* 
 }
 
 // checks if inst is a part of this partial order
-bool PartialOrder::isExists(llvm::Instruction* inst) {
+bool PartialOrder::isExists(InstNum inst) {
 	auto search = order.find(inst);
 	if (search == order.end()) return false;
 	else return true;
@@ -166,14 +168,14 @@ bool PartialOrder::isConsistentRMW(PartialOrder &other) {
 
 
 // domain-level feasibility checking
-bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst) {
+bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, InstNum interfInst, InstNum curInst) {
 	// curInst should not be ordered before any inst in interferring domain
 	for (auto it:other) {
-		if (isSeqBefore(curInst, it.first)) return false;
+		if (curInst.isSeqBefore(it.first)) return false;
 	}
 	// interfInst should not be ordered before any inst in current domain
 	for (auto it:order) {
-		if (isSeqBefore(interfInst, it.first)) return false;
+		if (interfInst.isSeqBefore(it.first)) return false;
 	}
 	return true;
 }
@@ -182,15 +184,15 @@ bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Ins
 // Removes inst from the element of the set. It should also remove
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
-bool PartialOrder::remove(llvm::Instruction* inst) {
-	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+bool PartialOrder::remove(InstNum inst) {
+	if (isRMWInst(inst))
 		return true;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
 	order[inst].clear();
 	order.erase(inst);
-	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+	// if (isRMWInst(inst))
 	// 	rmws.erase(inst);
 	
 	return true;
@@ -198,20 +200,18 @@ bool PartialOrder::remove(llvm::Instruction* inst) {
 
 // get the last instructions in Partial Order
 // inst \in lasts iff nEa (inst, a) \in order
-unordered_set<llvm::Instruction*> PartialOrder::getLasts() {
-	unordered_set<llvm::Instruction*> lasts;
+void PartialOrder::getLasts(unordered_set<InstNum> &lasts) {
 	// iterate over all instructions in order
 	for (auto it:order) {
 		// if nothing is ordered after this, insert it into lasts
 		if (it.second.empty())
 			lasts.insert(it.first);
 	}
-	return lasts;
 }
 
 // update ordering relation to get transitivity
-bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instruction* to, 
-	std::map<llvm::Instruction *, std::set<llvm::Instruction *>>::iterator toItr
+bool PartialOrder::makeTransitiveOrdering (InstNum from, InstNum to, 
+	std::map<InstNum, std::set<InstNum>>::iterator toItr
 ){
 	// check for anti-symmetry
 	if (isOrderedBefore(to, from)) return false;
@@ -242,14 +242,14 @@ bool PartialOrder::makeTransitiveOrdering (llvm::Instruction* from, llvm::Instru
 }
 
 
-bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
+bool PartialOrder::addInst(Z3Minimal &zHelper, InstNum inst) {
 	for (auto it=order.begin(); it!=order.end(); ) {
-		llvm::Instruction* instItr = it->first; ++it;
-		if (instItr != inst && isSeqBefore(inst, instItr)) {
+		InstNum instItr = it->first; ++it;
+		if (instItr != inst && inst.isSeqBefore(instItr)) {
 			// Nothing to add, a newer instruction is already there
 			return true;
 		}
-		else if (instItr != inst && isSeqBefore(instItr, inst)) {
+		else if (instItr != inst && instItr.isSeqBefore(inst)) {
 			// all the instructions ordered before instItr, should also
 			// be ordered before instItr
 			makeTransitiveOrdering(instItr, inst, order.end());
@@ -261,10 +261,10 @@ bool PartialOrder::addInst(Z3Minimal &zHelper, llvm::Instruction *inst) {
 	auto findInst = order.find(inst);
 	// add (inst,<empty>) in order 
 	if (findInst == order.end()) {
-		set<llvm::Instruction*> emptyset {};
+		set<InstNum> emptyset {};
 		order[inst] = emptyset;
 	}
-	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(inst))
+	if (isRMWInst(inst))
 		rmws.insert(inst);
 	return true;
 }
@@ -274,19 +274,25 @@ void PartialOrder::copy (const PartialOrder &copyFrom) {
 	rmws = copyFrom.rmws;
 }
 
+bool PartialOrder::isRMWInst(InstNum inst) {
+	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(getInstByInstNum(inst)))
+		return true;
+	else return false;
+}
+
 string PartialOrder::toString() {
 	std::stringstream ss;
 	for (auto itFrom: order){
-		ss << itFrom.first << " ---> " ;
+		ss << itFrom.first.toString() << " ---> " ;
 		for (auto itTo: itFrom.second) {
-			ss << itTo << ", ";
+			ss << itTo.toString() << ", ";
 		}
 		ss << ";\t";
 	}
 	// cout << ss.str() << "\n";
 	ss << "\tRMWs: ";
 	for (auto it: rmws) {
-		ss << it << ",";
+		ss << it.toString() << ",";
 	}
 	return ss.str();
 }
@@ -302,10 +308,10 @@ bool PartialOrder::operator<(const PartialOrder &other) const {
 	return order < other.order;
 }
 
-map<llvm::Instruction*, set<llvm::Instruction*>>::iterator PartialOrder::begin() {
+map<InstNum, set<InstNum>>::iterator PartialOrder::begin() {
 	return order.begin();
 }
 
-map<llvm::Instruction*, set<llvm::Instruction*>>::iterator PartialOrder::end() {
+map<InstNum, set<InstNum>>::iterator PartialOrder::end() {
 	return order.end();
 }

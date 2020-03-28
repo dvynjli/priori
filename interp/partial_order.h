@@ -3,7 +3,6 @@
 
 #include "common.h"
 #include "z3_handler.h"
-#include <sstream>
 
 class PartialOrder {
 	// all the instructions ordered after a in partial order are given 
@@ -11,27 +10,28 @@ class PartialOrder {
 	// If an instruction inst is not ordered with respect to any 
 	// instruction in partial order so far, order[inst] will be empty 
 	// set and ~E x. inst \in order[x]
-	map<llvm::Instruction*, set<llvm::Instruction*>> order;
-	set<llvm::Instruction*> rmws;
+	map<InstNum, set<InstNum>> order;
+	set<InstNum> rmws;
 
 	// update ordering relation to get transitivity
-	bool makeTransitiveOrdering(llvm::Instruction* from, 
-		llvm::Instruction* to, 
-		std::map<llvm::Instruction *, std::set<llvm::Instruction *>>::iterator toItr);
+	bool makeTransitiveOrdering(InstNum from, 
+		InstNum to, 
+		std::map<InstNum, std::set<InstNum>>::iterator toItr);
 
 	// adds an instruction with nothing ordered after it ib the order,
 	// while deleting the older instructions from the same thread
-	bool addInst(Z3Minimal &zHelper, llvm::Instruction *inst);
+	bool addInst(Z3Minimal &zHelper, InstNum inst);
+	bool isRMWInst(InstNum inst);
 
 public:
 	// Adds (from, to) to order if not already. 
 	// Since partial order can't be cyclic, if (to, from) are already
 	// in order, returns false. Else add (from, to) and returns true
-	bool addOrder(Z3Minimal &zHelper, llvm::Instruction* from, llvm::Instruction* to);
+	bool addOrder(Z3Minimal &zHelper, InstNum from, InstNum to);
 
 	// Adds inst such that Va \in order, (a, inst) \in order.
 	// Returns false if inst \in order and order[inst] != {}
-	bool append(Z3Minimal &zHelper, llvm::Instruction* inst);
+	bool append(Z3Minimal &zHelper, InstNum inst);
 
 	// Joins two partial orders maintaing the ordering relation in both
 	// If this is not possible (i.e. joining will result in cycle), 
@@ -39,10 +39,10 @@ public:
 	bool join(Z3Minimal &zHelper, PartialOrder &other);
 
 	// checks if (inst1, inst2) \in order
-	bool isOrderedBefore(llvm::Instruction* inst1, llvm::Instruction* inst2);
+	bool isOrderedBefore(InstNum inst1, InstNum inst2);
 
 	// checks if inst is a part of this partial order
-	bool isExists(llvm::Instruction* inst);
+	bool isExists(InstNum inst);
 
 	// checks if the partial order other is consistent with this partial order
 	// Two parial orders are consistent only if Va.Vb (a,b) \in order
@@ -52,22 +52,22 @@ public:
 	bool isConsistentRMW(PartialOrder &other);
 
 	// domain-level feasibility checking
-	bool isFeasible(Z3Minimal &zHelper, PartialOrder &other, llvm::Instruction *interfInst, llvm::Instruction *curInst);
+	bool isFeasible(Z3Minimal &zHelper, PartialOrder &other, InstNum interfInst, InstNum curInst);
 
 	// Removes inst from the element of the set. It should also remove
 	// all (x, inst) and (inst, x) pair from order for all possible 
 	// values of x
-	bool remove(llvm::Instruction* inst);
+	bool remove(InstNum inst);
 
 	// get the last instructions in Partial Order
 	// inst \in lasts iff nEa (inst, a) \in order
-	unordered_set<llvm::Instruction*> getLasts();
+	void getLasts(unordered_set<InstNum> &lasts);
 	
 	virtual bool operator== (const PartialOrder &other) const;
 	virtual bool operator<  (const PartialOrder &other) const;
 
-	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator begin();
-	map<llvm::Instruction*, set<llvm::Instruction*>>::iterator end();
+	map<InstNum, set<InstNum>>::iterator begin();
+	map<InstNum, set<InstNum>>::iterator end();
 
 	void copy (const PartialOrder &copyFrom);
 

@@ -601,16 +601,16 @@ void EnvironmentRelHead::copyEnvironment(EnvironmentRelHead copyFrom){
 REL_HEAD EnvironmentRelHead::initRelHead(vector<string> globalVars) {
     REL_HEAD relHead;
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        relHead[(*it)] = nullptr;
+        relHead[(*it)] = InstNum();
     }
     return relHead;
 }
 
-// llvm::Instruction* EnvironmentRelHead::getRelHead(string var) {
+// InstNum EnvironmentRelHead::getRelHead(string var) {
 //     return relHead[var];
 // }
 
-void EnvironmentRelHead::addRelHead(string var, llvm::Instruction *head) {
+void EnvironmentRelHead::addRelHead(string var, InstNum &head) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
         relHead[var] = head;
@@ -624,18 +624,18 @@ void EnvironmentRelHead::addRelHead(string var, llvm::Instruction *head) {
     }
 }
 
-void EnvironmentRelHead::changeRelHeadIfNull(string var, llvm::Instruction *head) {
+void EnvironmentRelHead::changeRelHeadIfNull(string var, InstNum &head) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
-        if (relHead[var] == nullptr)
+        if (relHead[var] == InstNum())
             relHead[var] = head;
         newEnvironment[relHead] = it->second;
     }
     environment = newEnvironment;
 }
 
-void EnvironmentRelHead::changeRelHead(string var, llvm::Instruction *head) {
+void EnvironmentRelHead::changeRelHead(string var, InstNum &head) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
@@ -645,14 +645,15 @@ void EnvironmentRelHead::changeRelHead(string var, llvm::Instruction *head) {
     environment = newEnvironment;
 }
 
-void EnvironmentRelHead::changeRelHeadToNull(string var, llvm::Instruction *inst) {
+void EnvironmentRelHead::changeRelHeadToNull(string var, InstNum &inst) {
     map <REL_HEAD, ApDomain> newEnvironment;
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         REL_HEAD relHead(it->first);
         // RelSequence terminated when a relaxed write from different thread is occured
         // relHead is changed to null only if existing relHead is from different thread
-        if (relHead[var] != nullptr && inst->getFunction() != relHead[var]->getFunction())
-            relHead[var] = nullptr;
+        if (relHead[var] != InstNum() && 
+            getInstByInstNum(inst)->getFunction() != getInstByInstNum(relHead[var])->getFunction())
+            relHead[var] = InstNum();
         newEnvironment[relHead] = it->second;
     }
     environment = newEnvironment;
@@ -725,15 +726,13 @@ void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strO
     }
 }
 
-void EnvironmentRelHead::performStoreOp(llvm::Instruction* storeInst, string destVarName, Z3Minimal &zHelper) {
+void EnvironmentRelHead::performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper) {
     // if (getRelHead(destVarName) == nullptr)
     //     setRelHead(destVarName, storeInst);
     changeRelHeadIfNull(destVarName, storeInst);
 }
 
-void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars, 
-                map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-                llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper) {
+void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars, Z3Minimal &zHelper) {
 
 }
 
@@ -745,9 +744,8 @@ void EnvironmentRelHead::applyInterference(
     string interfVar, 
     EnvironmentRelHead fromEnv, 
     Z3Minimal &zHelper, 
-    llvm::Instruction *interfInst=nullptr, 
-    llvm::Instruction *curInst=nullptr, 
-    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr
+    InstNum &curInst,
+    InstNum &interfInst
 ) {
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
@@ -873,8 +871,8 @@ void EnvironmentRelHead::printEnvironment() {
 void EnvironmentRelHead::printRelHead(REL_HEAD relHead) {
     for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());
-        if (it->second != nullptr)
-            it->second->print(llvm::errs());
+        if (it->second != InstNum())
+            fprintf(stderr, "%s", it->second.toString().c_str());
         else fprintf(stderr, "NULL");
         fprintf(stderr, "\n");
     }
@@ -979,7 +977,7 @@ void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2)
     }
 }
 
-void EnvironmentPOMO::performStoreOp(llvm::Instruction *storeInst, string destVarName, Z3Minimal &zHelper) {
+void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper) {
     map <POMO, ApDomain> newEnv;
     for (auto it: environment) {
         POMO tmpPomo;
@@ -996,8 +994,7 @@ void EnvironmentPOMO::performStoreOp(llvm::Instruction *storeInst, string destVa
 }
 
 void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars, 
-    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites, 
-    llvm::Instruction *joinFromInst, llvm::Instruction *curInst, Z3Minimal &zHelper
+    Z3Minimal &zHelper
 ) {
     map <POMO, ApDomain> newenvironment;
     // fprintf(stderr,"For thread join. Other:\n");
@@ -1115,9 +1112,8 @@ void EnvironmentPOMO::applyInterference(
     string interfVar, 
     EnvironmentPOMO interfEnv, 
     Z3Minimal &zHelper, 
-    llvm::Instruction *interfInst=nullptr,
-    llvm::Instruction *curInst=nullptr,
-    map<llvm::Instruction*, map<string, llvm::Instruction*>> *lastWrites=nullptr
+    InstNum &curInst,
+    InstNum &interfInst
 ) {
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
@@ -1317,8 +1313,10 @@ void EnvironmentPOMO::getVarOption (map<string, options> *varoptions,
     PartialOrder interfPartialOrder, 
     Z3Minimal &zHelper
 ) {
-    auto lastsCurPO = curPartialOrder.getLasts();
-    auto lastsInterfPO = interfPartialOrder.getLasts();
+    unordered_set<InstNum> lastsCurPO;
+    curPartialOrder.getLasts(lastsCurPO);
+    unordered_set<InstNum> lastsInterfPO;
+    interfPartialOrder.getLasts(lastsInterfPO);
 
     options opt=UNKNOWN;
     

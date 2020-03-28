@@ -21,8 +21,8 @@ cl::opt<bool> stopOnFail("stop-on-fail", cl::desc("Stop as soon as assertion is 
 cl::opt<bool> eagerPruning("eager", cl::desc("Eagerly prune infeasible interference combinations"));
 
 
-map<llvm::Instruction*, pair<unsigned short int, unsigned int>> instToNum;
-map<pair<unsigned short int, unsigned int>, llvm::Instruction*> numToInst;
+map<llvm::Instruction*, InstNum> instToNum;
+map<InstNum, llvm::Instruction*> numToInst;
 set<pair<Instruction*, Instruction*>> allLSPairs;
 
 class VerifierPass : public ModulePass {
@@ -182,9 +182,9 @@ class VerifierPass : public ModulePass {
     #endif
 
     void addInstToMaps(Instruction* inst, unsigned short int tid, unsigned int* instId) {
-        auto instNum = make_pair(tid,*instId);
-        instToNum.emplace(inst, instNum);
-        numToInst.emplace(instNum, inst);
+        InstNum inum(tid, *instId);
+        instToNum.emplace(inst, inum);
+        numToInst.emplace(inum, inst);
         (*instId)++;
     }
 
@@ -208,7 +208,7 @@ class VerifierPass : public ModulePass {
         funcSet.insert(mainF);
        
         int ssaVarCounter = 0;
-        unsigned short int tid = 0;                     // main always have tid 0
+        unsigned short int tid = 1;                     // main always have tid 0
 
         while(!funcQ.empty())
         {
@@ -227,7 +227,7 @@ class VerifierPass : public ModulePass {
             aliasAnalyses[func]=AA;
             #endif
 
-            unsigned int instId = 0;
+            unsigned int instId = 1;
 
             queue<BasicBlock*> basicBlockQ;
             unordered_set<BasicBlock*> basicBlockSet;
@@ -517,6 +517,7 @@ class VerifierPass : public ModulePass {
         map< Function*, vector< map< Instruction*, pair<Instruction*, Environment>>>> oldInterfs; 
 
         while (!isFixedPointReached) {
+            programState.clear();
             programState = programStateCurItr;
 
             if (!noPrint) {
@@ -1141,7 +1142,7 @@ class VerifierPass : public ModulePass {
         
         // if(useMOPO) {
             // errs() << "appending " << storeInst << " to " << destVarName << "\n";
-        curEnv.performStoreOp(storeInst, destVarName, zHelper);
+        curEnv.performStoreOp(getInstNumByInst(storeInst), destVarName, zHelper);
         // }
         
         #ifdef NOTRA
@@ -1247,8 +1248,7 @@ class VerifierPass : public ModulePass {
                     if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
                         // errs() << "pthread join with: ";
                         // printValue(retInst);
-                        curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
-                            &lastWrites, retInst, callInst, zHelper);
+                        curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, zHelper);
                     }
                 }
             }
@@ -1263,7 +1263,7 @@ class VerifierPass : public ModulePass {
                         // printValue(retInst);
                         if (programState[calledFunc][retInst].isModified())
                             olderEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
-                                    &lastWrites, retInst, callInst, zHelper);
+                            zHelper);
                     }
                 }
             }
@@ -1336,7 +1336,7 @@ class VerifierPass : public ModulePass {
         // curEnv.printEnvironment();
 
         // append the current instruction in POMO
-        curEnv.performStoreOp(rmwInst, pointerVarName, zHelper);
+        curEnv.performStoreOp(getInstNumByInst(rmwInst), pointerVarName, zHelper);
 
         // errs() << "After appending store:\n";
         // curEnv.printEnvironment();
@@ -1409,7 +1409,8 @@ class VerifierPass : public ModulePass {
                     }
                     #endif
                     if (interfEnv.isModified() || curEnv.isModified())
-                        curEnv.applyInterference(varName, interfEnv, zHelper, interfInst, loadInst, &lastWrites);
+                        curEnv.applyInterference(varName, interfEnv, zHelper, 
+                            getInstNumByInst(loadInst), getInstNumByInst(interfInst));
                     else {
                         // errs() << "MOD: not applying interf\n";
                         curEnv.setNotModified();
@@ -1511,12 +1512,16 @@ class VerifierPass : public ModulePass {
                         // s --sb--> s' means infeasible interference
                         auto stCur = (*allItr[j]);
                         if (eagerPruning) {
+                            // errs() << "LOAD: "; printValue(loads[j]);
+                            // errs() << "STORE: "; printValue(stCur);
+                            // errs() << "checking SBCreateJoin of\n";
                             if (stCur && SBTCreateTJoin(loads[j], stCur, funcToTCreate, funcToTJoin)) {
                                 feasible = false;
                                 break;
                             }
+                            // errs() << "checking SB with older LS Pairs";
                             for (auto curInterfItr: curInterfNew) {
-                                if(isSeqBefore(stCur, curInterfItr->second)) {
+                                if(curInterfItr->second && stCur && getInstNumByInst(stCur).isSeqBefore(getInstNumByInst(curInterfItr->second))) {
                                     // infeasible. Increment cur st iterator and start new inter
                                     feasible = false;
                                     // errs() << "infeasible\n";
@@ -1609,12 +1614,14 @@ class VerifierPass : public ModulePass {
         // map<Function* ,forward_list<InterfNode*>> newAllInterfs;
         unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> loadsToAllStores;
         // Make all permutations
+        // errs() << "Making all loads to all stores map\n";
         getLoadsToAllStoresMap(allLoads, allStores, &loadsToAllStores);
         allLoads->clear();
         allStores->clear();
         // double start_time = omp_get_wtime();
         int maxInterfs;
         if (eagerPruning) {
+            // errs() << "getting feasible interferences\n";
             maxInterfs = getAllInterferences(loadsToAllStores, &feasibleInterfences, funcToTCreate, funcToTCreate);
             return;
         }
@@ -1806,10 +1813,11 @@ class VerifierPass : public ModulePass {
                     Instruction *ld_prime = otherLS->first;
                     Instruction *st_prime = otherLS->second;
                     // (l --sb--> l')
-                    if (isSeqBefore(ld, ld_prime)) {
+                    if (getInstNumByInst(ld).isSeqBefore(getInstNumByInst(ld_prime))) {
                         // (l --sb--> l' && s = s') reading from local context will give the same result
                         if (st == st_prime) return false;
-                        else if (isSeqBefore(st_prime, st)) return false;
+                        else if (getInstNumByInst(st_prime).isSeqBefore(getInstNumByInst(st))) 
+                            return false;
                     }
                 }
             }
@@ -1882,7 +1890,8 @@ class VerifierPass : public ModulePass {
         // lab: tcreate(f) /\ l in f /\ s--sb-->lab ==> s--nrf-->l
         auto searchLdFuncTC = funcToTCreate->find(ldFunc);
         if (searchLdFuncTC != funcToTCreate->end()) {
-            if(isSeqBefore(st, searchLdFuncTC->second)) return true;
+            if(getInstNumByInst(st).isSeqBefore(getInstNumByInst(searchLdFuncTC->second))) 
+                return true;
         }
         else {
             // since no tcreate instruction is found, the function name must be main
@@ -1892,7 +1901,8 @@ class VerifierPass : public ModulePass {
         // lab: tjoin(f) /\ l in f /\ lab--sb-->s ==> s--nrf-->l
         auto searchldFuncTJ = funcToTJoin->find(ldFunc);
         if (searchldFuncTJ != funcToTJoin->end()) {
-            if(isSeqBefore(searchldFuncTJ->second, st)) return true;
+            if(getInstNumByInst(searchldFuncTJ->second).isSeqBefore(getInstNumByInst(st))) 
+                return true;
         }
         else {
             // since no tjoin instruction is found, the function name must be main
@@ -1903,7 +1913,8 @@ class VerifierPass : public ModulePass {
         // lab: tcreate(f) /\ s in f /\ l--sb-->lab ==> s--nrf-->l
         auto searchStFucnTC = funcToTCreate->find(stFunc);
         if (searchStFucnTC != funcToTCreate->end()) {
-            if(isSeqBefore(ld, searchStFucnTC->second)) return true;
+            if(getInstNumByInst(ld).isSeqBefore(getInstNumByInst(searchStFucnTC->second))) 
+                return true;
         }
         else {
             // since no tcreate instruction is found, the function name must be main
@@ -1913,7 +1924,8 @@ class VerifierPass : public ModulePass {
         // lab: tjoin(f) /\ s in f /\ lab--sb-->l ==> s--nrf-->l
         auto searchStFuncTJ = funcToTJoin->find(stFunc);
         if (searchStFuncTJ != funcToTJoin->end()) {
-            if(isSeqBefore(searchStFuncTJ->second, ld)) return true;
+            if(getInstNumByInst(searchStFuncTJ->second).isSeqBefore(getInstNumByInst(ld))) 
+                return true;
         }
         else {
             // since no tjoin instruction is found, the function name must be main
@@ -2271,7 +2283,7 @@ class VerifierPass : public ModulePass {
         for (auto it: instToNum) {
             fprintf(stderr, "%p: ", it.first);
             it.first->print(errs());
-            errs() << "\t(" << it.second.first << "," << it.second.second << ")\n";
+            errs() << "\t" << it.second.toString() << "\n";
         }
     }
 
