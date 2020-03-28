@@ -19,7 +19,7 @@ vbmc_unfenced = ['bakery_assume_unfenced', 'burns_assume_unfenced', 'dekker_assu
 vbmc_fenced = ['bakery_assume_fenced', 'peterson_assume_fenced', 
 				'tbar_fenced', 'tbar_fenced_2', 'lamport_assume_fenced']
 # following benchmarks do not have errors and are from Tracer
-tracer_no_bug = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 'dijkstra'
+tracer_no_bug = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 'dijkstra',
 				'burns_assume_fenced']
 benchmarks = []
 

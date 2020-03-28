@@ -1,5 +1,6 @@
 // A modified version of test2.cc. 
 // VBMC cannot catch the bug with 1 view switches
+// tracer is also giving bug
 
 #include <iostream>
 #include <pthread.h>

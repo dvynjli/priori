@@ -27,7 +27,7 @@ void* fun3(void * arg){
 		int tmp4 = x.load(memory_order_acquire);
 		// Testcase checks that an older value can not be read
 		// Assertion should pass
-		assert(tmp1 != 0);
+		assert(tmp4 != 0);
 	}
 	return NULL;
 }

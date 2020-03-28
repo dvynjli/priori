@@ -8,10 +8,12 @@ using namespace std;
 atomic<int> x;
 
 void* fun1(void * arg){
-	x.load(memory_order_acquire);
+	int tmp1 = x.load(memory_order_acquire);
 	x.store(1, memory_order_release);
 	x.store(2, memory_order_release);
-	x.load(memory_order_acquire);
+	int tmp2 = x.load(memory_order_acquire);
+	// tmp1 == 4 => tmp2 == 2
+	assert(tmp1!=4 || tmp2==2);
 	return NULL;
 }
 
