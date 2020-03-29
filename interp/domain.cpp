@@ -11,7 +11,7 @@ bool ApDomain::operator== (const ApDomain &other) const {
 //     return !(operator==(other));
 // }
 
-void ApDomain::init(vector<string> globalVars, vector<string> functionVars){
+void ApDomain::init(vector<string> &globalVars, vector<string> &functionVars){
     // fprintf(stderr, "initializing ap_man\n");
     man = initApManager();
     // DEBUG && fprintf(stderr, "Init Env\n");
@@ -30,7 +30,7 @@ void ApDomain::init(vector<string> globalVars, vector<string> functionVars){
     // performTrasfer(man, env, absValue);
 }
 
-void ApDomain::initHasChanged(vector<string> globalVars) {
+void ApDomain::initHasChanged(vector<string> &globalVars) {
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
         hasChanged[(*it)] = false;
     }
@@ -43,7 +43,7 @@ void ApDomain::setHasChanged(string var) {
     }
 }
 
-void ApDomain::assignZerosToGlobals(vector<string> globalVars) {
+void ApDomain::assignZerosToGlobals(vector<string> &globalVars) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
@@ -64,7 +64,7 @@ ap_manager_t* ApDomain::initApManager() {
     }
 }
 
-ap_environment_t* ApDomain::initEnvironment(vector<string> globalVars, vector<string> functionVars){
+ap_environment_t* ApDomain::initEnvironment(vector<string> &globalVars, vector<string> &functionVars){
     ap_var_t intAp[globalVars.size() + functionVars.size()];
     int i = 0;
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it, ++i) {
@@ -80,7 +80,7 @@ ap_environment_t* ApDomain::initEnvironment(vector<string> globalVars, vector<st
     return ap_environment_alloc(intAp, globalVars.size()+functionVars.size(), floatAp, 0);
 }
 
-void ApDomain::copyApDomain(ApDomain copyFrom) {
+void ApDomain::copyApDomain(ApDomain &copyFrom) {
     man = copyFrom.man;
     env = ap_environment_copy(copyFrom.env);
     absValue = ap_abstract1_copy(man, &copyFrom.absValue);
@@ -88,11 +88,11 @@ void ApDomain::copyApDomain(ApDomain copyFrom) {
     hasChanged = copyFrom.hasChanged;
 }
 
-void ApDomain::joinApDomain(ApDomain other) {
+void ApDomain::joinApDomain(ApDomain &other) {
     ap_abstract1_join(man, true, &absValue, &other.absValue);
 }
 
-void ApDomain::meetApDomain(ApDomain other){
+void ApDomain::meetApDomain(ApDomain &other){
     ap_abstract1_meet(man, true, &absValue, &other.absValue);
 }
 
@@ -340,14 +340,14 @@ void ApDomain::performCmpOp(operation oper, string strOp1, string strOp2) {
 }
 
 // Perform join only for the list of variables passed in arg2
-void ApDomain::joinOnVars(ApDomain other, vector<string> vars) {
+void ApDomain::joinOnVars(ApDomain &other, vector<string> &vars) {
     for (auto var: vars) {
         ap_var_t apVar = (ap_var_t) var.c_str();
         joinVar(other, apVar);
     }
 }
 
-void ApDomain::copyOnVars(ApDomain other, vector<string> vars) {
+void ApDomain::copyOnVars(ApDomain &other, vector<string> &vars) {
     for (auto var: vars) {
         ap_var_t apVar = (ap_var_t) var.c_str();
         copyVar(other, apVar);
@@ -358,7 +358,7 @@ void ApDomain::printApDomain() {
     ap_abstract1_fprint(stderr, man,  &absValue);
 }
 
-void ApDomain::applyInterference(string interfVar, ApDomain fromApDomain, bool isPOMO, 
+void ApDomain::applyInterference(string interfVar, ApDomain &fromApDomain, bool isPOMO, 
             map<string, options> *varoptions=nullptr
 ) {
     ap_var_t apInterVar;
@@ -506,50 +506,49 @@ void ApDomain::performNECmp(string strOp1, string strOp2) {
     joinApDomain(ltDomain);
 }
 
-void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t absValue) {
+void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t &absValue) {
     /* assign x = 1 */
-    fprintf(stderr, "Assigning x = 1\n");
-    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
-    ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
-    ap_linexpr1_fprint(stderr, &expr);
-    ap_var_t var = ap_environment_var_of_dim(env, 0);
-    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
-    fprintf(stderr, "assigned linexpr to x\n");
-    ap_abstract1_fprint(stderr, man, &absValue);
-    // ap_linexpr1_clear(&expr);
+    // fprintf(stderr, "Assigning x = 1\n");
+    // ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
+    // ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
+    // ap_linexpr1_fprint(stderr, &expr);
+    // ap_var_t var = ap_environment_var_of_dim(env, 0);
+    // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    // fprintf(stderr, "assigned linexpr to x\n");
+    // ap_abstract1_fprint(stderr, man, &absValue);
+    // // ap_linexpr1_clear(&expr);
 
-    /* assign y = x + 10 */
-    fprintf(stderr, "Assigning y = x + 10\n");
-    ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, "x", AP_CST_S_INT, 10, AP_END);
-    ap_linexpr1_fprint(stderr, &expr);
-    var = ap_environment_var_of_dim(env, 1);
-    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
-    fprintf(stderr, "assigned linexpr to x\n");
-    ap_abstract1_fprint(stderr, man, &absValue);
-    // ap_linexpr1_clear(&expr);
+    // /* assign y = x + 10 */
+    // fprintf(stderr, "Assigning y = x + 10\n");
+    // ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, "x", AP_CST_S_INT, 10, AP_END);
+    // ap_linexpr1_fprint(stderr, &expr);
+    // var = ap_environment_var_of_dim(env, 1);
+    // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    // fprintf(stderr, "assigned linexpr to x\n");
+    // ap_abstract1_fprint(stderr, man, &absValue);
+    // // ap_linexpr1_clear(&expr);
 
-    /* assign x = x + y */
-    fprintf(stderr, "Assigning x = x + y\n");
-    ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, "x", AP_COEFF_S_INT, 1, "y", AP_CST_S_INT, 0, AP_END);
-    ap_linexpr1_fprint(stderr, &expr);
-    var = ap_environment_var_of_dim(env, 0);
-    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
-    fprintf(stderr, "assigned linexpr to x\n");
-    ap_abstract1_fprint(stderr, man, &absValue);
+    // /* assign x = x + y */
+    // fprintf(stderr, "Assigning x = x + y\n");
+    // ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, "x", AP_COEFF_S_INT, 1, "y", AP_CST_S_INT, 0, AP_END);
+    // ap_linexpr1_fprint(stderr, &expr);
+    // var = ap_environment_var_of_dim(env, 0);
+    // absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+    // fprintf(stderr, "assigned linexpr to x\n");
+    // ap_abstract1_fprint(stderr, man, &absValue);
     
-    ap_linexpr1_clear(&expr);
-
+    // ap_linexpr1_clear(&expr);
 }
 
 // copy the variable from the fromApDomain
-void ApDomain::copyVar(ApDomain fromApDomain, ap_var_t apVar) {
+void ApDomain::copyVar(ApDomain &fromApDomain, ap_var_t apVar) {
     ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromApDomain.man, &fromApDomain.absValue, apVar);
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apVar, &expr, NULL);
 }
 
-void ApDomain::joinVar(ApDomain fromApDomain, ap_var_t apVar) {
+void ApDomain::joinVar(ApDomain &fromApDomain, ap_var_t apVar) {
     ap_abstract1_t tmpValue = ap_abstract1_copy(man, &absValue);
                 
     // initialize tmp domain with the value of variable to be joined
@@ -562,321 +561,6 @@ void ApDomain::joinVar(ApDomain fromApDomain, ap_var_t apVar) {
     absValue =  ap_abstract1_join(man, true, &tmpValue, &absValue);
 }
 
-//////////////////////////////////////
-//      class EnvironmentRelHead    //
-//////////////////////////////////////
-
-
-bool EnvironmentRelHead::operator== (const EnvironmentRelHead &other) const {
-    return environment==other.environment;
-}
-
-// map <REL_HEAD, ApDomain>::iterator EnvironmentRelHead::begin() {
-//     return begin();
-// }
-
-// map <REL_HEAD, ApDomain>::iterator EnvironmentRelHead::end() {
-//     return end();
-// }
-
-void EnvironmentRelHead::init(vector<string> globalVars, vector<string> functionVars){
-    REL_HEAD relHead = initRelHead(globalVars);
-    ApDomain dom;
-    dom.init(globalVars, functionVars);
-    // fprintf(stderr, "dom done. assign to env\n");
-    environment[relHead] = dom;
-    // printEnvironment();
-}
-
-void EnvironmentRelHead::copyEnvironment(EnvironmentRelHead copyFrom){
-    // environment = copyFrom.environment;
-    environment.clear();
-    for (auto it=copyFrom.environment.begin(); it!=copyFrom.environment.end(); ++it) {
-        ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
-        environment[it->first]=newDomain;
-    }
-}
-
-REL_HEAD EnvironmentRelHead::initRelHead(vector<string> globalVars) {
-    REL_HEAD relHead;
-    for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        relHead[(*it)] = InstNum();
-    }
-    return relHead;
-}
-
-// InstNum EnvironmentRelHead::getRelHead(string var) {
-//     return relHead[var];
-// }
-
-void EnvironmentRelHead::addRelHead(string var, InstNum &head) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        REL_HEAD relHead(it->first);
-        relHead[var] = head;
-        ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
-        auto searchRelHead = environment.find(relHead);
-        if (searchRelHead != environment.end()) {
-            newDomain.joinApDomain(searchRelHead->second);
-        }
-        environment[relHead] = newDomain;
-    }
-}
-
-void EnvironmentRelHead::changeRelHeadIfNull(string var, InstNum &head) {
-    map <REL_HEAD, ApDomain> newEnvironment;
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        REL_HEAD relHead(it->first);
-        if (relHead[var] == InstNum())
-            relHead[var] = head;
-        newEnvironment[relHead] = it->second;
-    }
-    environment = newEnvironment;
-}
-
-void EnvironmentRelHead::changeRelHead(string var, InstNum &head) {
-    map <REL_HEAD, ApDomain> newEnvironment;
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        REL_HEAD relHead(it->first);
-        relHead[var] = head;
-        newEnvironment[relHead] = it->second;
-    }
-    environment = newEnvironment;
-}
-
-void EnvironmentRelHead::changeRelHeadToNull(string var, InstNum &inst) {
-    map <REL_HEAD, ApDomain> newEnvironment;
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        REL_HEAD relHead(it->first);
-        // RelSequence terminated when a relaxed write from different thread is occured
-        // relHead is changed to null only if existing relHead is from different thread
-        if (relHead[var] != InstNum() && 
-            getInstByInstNum(inst)->getFunction() != getInstByInstNum(relHead[var])->getFunction())
-            relHead[var] = InstNum();
-        newEnvironment[relHead] = it->second;
-    }
-    environment = newEnvironment;
-}
-
-void EnvironmentRelHead::performUnaryOp(operation oper, string strTo, string strOp) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performUnaryOp(oper, strTo, strOp);
-    }
-}
-
-void EnvironmentRelHead::performUnaryOp(operation oper, string strTo, int intOp) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performUnaryOp(oper, strTo, intOp);
-    }
-}
-
-void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
-    }
-}
-
-void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
-    }
-}
-
-void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
-    }
-}
-
-void EnvironmentRelHead::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
-    }
-}
-
-// template <class OP1, class OP2>
-// void EnvironmentRelHead::performCmpOp(operation oper, OP1 op1, OP2 op2) {
-//     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-//         it->second.performCmpOp(oper, op1, op2);
-//     }
-// }
-
-void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, int intOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performCmpOp(oper, strOp1, intOp2);
-    }
-}
-
-void EnvironmentRelHead::performCmpOp(operation oper, int intOp1, string strOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performCmpOp(oper, intOp1, strOp2);
-    }
-}
-
-void EnvironmentRelHead::performCmpOp(operation oper, int intOp1, int intOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performCmpOp(oper, intOp1, intOp2);
-    }
-}
-
-void EnvironmentRelHead::performCmpOp(operation oper, string strOp1, string strOp2) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performCmpOp(oper, strOp1, strOp2);
-    }
-}
-
-void EnvironmentRelHead::performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper) {
-    // if (getRelHead(destVarName) == nullptr)
-    //     setRelHead(destVarName, storeInst);
-    changeRelHeadIfNull(destVarName, storeInst);
-}
-
-void EnvironmentRelHead::joinOnVars(EnvironmentRelHead other, vector<string> vars, Z3Minimal &zHelper) {
-
-}
-
-void EnvironmentRelHead::copyOnVars(EnvironmentRelHead other, vector<string> vars) {
-
-}
-
-void EnvironmentRelHead::applyInterference(
-    string interfVar, 
-    EnvironmentRelHead fromEnv, 
-    Z3Minimal &zHelper, 
-    InstNum &curInst,
-    InstNum &interfInst
-) {
-    // fprintf(stderr, "Env before applying interf:\n");
-    // printEnvironment();
-
-    // if (isSyncWith) {
-        carryEnvironment(interfVar, fromEnv);
-    // }
-    #ifdef NOTRA
-    else {
-        for (auto it=environment.begin(); it!=environment.end(); ++it) {
-            REL_HEAD curRelHead = it->first;
-            
-            bool apply = true;
-            for (auto relHeadIt=curRelHead.begin(); relHeadIt!=curRelHead.end(); ++relHeadIt) {
-                if (relHeadIt->second != nullptr && zHelper.querySB(interfInst, relHeadIt->second)) {
-                    apply = false;
-                    break;
-                }
-            }
-            if(!apply) continue;
-
-            ApDomain curDomain, tmpDomain;
-            curDomain.copyApDomain(it->second);
-            for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-                tmpDomain.copyApDomain(it->second);
-                tmpDomain.applyInterference(interfVar, interfItr->second, isSyncWith, false);
-                curDomain.joinApDomain(tmpDomain);
-            }
-            environment[curRelHead] = curDomain;
-        }
-    }
-    #endif
-}
-
-void EnvironmentRelHead::carryEnvironment(string interfVar, EnvironmentRelHead fromEnv) {
-    map <REL_HEAD, ApDomain> newEnvironment;
-        for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-            for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
-                REL_HEAD curRelHead(curItr->first);
-                REL_HEAD interfRelHead(interfItr->first);
-                curRelHead[interfVar] = interfRelHead[interfVar];
-                ApDomain newDomain;
-                newDomain.copyApDomain(curItr->second);
-                newDomain.applyInterference(interfVar, interfItr->second, false);
-                auto searchRelHead = environment.find(curRelHead);
-                // if (searchRelHead != environment.end()) {
-                //     newDomain.joinApDomain(searchRelHead->second);
-                // }
-                newEnvironment[curRelHead] = newDomain;
-            }
-        }
-        environment = newEnvironment;
-}
-
-void EnvironmentRelHead::joinEnvironment(EnvironmentRelHead other) {
-    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
-        REL_HEAD relHead = it->first;
-        ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
-
-        // if the relHead already exist in the current enviornment,
-        // join it with the existing one
-        // else add it to the current environment
-        auto searchRelHead = environment.find(relHead);
-        if (searchRelHead != environment.end()) {
-            newDomain.joinApDomain(searchRelHead->second);
-        }
-        environment[relHead] = newDomain;
-    }
-}
-
-void EnvironmentRelHead::meetEnvironment(Z3Minimal &zHelper, EnvironmentRelHead other) {
-    for (auto it=other.environment.begin(); it!=other.environment.end(); ++it) {
-        REL_HEAD relHead = it->first;
-        ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
-
-        // if the relHead already exist in the current enviornment,
-        // meet it with the existing one
-        // else add it to the current environment
-        auto searchRelHead = environment.find(relHead);
-        if (searchRelHead != environment.end()) {
-            newDomain.meetApDomain(searchRelHead->second);
-        }
-        environment[relHead] = newDomain;
-    }
-}
-
-void EnvironmentRelHead::setVar(string strVar) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.setVar(strVar);
-    }
-}
-
-void EnvironmentRelHead::unsetVar(string strVar) {
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.unsetVar(strVar);
-    }
-}
-
-bool EnvironmentRelHead::isUnreachable() {
-    bool isUnreach = true;
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        if (!it->second.isUnreachable()) {
-            isUnreach = false;
-            break;
-        }
-    }
-    return isUnreach;
-}
-
-void EnvironmentRelHead::printEnvironment() {
-    fprintf(stderr, "\n--Environment--\n");
-    for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        REL_HEAD relHead = it->first;
-        fprintf (stderr, "RelHead:\n");
-        printRelHead(relHead);
-        it->second.printApDomain();
-        fprintf(stderr, "\n");
-    }
-}
-
-void EnvironmentRelHead::printRelHead(REL_HEAD relHead) {
-    for (auto it=relHead.begin(); it!=relHead.end(); ++it) {
-        fprintf(stderr, "%s: ", it->first.c_str());
-        if (it->second != InstNum())
-            fprintf(stderr, "%s", it->second.toString().c_str());
-        else fprintf(stderr, "NULL");
-        fprintf(stderr, "\n");
-    }
-}
 
 
 
@@ -888,7 +572,7 @@ bool EnvironmentPOMO::operator== (const EnvironmentPOMO &other) const {
 }
 
 
-void EnvironmentPOMO::init(vector<string> globalVars, vector<string> functionVars){
+void EnvironmentPOMO::init(vector<string> &globalVars, vector<string> &functionVars){
     POMO pomo = initPOMO(globalVars);
     ApDomain dom;
     dom.init(globalVars, functionVars);
@@ -897,7 +581,7 @@ void EnvironmentPOMO::init(vector<string> globalVars, vector<string> functionVar
     // printEnvironment();
 }
 
-POMO EnvironmentPOMO::initPOMO(vector<string> globalVars){
+POMO EnvironmentPOMO::initPOMO(vector<string> &globalVars){
     POMO pomo;
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
         pomo[(*it)] = PartialOrder();
@@ -905,7 +589,7 @@ POMO EnvironmentPOMO::initPOMO(vector<string> globalVars){
     return pomo;
 }
 
-void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO copyFrom){
+void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO &copyFrom){
     // environment = copyFrom.environment;
     environment.clear();
     for (auto it=copyFrom.environment.begin(); it!=copyFrom.environment.end(); ++it) {
@@ -913,8 +597,12 @@ void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO copyFrom){
         newDomain.copyApDomain(it->second);
         environment[it->first]=newDomain;
     }
-   if (copyFrom.isModified()) setModified();
-   else setNotModified();
+    if (copyFrom.isModified()) setModified();
+    else setNotModified();
+    // fprintf(stderr, "copied from:\n");
+    // copyFrom.printEnvironment();
+    // fprintf(stderr, "after copying:\n");
+    // printEnvironment();
 }
 
 void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, string strOp) {
@@ -980,20 +668,21 @@ void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2)
 void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper) {
     map <POMO, ApDomain> newEnv;
     for (auto it: environment) {
-        POMO tmpPomo;
-        for (auto varIt: it.first) {
-            tmpPomo[varIt.first] = varIt.second;
-            if (varIt.first == destVarName) {
-                // fprintf(stderr, "appending from POMO\n");
-                tmpPomo[varIt.first].append(zHelper, storeInst);
-            }
-        }
+        POMO tmpPomo=it.first;
+        // for (auto varIt: it.first) {
+        //     tmpPomo[varIt.first] = varIt.second;
+        //     if (varIt.first == destVarName) {
+        //         // fprintf(stderr, "appending from POMO\n");
+        //         tmpPomo[varIt.first].append(zHelper, storeInst);
+        //     }
+        // }
+        tmpPomo[destVarName].append(zHelper, storeInst);
         newEnv[tmpPomo] = it.second;
     }
     environment = newEnv;
 }
 
-void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars, 
+void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars, 
     Z3Minimal &zHelper
 ) {
     map <POMO, ApDomain> newenvironment;
@@ -1021,7 +710,11 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
             for (auto varItr: curPomo) {
                 auto searchVarOtherItr = otherPomo.find(varItr.first);
                 if (searchVarOtherItr == otherPomo.end()) {
-                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", varItr.first.c_str());
+                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in joinOnVars\n", varItr.first.c_str());
+                    fprintf(stderr, "Was joining with:\n");
+                    printPOMO(otherPomo);
+                    fprintf(stderr, "other.first:\n");
+                    printPOMO(otherItr.first);
                     exit(0);
                 }
                 if (!varItr.second.isConsistent(searchVarOtherItr->second)) {
@@ -1090,7 +783,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO other, vector<string> vars,
     // printEnvironment();
 }
 
-void EnvironmentPOMO::copyOnVars(EnvironmentPOMO other, vector<string> vars) {
+void EnvironmentPOMO::copyOnVars(EnvironmentPOMO &other, vector<string> &vars) {
     if (environment.size() > 1) {
         fprintf(stderr, "ERROR: Please create new function for each thread create call\n");
         exit(0);
@@ -1110,7 +803,7 @@ void EnvironmentPOMO::copyOnVars(EnvironmentPOMO other, vector<string> vars) {
 
 void EnvironmentPOMO::applyInterference(
     string interfVar, 
-    EnvironmentPOMO interfEnv, 
+    EnvironmentPOMO &interfEnv, 
     Z3Minimal &zHelper, 
     InstNum &curInst,
     InstNum &interfInst
@@ -1130,7 +823,7 @@ void EnvironmentPOMO::applyInterference(
             for (auto varIt:curPomo) {
                 auto searchInterfPomo = interfpomo.find(varIt.first);
                 if (searchInterfPomo == interfpomo.end()) {
-                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", varIt.first.c_str());
+                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in applyinterf\n", varIt.first.c_str());
                     exit(0);
                 }
                 if (!varIt.second.isConsistent(searchInterfPomo->second)) {
@@ -1201,7 +894,7 @@ void EnvironmentPOMO::applyInterference(
     // printEnvironment();
 }
 
-void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO fromEnv) {
+void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO &fromEnv) {
     /* map <REL_HEAD, ApDomain> newEnvironment;
         for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
             for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
@@ -1221,7 +914,7 @@ void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO fromEnv
         environment = newEnvironment; */
 }
 
-void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
+void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
     for (auto it=other.begin(); it!=other.end(); ++it) {
         POMO pomo = it->first;
         ApDomain newDomain;
@@ -1240,16 +933,16 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO other) {
 }
 
 // Used for logical intructions
-void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other) {
+void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO &other) {
     map <POMO, ApDomain> newenvironment;
     
     for (auto curIt: environment) {
         for (auto otherIt: other) {
             // join the POMOs
-            POMO curPomo = curIt.first;
-            joinPOMO(zHelper, curIt.first, otherIt.first, curPomo);
-            // fprintf(stderr, "curPomo:\n");
-            // printPOMO(curPomo);
+            POMO joinedPomo;
+            joinPOMO(zHelper, curIt.first, otherIt.first, joinedPomo);
+            // fprintf(stderr, "joinedPomo:\n");
+            // printPOMO(joinedPomo);
 
             // meet of ApDomain
             ApDomain newDomain;
@@ -1257,12 +950,12 @@ void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO other)
             newDomain.meetApDomain(otherIt.second);
 
             // if curPomo alread exist join the newDomain with existing one
-            auto searchPomo = newenvironment.find(curPomo);
+            auto searchPomo = newenvironment.find(joinedPomo);
             if (searchPomo != newenvironment.end()) {
                 newDomain.joinApDomain(searchPomo->second);
             }
             if(!newDomain.isUnreachable())
-                newenvironment[curPomo] = newDomain;
+                newenvironment[joinedPomo] = newDomain;
         }
     }
     environment = newenvironment;
@@ -1309,8 +1002,8 @@ bool EnvironmentPOMO::isUnreachable() {
 
 void EnvironmentPOMO::getVarOption (map<string, options> *varoptions, 
     string varName,
-    PartialOrder curPartialOrder,
-    PartialOrder interfPartialOrder, 
+    PartialOrder &curPartialOrder,
+    PartialOrder &interfPartialOrder, 
     Z3Minimal &zHelper
 ) {
     unordered_set<InstNum> lastsCurPO;
@@ -1356,7 +1049,7 @@ void EnvironmentPOMO::getVarOption (map<string, options> *varoptions,
     varoptions->emplace(make_pair(varName, opt));
 }
 
-void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO joinedPOMO){
+void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO){
     // fprintf(stderr, "joining:\n");
     // printPOMO(pomo1);
     // printPOMO(pomo2);
@@ -1366,7 +1059,7 @@ void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, POMO pomo1, POMO pomo2, POMO
     for (auto it:joinedPOMO) {
         auto searchPomo2 = pomo2.find(it.first);
         if (searchPomo2 == pomo2.end()) {
-            fprintf(stderr, "ERROR: Variable %s mismatch in POMOs\n", it.first.c_str());
+            fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in joinPOMO\n", it.first.c_str());
             exit(0);
         }
         // join the two partial orders
@@ -1387,7 +1080,7 @@ void EnvironmentPOMO::printEnvironment() {
     }
 }
 
-void EnvironmentPOMO::printPOMO(POMO pomo) {
+void EnvironmentPOMO::printPOMO(const POMO &pomo) {
     // fprintf(stderr, "Printing POMO\n");
     for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
         fprintf(stderr, "%s: ", it->first.c_str());

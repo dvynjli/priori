@@ -87,7 +87,7 @@ bool PartialOrder::append(Z3Minimal &zHelper, InstNum newinst) {
 // Joins two partial orders maintaing the ordering relation in both
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
-bool PartialOrder::join(Z3Minimal &zHelper, PartialOrder &other) {
+bool PartialOrder::join(Z3Minimal &zHelper, const PartialOrder &other) {
 	// fprintf(stderr, "joining\n");
 	// fprintf(stderr, "%s\t and \t%s\n", toString().c_str(), other.toString().c_str());
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
@@ -308,10 +308,10 @@ bool PartialOrder::operator<(const PartialOrder &other) const {
 	return order < other.order;
 }
 
-map<InstNum, set<InstNum>>::iterator PartialOrder::begin() {
+map<InstNum, set<InstNum>>::const_iterator PartialOrder::begin() const {
 	return order.begin();
 }
 
-map<InstNum, set<InstNum>>::iterator PartialOrder::end() {
+map<InstNum, set<InstNum>>::const_iterator PartialOrder::end() const {
 	return order.end();
 }

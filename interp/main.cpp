@@ -1248,6 +1248,7 @@ class VerifierPass : public ModulePass {
                     if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
                         // errs() << "pthread join with: ";
                         // printValue(retInst);
+                        // programState[calledFunc][retInst].printEnvironment();
                         curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, zHelper);
                     }
                 }

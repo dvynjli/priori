@@ -36,7 +36,7 @@ public:
 	// Joins two partial orders maintaing the ordering relation in both
 	// If this is not possible (i.e. joining will result in cycle), 
 	// returns false
-	bool join(Z3Minimal &zHelper, PartialOrder &other);
+	bool join(Z3Minimal &zHelper, const PartialOrder &other);
 
 	// checks if (inst1, inst2) \in order
 	bool isOrderedBefore(InstNum inst1, InstNum inst2);
@@ -66,8 +66,8 @@ public:
 	virtual bool operator== (const PartialOrder &other) const;
 	virtual bool operator<  (const PartialOrder &other) const;
 
-	map<InstNum, set<InstNum>>::iterator begin();
-	map<InstNum, set<InstNum>>::iterator end();
+	map<InstNum, set<InstNum>>::const_iterator begin() const;
+	map<InstNum, set<InstNum>>::const_iterator end() const;
 
 	void copy (const PartialOrder &copyFrom);
 
