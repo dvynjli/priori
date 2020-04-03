@@ -66,11 +66,13 @@ class VerifierPass : public ModulePass {
         globalVars = getGlobalIntVars(M);
         // errs() << "#global vars:" << globalVars.size() << "\n";
         // zHelper.initZ3(globalVars);
+        // errs() << "init\n";
         initThreadDetails(M);
         // printFeasibleInterf();
         // countNumFeasibleInterf();
         // printInstMaps();
         // testPO();
+        // errs() << "analyze\n";
         analyzeProgram(M);
         if (!stopOnFail) checkAssertions();
         else {
@@ -217,7 +219,7 @@ class VerifierPass : public ModulePass {
             funcQ.pop();
             vector<string> funcVars;
             
-            // errs() << "----analyzing funtion: " << func->getName() << "\n";
+            // errs() << "----init of funtion: " << func->getName() << "\n";
             unordered_map<string, unordered_set<Instruction*>> varToStores;
             forward_list<pair<Instruction*, string>> varToLoads;
             auto varToLoadsIntertPt = varToLoads.before_begin();
@@ -251,7 +253,9 @@ class VerifierPass : public ModulePass {
                 for(auto I = BB->begin(); I != BB->end(); I++)       //iterator of BasicBlock over Instruction
                 {
                     // if (!minimalZ3) 
+                    // errs() << "Inst: "; printValue(&*I); errs() << "\n"; 
                     addInstToMaps(&*I, tid, &instId);
+                    // errs() << "added to maps\n";
                     if (CallInst *call = dyn_cast<CallInst>(I)) {
                         if(!call->getCalledFunction()->getName().compare("pthread_create")) {
                             if (Function* newThread = dyn_cast<Function> (call->getArgOperand(2)))
@@ -323,8 +327,8 @@ class VerifierPass : public ModulePass {
                                 // printValue(alias);
                                 string destVarName = getNameFromValue(alias);
                                 varToStores[destVarName].insert(storeInst);
-                                // errs() << "****adding store instr for: ";
-                                // printValue(storeInst);
+                                errs() << "****adding store instr for: ";
+                                printValue(storeInst);
                                 // zHelper.addStoreInstr(storeInst);
                                 lastGlobalOfVar[destVarName] = storeInst;
                                 lastWritesCurInst[destVarName] = storeInst;
@@ -489,9 +493,13 @@ class VerifierPass : public ModulePass {
 
             // errs() << "Z3 after func " << func->getName() << ":\n";
             // errs() << zHelper.toString();
-
+			
+			// errs() << "making env\n";
             Environment curFuncEnv;
+            // errs() << "init env\n";
             curFuncEnv.init(globalVars, funcVars);
+            // errs() << "adding to func init env\n";
+            // curFuncEnv.printEnvironment();
             funcInitEnv[func] = curFuncEnv;
             tid++;
         }
@@ -505,7 +513,8 @@ class VerifierPass : public ModulePass {
         //     }
         // }
 
-        getFeasibleInterferences(&allLoads, &allStores, &funcToTCreate, &funcToTJoin);
+        // errs() << "getting feasible\n";
+        // getFeasibleInterferences(&allLoads, &allStores, &funcToTCreate, &funcToTJoin);
     }
 
     void analyzeProgram(Module &M) {
@@ -543,6 +552,8 @@ class VerifierPass : public ModulePass {
                 
                 auto searchCurFuncInitEnv = funcInitEnv.find(curFunc);
                 assert(searchCurFuncInitEnv!=funcInitEnv.end() && "Intial Environment of the function not found");
+                // errs() << "Init Env:\n";
+                // searchCurFuncInitEnv->second.printEnvironment();
                 
                 auto searchInterf = feasibleInterfences.find(curFunc);           
                 if (searchInterf != feasibleInterfences.end()) {
@@ -641,7 +652,7 @@ class VerifierPass : public ModulePass {
             BasicBlock* BB = basicBlockQ.front();
             basicBlockQ.pop();
 
-            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr);
+            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf->end());
 
             for (auto succBB: successors(BB)) {
                 if (basicBlockSet.insert(succBB).second)
@@ -678,7 +689,8 @@ class VerifierPass : public ModulePass {
 
     Environment analyzeBasicBlock (BasicBlock *B, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
-        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
@@ -703,7 +715,7 @@ class VerifierPass : public ModulePass {
             // flag might change if the corresponding flag in the other thread is set.
             if (LoadInst *loadInst = dyn_cast<LoadInst>(instItr)) {
                 // errs() << "checking unary inst:"; printValue(loadInst);
-                curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr);
+                curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr, endCurInterfItr);
             }
             else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
                 if (stopOnFail && callInst->getCalledFunction()->getName() == "__assert_fail") {
@@ -749,7 +761,7 @@ class VerifierPass : public ModulePass {
             else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
                 // errs() << "initial env:\n";
                 // curEnv.printEnvironment();
-                curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr);
+                curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr, endCurInterfItr);
             }
             // Other instructions don't need to be re-checked if modified flag is unset
             else if (!curEnv.isModified()) {
@@ -1173,7 +1185,8 @@ class VerifierPass : public ModulePass {
     Environment checkUnaryInst(
         UnaryInstruction* unaryInst, 
         Environment curEnv, 
-        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr
     ) {
         Value* fromVar = unaryInst->getOperand(0);
         string fromVarName = getNameFromValue(fromVar);
@@ -1203,7 +1216,7 @@ class VerifierPass : public ModulePass {
                     // errs() << "Load of global\n";
                     // errs() << "Env before:";
                     // curEnv.printEnvironment();
-                    curEnv = applyInterfToLoad(unaryInst, curEnv, curInterfItr, fromVarName);
+                    curEnv = applyInterfToLoad(unaryInst, curEnv, curInterfItr, endCurInterfItr, fromVarName);
                 }
                 break;
             // TODO: add more cases
@@ -1284,7 +1297,8 @@ class VerifierPass : public ModulePass {
     Environment checkRMWInst(
         AtomicRMWInst *rmwInst, 
         Environment curEnv, 
-        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr
+        forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr
     ) { 
         Value *pointerVar = rmwInst->getPointerOperand();
         string pointerVarName = getNameFromValue(pointerVar);
@@ -1310,7 +1324,7 @@ class VerifierPass : public ModulePass {
             pointerVar = gepOp->getPointerOperand();
         }
         if (dyn_cast<GlobalVariable>(pointerVar)) {
-            curEnv = applyInterfToLoad(rmwInst, curEnv, curInterfItr, pointerVarName);
+            curEnv = applyInterfToLoad(rmwInst, curEnv, curInterfItr, endCurInterfItr, pointerVarName);
         }
         // errs() << "After applyInterf:\n";
         // curEnv.printEnvironment();
@@ -1348,6 +1362,7 @@ class VerifierPass : public ModulePass {
         Instruction* loadInst, 
         Environment curEnv, 
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr,
         string varName
     ) {
         // errs() << "Applying interf\n";
@@ -1358,7 +1373,11 @@ class VerifierPass : public ModulePass {
         //     printValue(loadInst);
         //     return curEnv;
         // }
+        // fprintf(stderr, "curInterfItr: %p\n", curInterfItr);
+        // fprintf(stderr, "*curInterfItr: %p\n", (*curInterfItr));
+        if (*curInterfItr == endCurInterfItr) return curEnv;
         auto curLsPair = (**curInterfItr);
+        // errs() << "found curLsPair\n";
         if (loadInst != curLsPair->first) {
             errs() << "ERROR: Ordering of load instruction in interf is worng\n";
             errs() << "expected: "; printValue(loadInst);
@@ -1369,10 +1388,12 @@ class VerifierPass : public ModulePass {
         (*curInterfItr)++;
         
         // if interfernce is from some other thread
+        errs() << "found intrefInst\n";
         if (interfInst && interfInst != loadInst->getPrevNode()) {
             // find the domain of interfering instruction
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
+                errs() << "Interf env found\n";
                 auto searchInterfEnv = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
@@ -1418,6 +1439,7 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
+            else errs() << "interf env not found\n";
         }
         return curEnv;
     }

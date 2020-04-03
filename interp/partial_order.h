@@ -10,13 +10,13 @@ class PartialOrder {
 	// If an instruction inst is not ordered with respect to any 
 	// instruction in partial order so far, order[inst] will be empty 
 	// set and ~E x. inst \in order[x]
-	map<InstNum, set<InstNum>> order;
-	set<InstNum> rmws;
+	unordered_map<InstNum, unordered_set<InstNum>> order;
+	unordered_set<InstNum> rmws;
 
 	// update ordering relation to get transitivity
 	bool makeTransitiveOrdering(InstNum from, 
 		InstNum to, 
-		std::map<InstNum, std::set<InstNum>>::iterator toItr);
+		std::unordered_map<InstNum, std::unordered_set<InstNum>>::iterator toItr);
 
 	// adds an instruction with nothing ordered after it ib the order,
 	// while deleting the older instructions from the same thread
@@ -24,6 +24,14 @@ class PartialOrder {
 	bool isRMWInst(InstNum inst);
 
 public:
+	PartialOrder() :
+		order(unordered_map<InstNum, unordered_set<InstNum>>()), 
+		rmws(unordered_set<InstNum>()) {
+		// order.clear(); 
+		// fprintf(stderr, "PO cons called\n");
+		}
+	
+	PartialOrder(const PartialOrder &po) : order(po.order), rmws(po.rmws) {};
 	// Adds (from, to) to order if not already. 
 	// Since partial order can't be cyclic, if (to, from) are already
 	// in order, returns false. Else add (from, to) and returns true
@@ -64,14 +72,88 @@ public:
 	void getLasts(unordered_set<InstNum> &lasts);
 	
 	virtual bool operator== (const PartialOrder &other) const;
-	virtual bool operator<  (const PartialOrder &other) const;
+	// virtual bool operator<  (const PartialOrder &other) const;
 
-	map<InstNum, set<InstNum>>::const_iterator begin() const;
-	map<InstNum, set<InstNum>>::const_iterator end() const;
+	unordered_map<InstNum, unordered_set<InstNum>>::const_iterator begin() const;
+	unordered_map<InstNum, unordered_set<InstNum>>::const_iterator end() const;
 
 	void copy (const PartialOrder &copyFrom);
 
 	string toString();
 };
+
+namespace std{
+template<>
+struct hash<PartialOrder> {
+	size_t operator() (const PartialOrder &po) const {
+		// return (hash<unsigned short>()(in.getTid()) ^ 
+		auto it = po.begin();
+		if (it == po.end())
+			return hash<InstNum>()(InstNum(0,0));
+		size_t curhash = hash<InstNum>()(it->first);
+		it++;
+		for (; it!=po.end(); it++) {
+			curhash = curhash ^ hash<InstNum>()(it->first);
+		}
+		// fprintf(stderr, "returning hash\n");
+		return curhash;
+	}
+};
+}
+
+class PartialOrderWrapper {
+	PartialOrder &thisPO;
+
+	const PartialOrder& addToSet(PartialOrder &po);
+
+	
+public:
+	static unordered_set<PartialOrder> allPO;
+
+	PartialOrderWrapper(PartialOrder *po) : thisPO(*po) {
+		// PartialOrder *tmpPO = new PartialOrder(po);
+		// fprintf(stderr, "cons called %p %p", &po, tmpPO);
+		thisPO = addToSet(*po);
+		// fprintf(stderr, "cons called thisPO %p\n", &thisPO);
+		// fprintf(stderr, "done\n");
+	}
+
+	PartialOrderWrapper() = delete;
+
+	PartialOrderWrapper(const PartialOrderWrapper &other) : thisPO(other.getPO()) {}
+	
+	void addOrder(Z3Minimal &zHelper, InstNum from, InstNum to);
+	void append(Z3Minimal &zHelper, InstNum inst);
+	void join(Z3Minimal &zHelper, const PartialOrderWrapper &other);
+	void remove(InstNum inst);
+	
+	bool isOrderedBefore(InstNum inst1, InstNum inst2);
+	bool isExists(InstNum inst);
+	bool isConsistent(PartialOrderWrapper &other);
+	bool isConsistentRMW(PartialOrderWrapper &other);
+	bool isFeasible(Z3Minimal &zHelper, PartialOrderWrapper &other, InstNum interfInst, InstNum curInst);
+
+	void getLasts(unordered_set<InstNum> &lasts);
+	PartialOrder& getPO() const;
+
+	virtual bool operator== (const PartialOrderWrapper &other) const;
+	// virtual bool operator<  (const PartialOrderWrapper &other) const;
+	virtual void operator= (const PartialOrderWrapper &other);
+
+	// void copy (const PartialOrderWrapper &copyFrom);
+	void printAllPO() const;
+
+	string toString() const;
+};
+
+namespace std {
+template<>
+struct hash<PartialOrderWrapper> {
+	size_t operator() (const PartialOrderWrapper &po) const {
+		// return (hash<unsigned short>()(in.getTid()) ^ 
+		return hash<PartialOrder>()(po.getPO());
+	}
+};
+}
 
 #endif

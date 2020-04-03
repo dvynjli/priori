@@ -1,6 +1,11 @@
 #include "partial_order.h"
 
 
+// PartialOrder::PartialOrder() {
+// 	order=unordered_map<InstNum, unordered_set<InstNum>>();
+// 	rmws =unordered_set<InstNum>();
+// }
+
 // Adds (from, to) to order if not already.  from-->to
 // Since partial order can't be cyclic, if (to, from) are already
 // in order, returns false. The behavior might be undefined 
@@ -211,7 +216,7 @@ void PartialOrder::getLasts(unordered_set<InstNum> &lasts) {
 
 // update ordering relation to get transitivity
 bool PartialOrder::makeTransitiveOrdering (InstNum from, InstNum to, 
-	std::map<InstNum, std::set<InstNum>>::iterator toItr
+	std::unordered_map<InstNum, std::unordered_set<InstNum>>::iterator toItr
 ){
 	// check for anti-symmetry
 	if (isOrderedBefore(to, from)) return false;
@@ -261,7 +266,7 @@ bool PartialOrder::addInst(Z3Minimal &zHelper, InstNum inst) {
 	auto findInst = order.find(inst);
 	// add (inst,<empty>) in order 
 	if (findInst == order.end()) {
-		set<InstNum> emptyset {};
+		unordered_set<InstNum> emptyset {};
 		order[inst] = emptyset;
 	}
 	if (isRMWInst(inst))
@@ -282,18 +287,29 @@ bool PartialOrder::isRMWInst(InstNum inst) {
 
 string PartialOrder::toString() {
 	std::stringstream ss;
-	for (auto itFrom: order){
-		ss << itFrom.first.toString() << " ---> " ;
-		for (auto itTo: itFrom.second) {
-			ss << itTo.toString() << ", ";
+	// fprintf(stderr, "PartialOrder toString start %lu\n", order.size());
+	if (order.begin()!=order.end()) {
+		// fprintf(stderr, "order not empty\n");
+		for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
+			// fprintf(stderr, "in outer for\n");
+			// fprintf(stderr, "size of second %lu\n", itFrom->second.size());
+			ss << itFrom->first.toString() << " ---> " ;
+			for (auto itTo: itFrom->second) {
+				ss << itTo.toString() << ", ";
+			}
+			ss << ";\t";
 		}
-		ss << ";\t";
 	}
-	// cout << ss.str() << "\n";
+	// else fprintf(stderr, "order is empty\n");
+	// fprintf(stderr, "Printing RMWs\n");
+	// // cout << ss.str() << "\n";
 	ss << "\tRMWs: ";
-	for (auto it: rmws) {
-		ss << it.toString() << ",";
+	// if (rmws.size()>0)
+	for (auto it=rmws.begin(); it!=rmws.end(); it++) {
+		// fprintf(stderr, "in rmws loop\n");
+		ss << it->toString() << ",";
 	}
+	// fprintf(stderr, "PratialOrder toString()\n");
 	return ss.str();
 }
 
@@ -301,17 +317,117 @@ bool PartialOrder::operator==(const PartialOrder &other) const {
 	return order == other.order;
 }
 
-bool PartialOrder::operator<(const PartialOrder &other) const {
-	// TODO: Might need to change this. If instructions are disjoint,
-	// this will not determine any order between the two POs. 
-	// As per our definition, sb should play a role here.
-	return order < other.order;
-}
+// bool PartialOrder::operator<(const PartialOrder &other) const {
+// 	// TODO: Might need to change this. If instructions are disjoint,
+// 	// this will not determine any order between the two POs. 
+// 	// As per our definition, sb should play a role here.
+// 	return order < other.order;
+// }
 
-map<InstNum, set<InstNum>>::const_iterator PartialOrder::begin() const {
+unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::begin() const {
 	return order.begin();
 }
 
-map<InstNum, set<InstNum>>::const_iterator PartialOrder::end() const {
+unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::end() const {
 	return order.end();
 }
+
+
+
+//////////////////////////////////////////
+//      class PartialOrderWrapper       //
+//////////////////////////////////////////
+
+unordered_set<PartialOrder> PartialOrderWrapper::allPO;
+
+const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder &po) {
+	// printAllPO();
+	// fprintf(stderr, "inserting into allPO %s:\n", po.toString().c_str());
+	auto inserted = allPO.insert(po);
+	// fprintf(stderr, "done. returning\n");
+	return (*(inserted.first));
+}
+
+
+void PartialOrderWrapper::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
+	PartialOrder tmpPO = thisPO;
+	tmpPO.addOrder(zHelper, from, to);
+	thisPO = addToSet(tmpPO);
+}
+
+void PartialOrderWrapper::append(Z3Minimal &zHelper, InstNum inst) {
+	PartialOrder tmpPO = thisPO;
+	tmpPO.append(zHelper, inst);
+	thisPO = addToSet(tmpPO);
+}
+
+void PartialOrderWrapper::join(Z3Minimal &zHelper, const PartialOrderWrapper &other) {
+	PartialOrder tmpPO = thisPO;
+	tmpPO.join(zHelper, other.getPO());
+	thisPO = addToSet(tmpPO);
+}
+
+bool PartialOrderWrapper::isOrderedBefore(InstNum inst1, InstNum inst2) {
+	return thisPO.isOrderedBefore(inst1, inst2);
+}
+
+bool PartialOrderWrapper::isExists(InstNum inst) {
+	return thisPO.isExists(inst);
+}
+
+bool PartialOrderWrapper::isConsistent(PartialOrderWrapper &other) {
+	return thisPO.isConsistent(other.getPO());
+}
+
+bool PartialOrderWrapper::isConsistentRMW(PartialOrderWrapper &other) {
+	return thisPO.isConsistentRMW(other.getPO());
+}
+
+bool PartialOrderWrapper::isFeasible(
+	Z3Minimal &zHelper, PartialOrderWrapper &other, InstNum interfInst, InstNum curInst
+) {
+	return thisPO.isFeasible(zHelper, other.getPO(), interfInst, curInst);
+}
+
+void PartialOrderWrapper::remove(InstNum inst) {
+	PartialOrder tmpPO = thisPO;
+	tmpPO.remove(inst);
+	thisPO = addToSet(tmpPO);
+}
+
+void PartialOrderWrapper::getLasts(unordered_set<InstNum> &lasts) {
+	thisPO.getLasts(lasts);
+}
+
+bool PartialOrderWrapper::operator== (const PartialOrderWrapper &other) const {
+	return (thisPO == other.getPO());
+}
+
+// bool PartialOrderWrapper::operator<  (const PartialOrderWrapper &other) const {
+// 	return (thisPO < other.getPO());
+// }
+void PartialOrderWrapper::operator= (const PartialOrderWrapper &other) {
+	thisPO = other.thisPO;
+}
+
+// void PartialOrderWrapper::copy (const PartialOrderWrapper &copyFrom) {
+
+// }
+
+PartialOrder& PartialOrderWrapper::getPO() const {
+	return thisPO;
+}
+
+string PartialOrderWrapper::toString() const {
+	// fprintf(stderr, "POW tostring %p\n", thisPO);
+	// printAllPO();
+	return thisPO.toString();
+}
+
+void PartialOrderWrapper::printAllPO() const {
+	fprintf(stderr, "AllPO:\n");
+	for (auto it: allPO) {
+		fprintf(stderr, "%s\n", it.toString().c_str());
+	}
+}
+

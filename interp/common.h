@@ -42,6 +42,7 @@ public:
 	InstNum() : threadid(0), instid(0) {}
 	InstNum(unsigned short int tid, unsigned short int iid) :
 		threadid(tid), instid(iid) {}
+	
 	// is current instruction sequenced before other instruction
 	bool isSeqBefore(const InstNum &other) const {
 		if (threadid == other.getTid() && instid <= other.getInstid()) return true;
@@ -88,7 +89,7 @@ namespace std{
 template<>
 struct hash<InstNum> {
 	size_t operator() (const InstNum &in) const {
-		return (hash<unsigned short>()(in.getTid()) ^ 
+		return ((hash<unsigned short>()(in.getTid()) << 16) || 
 			hash<unsigned short>()(in.getInstid()));
 	}
 };

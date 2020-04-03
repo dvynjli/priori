@@ -23,7 +23,7 @@
 //      thread comes after last write of current thread in POMO
 enum options {UNKNOWN, DONOTHING, MERGE, COPY};
 
-typedef map <string, PartialOrder> POMO;
+// typedef unordered_map <string, PartialOrderWrapper> POMO;
 
 extern llvm::cl::opt<DomainTypes> AbsDomType;
 
@@ -164,28 +164,97 @@ public:
     virtual void printEnvironment() = 0;
 };
 
+class POMO {
+public:
+    unordered_map <string, PartialOrderWrapper> pomo;
+    unordered_map <string, PartialOrderWrapper>::const_iterator begin() const {
+        return pomo.begin();
+    }
+	unordered_map <string, PartialOrderWrapper>::const_iterator end() const {
+        return pomo.end();
+    }
+    unordered_map <string, PartialOrderWrapper>::iterator find(string var) {
+        return pomo.find(var);
+    }
+    bool empty() {
+        return pomo.empty();
+    }
+
+
+    void emplace(string var, PartialOrderWrapper po) {
+        pomo.emplace(var, po);
+    }
+
+    bool operator== (const POMO &other) const {
+        for (auto it: pomo) {
+            auto searchOther = other.find(it.first);
+            assert(searchOther != other.end()
+                    && "other pomo does not contain variable");
+            if (!(it.second == searchOther->second)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    void operator= (const POMO &other) {
+        pomo = other.pomo;
+    }
+
+    void printPOMO() {
+    // fprintf(stderr, "Printing POMO\n");
+    for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
+        fprintf(stderr, "%s, %p: ", it->first.c_str(), &(it->second));
+        // if (it->second)
+            fprintf(stderr, "%s\n", it->second.toString().c_str());
+        // else fprintf(stderr, "NULL");
+        // fprintf(stderr, "\n");
+    }
+    // fprintf(stderr, "printing done\n");
+}
+};
+
+namespace std{
+template<>
+struct hash<POMO> {
+	size_t operator() (const POMO &pomo) const {
+		// return (hash<unsigned short>()(in.getTid()) ^ 
+		auto it = pomo.begin();
+		if (it == pomo.end()); {
+            PartialOrder po = PartialOrder();
+			return hash<PartialOrderWrapper>()(PartialOrderWrapper(&po));
+        }
+		size_t curhash = hash<PartialOrderWrapper>()(it->second);
+		it++;
+		for (; it!=pomo.end(); it++) {
+			curhash = curhash ^ hash<PartialOrderWrapper>()(it->second);
+		}
+		// fprintf(stderr, "returning hash\n");
+		return curhash;
+	}
+};
+}
 
 class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain
-    map <POMO, ApDomain> environment;
+    unordered_map <POMO, ApDomain> environment;
     
-    POMO initPOMO(vector<string> &globalVars);
+    void initPOMO(vector<string> &globalVars, POMO *pomo);
     
     void printPOMO(const POMO &pomo);
     void joinPOMO (Z3Minimal &zHelper, const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
     
-    map<POMO, ApDomain>::iterator begin();
-	map<POMO, ApDomain>::iterator end();
+    unordered_map<POMO, ApDomain>::iterator begin();
+	unordered_map<POMO, ApDomain>::iterator end();
 
-    // void getVarOption (map<string, options> *varoptions, string varName,PartialOrder curPartialOrder,
+    // void getVarOption (map<string, options> *varoptions, string varName,PartialOrderWrapper curPartialOrder,
     //             map<InstNum, map<string, InstNum>> *lastWrites, 
     //             InstNum interfInst, InstNum curInst, Z3Minimal &zHelper);
     void getVarOption (map<string, options> *varoptions, 
                 string varName,
-                PartialOrder &curPartialOrder,
-                PartialOrder &interfPartialOrder, 
+                PartialOrderWrapper &curPartialOrder,
+                PartialOrderWrapper &interfPartialOrder, 
                 Z3Minimal &zHelper);
 
 public:
@@ -194,6 +263,9 @@ public:
     // void changeRelHeadIfNull(string var, InstNum head);
     
     virtual bool operator== (const EnvironmentPOMO &other) const;
+    // void operator= (const EnvironmentPOMO &other) {
+    //     environment = other.environment;
+    // }
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
