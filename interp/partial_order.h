@@ -123,7 +123,7 @@ public:
 	PartialOrderWrapper(const PartialOrderWrapper &other) : thisPO(other.getPO()) {}
 	
 	void addOrder(Z3Minimal &zHelper, InstNum from, InstNum to);
-	void append(Z3Minimal &zHelper, InstNum inst);
+	PartialOrderWrapper append(Z3Minimal &zHelper, InstNum inst);
 	void join(Z3Minimal &zHelper, const PartialOrderWrapper &other);
 	void remove(InstNum inst);
 	

@@ -687,7 +687,7 @@ void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName, Z3M
         // }
         auto searchDestVar = tmpPomo.find(destVarName);
         assert(searchDestVar != tmpPomo.end() && "variable does not exists in envrionment POMO");
-        searchDestVar->second.append(zHelper, storeInst);
+        tmpPomo.emplace(searchDestVar->first, searchDestVar->second.append(zHelper, storeInst));
         newEnv[tmpPomo] = it.second;
     }
     environment = newEnv;

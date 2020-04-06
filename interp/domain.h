@@ -182,7 +182,15 @@ public:
 
 
     void emplace(string var, PartialOrderWrapper po) {
-        pomo.emplace(var, po);
+        fprintf(stderr, "changing %s\n", var.c_str());
+        auto searchVar = pomo.find(var);
+        if (searchVar != pomo.end()) {
+            fprintf(stderr, "assigning\n");
+            searchVar->second = po;
+        }
+        else pomo.emplace(var, po);
+        printPOMO();
+        fprintf(stderr, "done\n");
     }
 
     bool operator== (const POMO &other) const {
@@ -201,15 +209,11 @@ public:
     }
 
     void printPOMO() {
-    // fprintf(stderr, "Printing POMO\n");
-    for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
-        fprintf(stderr, "%s, %p: ", it->first.c_str(), &(it->second));
-        // if (it->second)
-            fprintf(stderr, "%s\n", it->second.toString().c_str());
-        // else fprintf(stderr, "NULL");
-        // fprintf(stderr, "\n");
-    }
-    // fprintf(stderr, "printing done\n");
+        // fprintf(stderr, "Printing POMO\n");
+        for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
+            fprintf(stderr, "%s: %s\n", it->first.c_str(), it->second.toString().c_str());
+        }
+        // fprintf(stderr, "printing done\n");
 }
 };
 

@@ -514,7 +514,7 @@ class VerifierPass : public ModulePass {
         // }
 
         // errs() << "getting feasible\n";
-        // getFeasibleInterferences(&allLoads, &allStores, &funcToTCreate, &funcToTJoin);
+        getFeasibleInterferences(&allLoads, &allStores, &funcToTCreate, &funcToTJoin);
     }
 
     void analyzeProgram(Module &M) {
@@ -1388,12 +1388,12 @@ class VerifierPass : public ModulePass {
         (*curInterfItr)++;
         
         // if interfernce is from some other thread
-        errs() << "found intrefInst\n";
+        // errs() << "found intrefInst\n";
         if (interfInst && interfInst != loadInst->getPrevNode()) {
             // find the domain of interfering instruction
             auto searchInterfFunc = programState.find(interfInst->getFunction());
             if (searchInterfFunc != programState.end()) {
-                errs() << "Interf env found\n";
+                // errs() << "Interf env found\n";
                 auto searchInterfEnv = searchInterfFunc->second.find(interfInst);
                 // errs() << "For Load: ";
                 // unaryInst->print(errs());
@@ -1439,7 +1439,7 @@ class VerifierPass : public ModulePass {
                     }
                 }
             }
-            else errs() << "interf env not found\n";
+            // else errs() << "interf env not found\n";
         }
         return curEnv;
     }

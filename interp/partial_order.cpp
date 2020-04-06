@@ -350,19 +350,20 @@ const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder &po) {
 
 
 void PartialOrderWrapper::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
-	PartialOrder tmpPO = thisPO;
+	PartialOrder tmpPO = PartialOrder(thisPO);
 	tmpPO.addOrder(zHelper, from, to);
 	thisPO = addToSet(tmpPO);
 }
 
-void PartialOrderWrapper::append(Z3Minimal &zHelper, InstNum inst) {
-	PartialOrder tmpPO = thisPO;
+PartialOrderWrapper PartialOrderWrapper::append(Z3Minimal &zHelper, InstNum inst) {
+	PartialOrder tmpPO = PartialOrder(thisPO);
 	tmpPO.append(zHelper, inst);
-	thisPO = addToSet(tmpPO);
+	return PartialOrderWrapper(&tmpPO);
+	// thisPO = addToSet(tmpPO);
 }
 
 void PartialOrderWrapper::join(Z3Minimal &zHelper, const PartialOrderWrapper &other) {
-	PartialOrder tmpPO = thisPO;
+	PartialOrder tmpPO = PartialOrder(thisPO);
 	tmpPO.join(zHelper, other.getPO());
 	thisPO = addToSet(tmpPO);
 }
@@ -390,7 +391,7 @@ bool PartialOrderWrapper::isFeasible(
 }
 
 void PartialOrderWrapper::remove(InstNum inst) {
-	PartialOrder tmpPO = thisPO;
+	PartialOrder tmpPO = PartialOrder(thisPO);
 	tmpPO.remove(inst);
 	thisPO = addToSet(tmpPO);
 }
@@ -407,7 +408,9 @@ bool PartialOrderWrapper::operator== (const PartialOrderWrapper &other) const {
 // 	return (thisPO < other.getPO());
 // }
 void PartialOrderWrapper::operator= (const PartialOrderWrapper &other) {
+	fprintf(stderr, "assigning in POW class\n");
 	thisPO = other.thisPO;
+	fprintf(stderr, "assigned in POW class\n");
 }
 
 // void PartialOrderWrapper::copy (const PartialOrderWrapper &copyFrom) {
