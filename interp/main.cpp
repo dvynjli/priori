@@ -1,7 +1,6 @@
 #include "common.h"
 #include "domain.h"
 #include "analyzer.h"
-#include "z3_handler.h"
 // #include "interfernce.h"
 
 
@@ -12,11 +11,9 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
     cl::values(
         clEnumVal(interval , "use interval domain"),
         clEnumVal(octagon, "use octagon domain")));
-// cl::opt<bool> useZ3     ("z3", cl::desc("Enable interferce pruning using Z3"));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Do not print debug output"));
-cl::opt<bool> minimalZ3 ("z3-minimal", cl::desc("Enable interference pruning using Z3"));
-cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
-cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
+// cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
+// cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
 cl::opt<bool> stopOnFail("stop-on-fail", cl::desc("Stop as soon as assertion is failed"));
 cl::opt<bool> eagerPruning("eager", cl::desc("Eagerly prune infeasible interference combinations"));
 
@@ -38,7 +35,6 @@ class VerifierPass : public ModulePass {
     set<pair<Instruction*, Instruction*>> allLSPair;
     // map <Function*, forward_list<InterfNode*>> newFeasibleInterfs;
     int maxFeasibleInterfs=0;
-    Z3Minimal zHelper;
 
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
@@ -264,25 +260,7 @@ class VerifierPass : public ModulePass {
                                 if (inSet.second) {
                                     funcQ.push(newThread);
                                     threads.push_back(newThread); 	
-                                    // need to add dominates rules
-                                    if (minimalZ3) {
-                                        vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(call);
-                                        vector<Instruction*> nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
-                                        vector<Instruction*> firstGlobalInstInCalled  = getNextGlobalInst(&*(newThread->begin()->begin()));
-                                        // lastGlobalInstBeforeCall (or firstGlobalInstInCalled) == nullptr means there 
-                                        // no global instr before thread create in current function (or in newly created thread)
-                                        for (auto inst:lastGlobalInstBeforeCall)
-                                            zHelper.addSB(inst, call);
-                                        for (auto inst:nextGlobalInstAfterCall) 
-                                            zHelper.addSB(call, inst);
-                                        for (auto inst:firstGlobalInstInCalled)
-                                            zHelper.addSB(call, inst);
-                                        // if (lastGlobalInst)
-                                        //     zHelper.addSB(lastGlobalInst, call);
-                                    }
-                                    else {
-                                        funcToTCreate.emplace(newThread, call);
-                                    }
+                                    funcToTCreate.emplace(newThread, call);
                                 }
 
                             }
@@ -290,22 +268,7 @@ class VerifierPass : public ModulePass {
                         else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
                             // TODO: need to add dominates rules
                             Function* joineeThread = findFunctionFromPthreadJoin(call);
-                            if (minimalZ3) {
-                                vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(call);
-                                vector<Instruction*> nextGlobalInstAfterCall  = getNextGlobalInst(call->getNextNode());
-                                vector<Instruction*> lastGlobalInstInCalled = getLastInstOfPthreadJoin(joineeThread);
-                                for (auto inst:nextGlobalInstAfterCall)
-                                    zHelper.addSB(call, inst);
-                                for (auto inst:lastGlobalInstBeforeCall)
-                                    zHelper.addSB(inst, call);
-                                for (auto inst: lastGlobalInstInCalled) {
-                                    zHelper.addSB(inst, call);
-                                }
-                                // if (lastGlobalInst) {
-                                //     if (minimalZ3) zHelper.addSB(lastGlobalInst, call);
-                                // }
-                            }
-                            else funcToTJoin.emplace(joineeThread, call);
+                            funcToTJoin.emplace(joineeThread, call);
                         }
                         else {
                             if (!noPrint) {
@@ -359,11 +322,6 @@ class VerifierPass : public ModulePass {
                             // errs() << "****adding store instr for: ";
                             // printValue(storeInst);
                             // zHelper.addStoreInstr(storeInst);
-                            if (minimalZ3) {
-                                vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(storeInst);
-                                for (auto inst:lastGlobalInstBeforeCall)
-                                    zHelper.addSB(inst, storeInst);
-                            }
                             lastGlobalOfVar[destVarName] = storeInst;
                             lastGlobalInst = storeInst;
                             lastWritesCurInst[destVarName] = storeInst;
@@ -406,12 +364,6 @@ class VerifierPass : public ModulePass {
                             destVar = gepOp->getPointerOperand();
                         }
                         if (dyn_cast<GlobalVariable>(destVar)) {
-                            if (minimalZ3) {
-                                vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(rmwInst);
-                                for (auto inst:lastGlobalInstBeforeCall) {
-                                    zHelper.addSB(inst, rmwInst);
-                                }
-                            }
                             string destVarName = getNameFromValue(destVar);
                             // store part of RMWInst
                             varToStores[destVarName].insert(rmwInst);
@@ -460,11 +412,6 @@ class VerifierPass : public ModulePass {
                                 // errs() << "****adding load instr for: ";
                                 // printValue(loadInst);
                                 // zHelper.addLoadInstr(loadInst);
-                                if (minimalZ3) {
-                                    vector<Instruction*> lastGlobalInstBeforeCall = getLastGlobalInst(loadInst);
-                                    for (auto inst:lastGlobalInstBeforeCall)
-                                        zHelper.addSB(inst, loadInst);
-                                }
                                 // else no global operation yet. Add MHB with init
                                 lastGlobalOfVar[fromVarName] = loadInst;
                                 lastGlobalInst = loadInst;
@@ -1024,7 +971,7 @@ class VerifierPass : public ModulePass {
         trueBranchEnv.copyEnvironment(fromVar1TrueEnv);
         falseBranchEnv.copyEnvironment(fromVar1FalseEnv);
         if (oper == Instruction::And) {
-            trueBranchEnv.meetEnvironment(zHelper, fromVar2TrueEnv);
+            trueBranchEnv.meetEnvironment(fromVar2TrueEnv);
             falseBranchEnv.joinEnvironment(fromVar2FalseEnv);
         }
 
@@ -1053,7 +1000,7 @@ class VerifierPass : public ModulePass {
             // errs() << "F2 meet F1:\n";
             // fromVar2FalseEnv.printEnvironment();
             //-//
-            falseBranchEnv.meetEnvironment(zHelper, fromVar2FalseEnv);
+            falseBranchEnv.meetEnvironment(fromVar2FalseEnv);
             // errs() << "F1 meet F2:\n";
             // falseBranchEnv.printEnvironment();
         }
@@ -1154,7 +1101,7 @@ class VerifierPass : public ModulePass {
         
         // if(useMOPO) {
             // errs() << "appending " << storeInst << " to " << destVarName << "\n";
-        curEnv.performStoreOp(getInstNumByInst(storeInst), destVarName, zHelper);
+        curEnv.performStoreOp(getInstNumByInst(storeInst), destVarName);
         // }
         
         #ifdef NOTRA
@@ -1262,7 +1209,7 @@ class VerifierPass : public ModulePass {
                         // errs() << "pthread join with: ";
                         // printValue(retInst);
                         // programState[calledFunc][retInst].printEnvironment();
-                        curEnv.joinOnVars(programState[calledFunc][retInst], globalVars, zHelper);
+                        curEnv.joinOnVars(programState[calledFunc][retInst], globalVars);
                     }
                 }
             }
@@ -1276,8 +1223,7 @@ class VerifierPass : public ModulePass {
                         // errs() << "pthread join with: ";
                         // printValue(retInst);
                         if (programState[calledFunc][retInst].isModified())
-                            olderEnv.joinOnVars(programState[calledFunc][retInst], globalVars, 
-                            zHelper);
+                            olderEnv.joinOnVars(programState[calledFunc][retInst], globalVars);
                     }
                 }
             }
@@ -1351,7 +1297,7 @@ class VerifierPass : public ModulePass {
         // curEnv.printEnvironment();
 
         // append the current instruction in POMO
-        curEnv.performStoreOp(getInstNumByInst(rmwInst), pointerVarName, zHelper);
+        curEnv.performStoreOp(getInstNumByInst(rmwInst), pointerVarName);
 
         // errs() << "After appending store:\n";
         // curEnv.printEnvironment();
@@ -1431,7 +1377,7 @@ class VerifierPass : public ModulePass {
                     }
                     #endif
                     if (interfEnv.isModified() || curEnv.isModified())
-                        curEnv.applyInterference(varName, interfEnv, zHelper, 
+                        curEnv.applyInterference(varName, interfEnv, 
                             getInstNumByInst(loadInst), getInstNumByInst(interfInst));
                     else {
                         // errs() << "MOD: not applying interf\n";
@@ -1761,7 +1707,8 @@ class VerifierPass : public ModulePass {
         // feasibleInterfences = allInterfs;
     }
 
-    /// Older function. Used with UseZ3 flag. 
+    /// Older function. Used with UseZ3 flag.
+    #ifdef NOTRA 
     bool isFeasible (
         unordered_map<Instruction*, Instruction*> interfs, 
         unordered_map<Function*, unordered_map<Instruction*, string>> allLoads,
@@ -1787,35 +1734,11 @@ class VerifierPass : public ModulePass {
         // checker.testQuery();
         // return true;
     }
+    #endif
 
     /** This function checks the feasibility of an interference combination 
      * under RA memory model 
      */
-    bool isFeasibleRA(const forward_list<const pair<Instruction*, Instruction*>*> *interfs) {
-        for (auto lsPair=interfs->begin(); lsPair!=interfs->end(); ++lsPair) {
-            if ((*lsPair)->second == nullptr)
-                continue;
-            if (zHelper.querySB((*lsPair)->first, (*lsPair)->second)) return false;
-            for (auto otherLS=interfs->begin(); otherLS!=interfs->end(); ++otherLS) {
-                // lsPair: (s --rf--> l), otherLS: (s' --rf--> l')
-                if (otherLS == lsPair || (*otherLS)->second==nullptr)
-                    continue;
-                Instruction *ld = (*lsPair)->first;
-                Instruction *st = (*lsPair)->second;
-                Instruction *ld_prime = (*otherLS)->first;
-                Instruction *st_prime = (*otherLS)->second;
-                
-                // (l --sb--> l')
-                if (zHelper.querySB(ld, ld_prime)) {
-                    // (l --sb--> l' && s = s') reading from local context will give the same result
-                    if (st == st_prime) return false;
-                    else if (zHelper.querySB(st_prime, st)) return false;
-                }
-            }
-        }
-        return true;
-    }
-
     bool isFeasibleRAWithoutZ3(const forward_list<const pair<Instruction*, Instruction*>*> *interfs,
         const map<Function*, Instruction*> *funcToTCreate,
         const map<Function*, Instruction*> *funcToTJoin

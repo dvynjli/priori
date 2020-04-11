@@ -11,7 +11,7 @@
 
 #include "llvm/Support/raw_ostream.h"
 
-#include "z3_handler.h"
+// #include "z3_handler.h"
 #include "partial_order.h"
 
 // Used to represent the 
@@ -135,11 +135,11 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
 
     // Store Operation
-    virtual void performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper)=0;
+    virtual void performStoreOp(InstNum &storeInst, string destVarName)=0;
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-     virtual void joinOnVars(T &other, vector<string> &vars, Z3Minimal &zHelper)=0;
+     virtual void joinOnVars(T &other, vector<string> &vars)=0;
     // Thread Create Operation
     // Perform copy only for the list of variables passed in arg2
      virtual void copyOnVars(T &other, vector<string> &vars)=0;
@@ -147,16 +147,14 @@ public:
     /** Updates the abstract domain of current instruction as per the interferring domain. Argurments are
         * interfVar: Variable on which interference is happening
         * interfEnv: Environment of interfering instruction
-        * isSyncWith: True for release-acquire synchronization, false otherwise
-        * zHelper: Instance of z3 to be used to check sequences-before
-        * interfInst: Interferring instruction
         * curInst: Current Instruction
+        * interfInst: Interferring instruction
         */
-    virtual void applyInterference(string interfVar, T &interfEnv, Z3Minimal &zHelper, 
+    virtual void applyInterference(string interfVar, T &interfEnv,
                 InstNum &curInst, InstNum &interfInst) = 0;
     virtual void carryEnvironment(string interfVar, T &fromEnv) = 0;
     virtual void joinEnvironment(T &other) = 0;
-    virtual void meetEnvironment(Z3Minimal &zHelper, T &other) = 0;
+    virtual void meetEnvironment(T &other) = 0;
     virtual void setVar(string strVar) = 0;
     virtual void unsetVar(string strVar) = 0;
     virtual bool isUnreachable() = 0;
@@ -166,55 +164,76 @@ public:
 
 class POMO {
 public:
-    unordered_map <string, PartialOrderWrapper> pomo;
-    unordered_map <string, PartialOrderWrapper>::const_iterator begin() const {
+    unordered_map <string, PartialOrder> pomo;
+    unordered_map <string, PartialOrder>::const_iterator begin() const {
         return pomo.begin();
     }
-	unordered_map <string, PartialOrderWrapper>::const_iterator end() const {
+	unordered_map <string, PartialOrder>::const_iterator end() const {
         return pomo.end();
     }
-    unordered_map <string, PartialOrderWrapper>::iterator find(string var) {
+    unordered_map <string, PartialOrder>::const_iterator find(string var) const {
         return pomo.find(var);
     }
-    bool empty() {
+    bool empty() const {
         return pomo.empty();
     }
 
-
-    void emplace(string var, PartialOrderWrapper po) {
-        fprintf(stderr, "changing %s\n", var.c_str());
+    void emplace(string var, PartialOrder *po) {
+        // fprintf(stderr, "changing %s\n", var.c_str());
+        const PartialOrder &poToAdd = PartialOrderWrapper::addToSet(po);
         auto searchVar = pomo.find(var);
         if (searchVar != pomo.end()) {
-            fprintf(stderr, "assigning\n");
-            searchVar->second = po;
+            // fprintf(stderr, "assigning\n");
+            pomo.erase(var);
+            pomo.emplace(var, poToAdd);
+            // searchVar->second = PartialOrderWrapper(po);
         }
-        else pomo.emplace(var, po);
-        printPOMO();
-        fprintf(stderr, "done\n");
+        else pomo.emplace(var, poToAdd);
+        // fprintf(stderr, "In emplace* :\n");
+        // printPOMO();
+        // fprintf(stderr, "done\n");
+    }
+
+    void emplace(const string &var, PartialOrder &po) {
+        // fprintf(stderr, "changing %s\n", var.c_str());
+        // if (PartialOrderWrapper::hasInstance(po)) {
+            // fprintf(stderr, "already exists in allPO. ")
+            // pomo.emplace(var, po);
+        // }
+        // else {
+            emplace(var, &po);
+        // }
+        // fprintf(stderr, "In emplace& :\n");
+        // printPOMO();
+        // fprintf(stderr, "done\n");
     }
 
     bool operator== (const POMO &other) const {
-        for (auto it: pomo) {
-            auto searchOther = other.find(it.first);
-            assert(searchOther != other.end()
-                    && "other pomo does not contain variable");
-            if (!(it.second == searchOther->second)) {
-                return false;
-            }
-        }
-        return true;
+        return pomo == other.pomo;
+        // return true;
     }
-    void operator= (const POMO &other) {
-        pomo = other.pomo;
-    }
+    // void operator= (const POMO &other) {
+    //     pomo = other.pomo;
+    // }
 
-    void printPOMO() {
+    void printPOMO() const {
         // fprintf(stderr, "Printing POMO\n");
         for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
-            fprintf(stderr, "%s: %s\n", it->first.c_str(), it->second.toString().c_str());
+            fprintf(stderr, "%s %p: ", it->first.c_str(), &it->second);
+            // if (it->second)
+            fprintf(stderr, "%s\n", it->second.toString().c_str());
+            // else fprintf(stderr, "NULL");
+            // fprintf(stderr, "\n");
         }
         // fprintf(stderr, "printing done\n");
-}
+    }
+
+    void clear() {
+        for (auto it: pomo) {
+            it.second.clear();
+        }
+        pomo.clear();
+    }
 };
 
 namespace std{
@@ -223,14 +242,15 @@ struct hash<POMO> {
 	size_t operator() (const POMO &pomo) const {
 		// return (hash<unsigned short>()(in.getTid()) ^ 
 		auto it = pomo.begin();
-		if (it == pomo.end()); {
-            PartialOrder po = PartialOrder();
-			return hash<PartialOrderWrapper>()(PartialOrderWrapper(&po));
+		if (it == pomo.end()) {
+            PartialOrder *po = new PartialOrder();
+			return hash<PartialOrder*>()(po);
+            delete po;
         }
-		size_t curhash = hash<PartialOrderWrapper>()(it->second);
+		size_t curhash = hash<PartialOrder*>()(&it->second);
 		it++;
 		for (; it!=pomo.end(); it++) {
-			curhash = curhash ^ hash<PartialOrderWrapper>()(it->second);
+			curhash = curhash ^ hash<PartialOrder*>()(&it->second);
 		}
 		// fprintf(stderr, "returning hash\n");
 		return curhash;
@@ -238,16 +258,37 @@ struct hash<POMO> {
 };
 }
 
+// namespace std{
+// template<>
+// struct hash<POMO> {
+// 	size_t operator() (const POMO &pomo) const {
+// 		// return (hash<unsigned short>()(in.getTid()) ^ 
+// 		auto it = pomo.begin();
+// 		if (it == pomo.end()); {
+//             PartialOrder po = PartialOrder();
+// 			return hash<PartialOrderWrapper>()(PartialOrderWrapper(&po));
+//         }
+// 		size_t curhash = hash<PartialOrderWrapper>()(it->second);
+// 		it++;
+// 		for (; it!=pomo.end(); it++) {
+// 			curhash = curhash ^ hash<PartialOrderWrapper>()(it->second);
+// 		}
+// 		// fprintf(stderr, "returning hash\n");
+// 		return curhash;
+// 	}
+// };
+// }
+
 class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 
     // relHead: var -> relHeadInstruction
     // environment: relHead -> ApDomain
     unordered_map <POMO, ApDomain> environment;
     
-    void initPOMO(vector<string> &globalVars, POMO *pomo);
+    void initPOMO(vector<string> &globalVars, POMO &pomo);
     
-    void printPOMO(const POMO &pomo);
-    void joinPOMO (Z3Minimal &zHelper, const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
+    // void printPOMO(const POMO &pomo);
+    void joinPOMO (const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
     
     unordered_map<POMO, ApDomain>::iterator begin();
 	unordered_map<POMO, ApDomain>::iterator end();
@@ -257,9 +298,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     //             InstNum interfInst, InstNum curInst, Z3Minimal &zHelper);
     void getVarOption (map<string, options> *varoptions, 
                 string varName,
-                PartialOrderWrapper &curPartialOrder,
-                PartialOrderWrapper &interfPartialOrder, 
-                Z3Minimal &zHelper);
+                PartialOrder &curPartialOrder,
+                const PartialOrder &interfPartialOrder);
 
 public:
 
@@ -296,19 +336,19 @@ public:
     virtual void performCmpOp(operation oper, string strOp1, string strOp2);
 
     // Store Operations
-    virtual void performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper);
+    virtual void performStoreOp(InstNum &storeInst, string destVarName);
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
-    virtual void joinOnVars(EnvironmentPOMO &other, vector<string> &vars, Z3Minimal &zHelper);
+    virtual void joinOnVars(EnvironmentPOMO &other, vector<string> &vars);
     // Thread Create Operation
     // Perform copy only for the list of variables passed in arg2
     virtual void copyOnVars(EnvironmentPOMO &other, vector<string> &vars);
     
-    virtual void applyInterference(string interfVar, EnvironmentPOMO &fromEnv, Z3Minimal &zHelper, 
+    virtual void applyInterference(string interfVar, EnvironmentPOMO &fromEnv, 
                 InstNum &curInst, InstNum &interfInst);
     virtual void joinEnvironment(EnvironmentPOMO &other);
-    virtual void meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO &other);
+    virtual void meetEnvironment(EnvironmentPOMO &other);
     // TODO: this function is not required for POMO. change the structure to use append instead of this
     virtual void carryEnvironment(string interfVar, EnvironmentPOMO &fromEnv);
     // virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);

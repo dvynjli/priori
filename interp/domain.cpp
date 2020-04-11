@@ -574,7 +574,7 @@ bool EnvironmentPOMO::operator== (const EnvironmentPOMO &other) const {
 
 void EnvironmentPOMO::init(vector<string> &globalVars, vector<string> &functionVars){
     POMO pomo;
-    initPOMO(globalVars, &pomo);
+    initPOMO(globalVars,   pomo);
     // fprintf(stderr, "pomo initialized\n");
     // pomo.printPOMO();
     ApDomain dom;
@@ -584,16 +584,17 @@ void EnvironmentPOMO::init(vector<string> &globalVars, vector<string> &functionV
     // printEnvironment();
 }
 
-void EnvironmentPOMO::initPOMO(vector<string> &globalVars, POMO *pomo){
+void EnvironmentPOMO::initPOMO(vector<string> &globalVars, POMO &pomo){
     // fprintf(stderr, "decl pomo\n");
     // POMO pomo;
-    // fprintf(stderr, "assigning empty to pomo\n");
     PartialOrder *po = new PartialOrder();
-    PartialOrderWrapper pow = PartialOrderWrapper(po);
+    // fprintf(stderr, "assigning empty to pomo\n");
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
-        pomo->emplace((*it), pow);
+        pomo.emplace((*it), po);
     }
-    // pomo->printPOMO();
+    // delete po;
+    // pomo.printPOMO();
+    // PartialOrderWrapper::printAllPO();
     // fprintf(stderr, "returning pomo\n");
     // return pomo;
 }
@@ -674,7 +675,7 @@ void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2)
     }
 }
 
-void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName, Z3Minimal &zHelper) {
+void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName) {
     unordered_map <POMO, ApDomain> newEnv;
     for (auto it: environment) {
         POMO tmpPomo=it.first;
@@ -687,15 +688,16 @@ void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName, Z3M
         // }
         auto searchDestVar = tmpPomo.find(destVarName);
         assert(searchDestVar != tmpPomo.end() && "variable does not exists in envrionment POMO");
-        tmpPomo.emplace(searchDestVar->first, searchDestVar->second.append(zHelper, storeInst));
+        PartialOrder tmpPO = PartialOrderWrapper::append(searchDestVar->second, storeInst);
+        tmpPomo.emplace(searchDestVar->first, tmpPO);
         newEnv[tmpPomo] = it.second;
+        // fprintf(stderr, "aftre emplace call in performStoreOp:\n");
+        // tmpPomo.printPOMO();
     }
     environment = newEnv;
 }
 
-void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars, 
-    Z3Minimal &zHelper
-) {
+void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
     unordered_map <POMO, ApDomain> newenvironment;
     // fprintf(stderr,"For thread join. Other:\n");
     // other.printEnvironment();
@@ -723,9 +725,9 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars,
                 if (searchVarOtherItr == otherPomo.end()) {
                     fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in joinOnVars\n", varItr.first.c_str());
                     fprintf(stderr, "Was joining with:\n");
-                    printPOMO(otherPomo);
+                    otherPomo.printPOMO();
                     fprintf(stderr, "other.first:\n");
-                    printPOMO(otherItr.first);
+                    otherItr.first.printPOMO();
                     exit(0);
                 }
                 if (!varItr.second.isConsistent(searchVarOtherItr->second)) {
@@ -757,12 +759,12 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars,
                     // join the two partial orders
                     // tmpPO.copy(varItr.second);
                     // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
-                    varItr.second.join(zHelper, searchOtherPomo->second);
+                    PartialOrder tmpPO = PartialOrderWrapper::join(varItr.second, searchOtherPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     // check what to do for each variable
-                    getVarOption(&varoptions, varItr.first, varItr.second, searchOtherPomo->second, zHelper);
+                    getVarOption(&varoptions, varItr.first, tmpPO, searchOtherPomo->second);
 
-                    newPomo.emplace(varItr.first, varItr.second);
+                    newPomo.emplace(varItr.first, tmpPO);
                     // fprintf(stderr, "Pomo so far:\n");
                     // printPOMO(newPomo);
                 }
@@ -815,7 +817,6 @@ void EnvironmentPOMO::copyOnVars(EnvironmentPOMO &other, vector<string> &vars) {
 void EnvironmentPOMO::applyInterference(
     string interfVar, 
     EnvironmentPOMO &interfEnv, 
-    Z3Minimal &zHelper, 
     InstNum &curInst,
     InstNum &interfInst
 ) {
@@ -842,7 +843,7 @@ void EnvironmentPOMO::applyInterference(
                     break;
                 }
                 // check domain-level feasibility 
-                if (!varIt.second.isFeasible(zHelper, searchInterfPomo->second, interfInst, curInst)) {
+                if (!varIt.second.isFeasible(searchInterfPomo->second, interfInst, curInst)) {
                     apply=false;
                     break;
                 }
@@ -875,18 +876,18 @@ void EnvironmentPOMO::applyInterference(
                     // join the two partial orders
                     // tmpPO.copy(varIt.second);
                     // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
-                    varIt.second.join(zHelper, searchInterfPomo->second);
+                    PartialOrder tmpPO = PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     
                     // for interfVar, add the store intruction in the end
                     if (varIt.first == interfVar) {   
-                        varIt.second.append(zHelper, interfInst);
+                        tmpPO = PartialOrderWrapper::append(tmpPO, interfInst);
                     }
 
                     // check what to do for each variable
-                    getVarOption(&varoptions, varIt.first, varIt.second, searchInterfPomo->second, zHelper);
+                    getVarOption(&varoptions, varIt.first, tmpPO, searchInterfPomo->second);
 
-                    newPomo.emplace(varIt.first, varIt.second);
+                    newPomo.emplace(varIt.first, tmpPO);
                     // fprintf(stderr, "Pomo so far:\n");
                     // printPOMO(newPomo);
 
@@ -944,14 +945,14 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
 }
 
 // Used for logical intructions
-void EnvironmentPOMO::meetEnvironment(Z3Minimal &zHelper, EnvironmentPOMO &other) {
+void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
     unordered_map <POMO, ApDomain> newenvironment;
     
     for (auto curIt: environment) {
         for (auto otherIt: other) {
             // join the POMOs
             POMO joinedPomo;
-            joinPOMO(zHelper, curIt.first, otherIt.first, joinedPomo);
+            joinPOMO(curIt.first, otherIt.first, joinedPomo);
             // fprintf(stderr, "joinedPomo:\n");
             // printPOMO(joinedPomo);
 
@@ -1013,9 +1014,8 @@ bool EnvironmentPOMO::isUnreachable() {
 
 void EnvironmentPOMO::getVarOption (map<string, options> *varoptions, 
     string varName,
-    PartialOrderWrapper &curPartialOrder,
-    PartialOrderWrapper &interfPartialOrder, 
-    Z3Minimal &zHelper
+    PartialOrder &curPartialOrder,
+    const PartialOrder &interfPartialOrder
 ) {
     unordered_set<InstNum> lastsCurPO;
     curPartialOrder.getLasts(lastsCurPO);
@@ -1060,21 +1060,22 @@ void EnvironmentPOMO::getVarOption (map<string, options> *varoptions,
     varoptions->emplace(make_pair(varName, opt));
 }
 
-void EnvironmentPOMO::joinPOMO (Z3Minimal &zHelper, const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO){
+void EnvironmentPOMO::joinPOMO (const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO){
     // fprintf(stderr, "joining:\n");
     // printPOMO(pomo1);
     // printPOMO(pomo2);
     joinedPOMO = pomo1;
     if (pomo2.empty())
         return;
-    for (auto it:joinedPOMO) {
+    for (auto it:pomo1) {
         auto searchPomo2 = pomo2.find(it.first);
         if (searchPomo2 == pomo2.end()) {
             fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in joinPOMO\n", it.first.c_str());
             exit(0);
         }
         // join the two partial orders
-        it.second.join(zHelper, searchPomo2->second);
+        PartialOrder tmpPO = PartialOrderWrapper::join(it.second, searchPomo2->second);
+        joinedPOMO.emplace(it.first, tmpPO);
     }
 }
 
@@ -1084,24 +1085,25 @@ void EnvironmentPOMO::printEnvironment() {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         POMO pomo = it->first;
         fprintf (stderr, "Modification Order:\n");
-        printPOMO(pomo);
-        // fprintf(stderr, "printing ApDomain\n");
+        pomo.printPOMO();
+        // printPOMO(pomo);
+        fprintf(stderr, "printing ApDomain\n");
         it->second.printApDomain();
         fprintf(stderr, "\n");
     }
 }
 
-void EnvironmentPOMO::printPOMO(const POMO &pomo) {
-    // fprintf(stderr, "Printing POMO\n");
-    for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
-        fprintf(stderr, "%s: ", it->first.c_str());
-        // if (it->second)
-            fprintf(stderr, "%s\n", it->second.toString().c_str());
-        // else fprintf(stderr, "NULL");
-        // fprintf(stderr, "\n");
-    }
-    // fprintf(stderr, "printing done\n");
-}
+// void EnvironmentPOMO::printPOMO(const POMO &pomo) {
+//     // fprintf(stderr, "Printing POMO\n");
+//     for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
+//         fprintf(stderr, "%s: ", it->first.c_str());
+//         // if (it->second)
+//             fprintf(stderr, "%s\n", it->second.toString().c_str());
+//         // else fprintf(stderr, "NULL");
+//         // fprintf(stderr, "\n");
+//     }
+//     // fprintf(stderr, "printing done\n");
+// }
 
 unordered_map<POMO, ApDomain>::iterator EnvironmentPOMO::begin() {
 	return environment.begin();

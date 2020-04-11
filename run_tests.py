@@ -21,7 +21,7 @@ num_missed_asserts = 0
 
 for test_id in range(1, num_tests+1):
 	command = ['opt', '-basicaa', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-				'-no-print', '-stop-on-fail', '-useMOPO', '-eager', 'tests/litmus/test' + str(test_id) + '.ll']
+				'-no-print', '-stop-on-fail', '-eager', 'tests/litmus/test' + str(test_id) + '.ll']
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()
 	# print(err)

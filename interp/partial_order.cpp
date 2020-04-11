@@ -1,16 +1,10 @@
 #include "partial_order.h"
 
-
-// PartialOrder::PartialOrder() {
-// 	order=unordered_map<InstNum, unordered_set<InstNum>>();
-// 	rmws =unordered_set<InstNum>();
-// }
-
 // Adds (from, to) to order if not already.  from-->to
 // Since partial order can't be cyclic, if (to, from) are already
 // in order, returns false. The behavior might be undefined 
 // in this case. Else add (from, to) and returns true
-bool PartialOrder::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
+bool PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 	// fprintf(stderr, "addOrder %p --> %p\n", from, to);
 	
 	if (isOrderedBefore(from, to)) return true;
@@ -36,23 +30,23 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
 		if (inst != to && inst != from) {
 			if (inst.isSeqBefore(to)) {
 				// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
-				addOrder(zHelper, inst, to); 
+				addOrder(inst, to); 
 				remove(inst);
 			}
 			else if (to.isSeqBefore(inst)) {
 				// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
-				return addOrder(zHelper, from, inst);
+				return addOrder(from, inst);
 			}
 			if (inst.isSeqBefore(from)) {
 				// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
-				addOrder(zHelper, inst, from); 
+				addOrder(inst, from); 
 				remove(inst);
 			}
 			else if (from.isSeqBefore(inst)) {
 				bool done = makeTransitiveOrdering(from, to, toItr);
 				remove(from);
 				// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
-				addInst(zHelper, to);
+				addInst(to);
 				return done;
 			}
 		}
@@ -64,26 +58,28 @@ bool PartialOrder::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
 
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
-bool PartialOrder::append(Z3Minimal &zHelper, InstNum newinst) {
+bool PartialOrder::append(const InstNum &newinst) {
 	// cout << "appending Partial order " << newinst << "\n";
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ) {
-		if (it->first.isSeqBefore(newinst)) {auto ittmp = it++; remove(ittmp->first);}
+		if (it->first.isSeqBefore(newinst)) {auto ittmp = it++; remove((ittmp->first));}
 		else it++;
 	}
 
 	// If the 'newinst' is already in the order, it cannot be appended
-	if (!order[newinst].empty()) return false;
+	auto searchInst = order.find(newinst);
+	if (searchInst == order.end()) {
+		order.emplace(newinst, unordered_set<InstNum>());
+	}
+	else return false;
+	// if (!order[newinst].empty()) return false;
+	// else order.emplace(newinst, unordered_set<InstNum>());
 	
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		if (it->first != newinst) {
 			it->second.insert(newinst);
 		}
-	}
-
-	if(isRMWInst(newinst)) {
-		rmws.insert(newinst);
 	}
 
 	return true;
@@ -92,16 +88,16 @@ bool PartialOrder::append(Z3Minimal &zHelper, InstNum newinst) {
 // Joins two partial orders maintaing the ordering relation in both
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
-bool PartialOrder::join(Z3Minimal &zHelper, const PartialOrder &other) {
+bool PartialOrder::join(const PartialOrder &other) {
 	// fprintf(stderr, "joining\n");
 	// fprintf(stderr, "%s\t and \t%s\n", toString().c_str(), other.toString().c_str());
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
 		if (fromItr->second.empty() && order.find(fromItr->first) == order.end()){
-			addInst(zHelper, fromItr->first);
+			addInst(fromItr->first);
 		}
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {
-			if (!addOrder(zHelper, fromItr->first, *toItr))
+			if (!addOrder(fromItr->first, *toItr))
 				return false;
 		}
 		// if (isRMWInst(fromItr->first))
@@ -113,15 +109,17 @@ bool PartialOrder::join(Z3Minimal &zHelper, const PartialOrder &other) {
 }
 
 // checks if (inst1, inst2) \in order
-bool PartialOrder::isOrderedBefore(InstNum inst1, InstNum inst2) {
-	if (!isExists(inst1)) return false;
-	auto search = order[inst1].find(inst2);
-	if (search == order[inst1].end()) return false;
+bool PartialOrder::isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const {
+	// if (!isExists(inst1)) return false;
+	auto searchInst1 = order.find(inst1);
+	if (searchInst1 == order.end()) return false;
+	auto searchInst2 = searchInst1->second.find(inst2);
+	if (searchInst2 == searchInst1->second.end()) return false;
 	else return true;
 }
 
 // checks if inst is a part of this partial order
-bool PartialOrder::isExists(InstNum inst) {
+bool PartialOrder::isExists(const InstNum &inst) const {
 	auto search = order.find(inst);
 	if (search == order.end()) return false;
 	else return true;
@@ -130,7 +128,7 @@ bool PartialOrder::isExists(InstNum inst) {
 // checks if the partial order other is consistent with this partial order
 // Two parial orders are consistent only if  Va.Vb (a,b) \in order 
 // (b,a) \notin other.order, or viceversa
-bool PartialOrder::isConsistent(PartialOrder &other) {
+bool PartialOrder::isConsistent(const PartialOrder &other) {
 	for (auto itFrom:other) {
 		for (auto itTo:itFrom.second) {
 			// if ordering is conistent 
@@ -141,7 +139,7 @@ bool PartialOrder::isConsistent(PartialOrder &other) {
 	return true;
 }
 
-bool PartialOrder::isConsistentRMW(PartialOrder &other) {
+bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 	// fprintf(stderr, "checking consistent rmw:\n");
 	// fprintf(stderr, "this: %s", toString().c_str());
 	// fprintf(stderr, "other: %s\n", other.toString().c_str());
@@ -173,7 +171,7 @@ bool PartialOrder::isConsistentRMW(PartialOrder &other) {
 
 
 // domain-level feasibility checking
-bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, InstNum interfInst, InstNum curInst) {
+bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, InstNum &curInst) {
 	// curInst should not be ordered before any inst in interferring domain
 	for (auto it:other) {
 		if (curInst.isSeqBefore(it.first)) return false;
@@ -185,13 +183,10 @@ bool PartialOrder::isFeasible(Z3Minimal &zHelper, PartialOrder &other, InstNum i
 	return true;
 }
 
-
 // Removes inst from the element of the set. It should also remove
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
-bool PartialOrder::remove(InstNum inst) {
-	if (isRMWInst(inst))
-		return true;
+bool PartialOrder::remove(const InstNum &inst) {
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
@@ -205,7 +200,7 @@ bool PartialOrder::remove(InstNum inst) {
 
 // get the last instructions in Partial Order
 // inst \in lasts iff nEa (inst, a) \in order
-void PartialOrder::getLasts(unordered_set<InstNum> &lasts) {
+void PartialOrder::getLasts(unordered_set<InstNum> &lasts) const {
 	// iterate over all instructions in order
 	for (auto it:order) {
 		// if nothing is ordered after this, insert it into lasts
@@ -215,7 +210,7 @@ void PartialOrder::getLasts(unordered_set<InstNum> &lasts) {
 }
 
 // update ordering relation to get transitivity
-bool PartialOrder::makeTransitiveOrdering (InstNum from, InstNum to, 
+bool PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &to, 
 	std::unordered_map<InstNum, std::unordered_set<InstNum>>::iterator toItr
 ){
 	// check for anti-symmetry
@@ -246,8 +241,7 @@ bool PartialOrder::makeTransitiveOrdering (InstNum from, InstNum to,
 	return true;
 }
 
-
-bool PartialOrder::addInst(Z3Minimal &zHelper, InstNum inst) {
+bool PartialOrder::addInst(const InstNum &inst) {
 	for (auto it=order.begin(); it!=order.end(); ) {
 		InstNum instItr = it->first; ++it;
 		if (instItr != inst && inst.isSeqBefore(instItr)) {
@@ -274,18 +268,14 @@ bool PartialOrder::addInst(Z3Minimal &zHelper, InstNum inst) {
 	return true;
 }
 
-void PartialOrder::copy (const PartialOrder &copyFrom) {
-	order = copyFrom.order;
-	rmws = copyFrom.rmws;
+bool PartialOrder::isRMWInst(const InstNum &inst) {
+	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(getInstByInstNum(inst)))
+	// 	return true;
+	// else 
+		return false;
 }
 
-bool PartialOrder::isRMWInst(InstNum inst) {
-	if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(getInstByInstNum(inst)))
-		return true;
-	else return false;
-}
-
-string PartialOrder::toString() {
+string PartialOrder::toString() const {
 	std::stringstream ss;
 	// fprintf(stderr, "PartialOrder toString start %lu\n", order.size());
 	if (order.begin()!=order.end()) {
@@ -295,6 +285,7 @@ string PartialOrder::toString() {
 			// fprintf(stderr, "size of second %lu\n", itFrom->second.size());
 			ss << itFrom->first.toString() << " ---> " ;
 			for (auto itTo: itFrom->second) {
+				// fprintf(stderr, "in inner for\n");
 				ss << itTo.toString() << ", ";
 			}
 			ss << ";\t";
@@ -303,13 +294,13 @@ string PartialOrder::toString() {
 	// else fprintf(stderr, "order is empty\n");
 	// fprintf(stderr, "Printing RMWs\n");
 	// // cout << ss.str() << "\n";
-	ss << "\tRMWs: ";
+	// ss << "\tRMWs: ";
 	// if (rmws.size()>0)
-	for (auto it=rmws.begin(); it!=rmws.end(); it++) {
-		// fprintf(stderr, "in rmws loop\n");
-		ss << it->toString() << ",";
-	}
-	// fprintf(stderr, "PratialOrder toString()\n");
+	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
+	// 	fprintf(stderr, "in rmws loop\n");
+	// 	ss << it->toString() << ",";
+	// }
+	// fprintf(stderr, "PratialOrder toString(): %s\n",ss.str().c_str());
 	return ss.str();
 }
 
@@ -317,12 +308,29 @@ bool PartialOrder::operator==(const PartialOrder &other) const {
 	return order == other.order;
 }
 
+// void PartialOrder::operator= (const PartialOrder &other) {
+// 	fprintf(stderr, "assigning from PO class\n");
+// 	order = other.order;
+// 	rmws  = other.rmws;
+// 	fprintf(stderr, "assigned from PO class\n");
+// }
+
 // bool PartialOrder::operator<(const PartialOrder &other) const {
 // 	// TODO: Might need to change this. If instructions are disjoint,
 // 	// this will not determine any order between the two POs. 
 // 	// As per our definition, sb should play a role here.
 // 	return order < other.order;
 // }
+
+void PartialOrder::copy (const PartialOrder &copyFrom) {
+	order = copyFrom.order;
+	rmws = copyFrom.rmws;
+}
+
+void PartialOrder::clear() {
+	order.clear();
+	rmws.clear();
+}
 
 unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::begin() const {
 	return order.begin();
@@ -338,99 +346,96 @@ unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::end
 //      class PartialOrderWrapper       //
 //////////////////////////////////////////
 
-unordered_set<PartialOrder> PartialOrderWrapper::allPO;
+unordered_set<PartialOrder*> PartialOrderWrapper::allPO;
 
-const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder &po) {
-	// printAllPO();
-	// fprintf(stderr, "inserting into allPO %s:\n", po.toString().c_str());
-	auto inserted = allPO.insert(po);
+const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po) {
+	// auto searchPO = allPO.find(*po);
+	auto searchPO = allPO.find(po);
+	if (searchPO != allPO.end()) {
+		return **searchPO;
+	}
+	else {
+		auto inserted = allPO.insert(po);
+		return **(inserted.first);
+	}
 	// fprintf(stderr, "done. returning\n");
-	return (*(inserted.first));
 }
 
-
-void PartialOrderWrapper::addOrder(Z3Minimal &zHelper, InstNum from, InstNum to) {
-	PartialOrder tmpPO = PartialOrder(thisPO);
-	tmpPO.addOrder(zHelper, from, to);
-	thisPO = addToSet(tmpPO);
+PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
+	PartialOrder *tmpPO = new PartialOrder();
+    tmpPO->copy(curPO);
+    tmpPO->append(inst);
+    // fprintf(stderr, "after append: %s\n", tmpPO->toString().c_str());
+    if (hasInstance(*tmpPO)) {
+		auto po = addToSet(tmpPO);
+		delete tmpPO;
+		return po;
+	}
+	else return addToSet(tmpPO);
 }
 
-PartialOrderWrapper PartialOrderWrapper::append(Z3Minimal &zHelper, InstNum inst) {
-	PartialOrder tmpPO = PartialOrder(thisPO);
-	tmpPO.append(zHelper, inst);
-	return PartialOrderWrapper(&tmpPO);
-	// thisPO = addToSet(tmpPO);
+PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, InstNum &to) {
+	PartialOrder *tmpPO = new PartialOrder();
+    tmpPO->copy(curPO);
+    tmpPO->addOrder(from, to);
+    // fprintf(stderr, "after addOrder: %s\n", tmpPO->toString().c_str());
+    if (hasInstance(*tmpPO)) {
+		auto po = addToSet(tmpPO);
+		delete tmpPO;
+		return po;
+	}
+	else return addToSet(tmpPO);
 }
 
-void PartialOrderWrapper::join(Z3Minimal &zHelper, const PartialOrderWrapper &other) {
-	PartialOrder tmpPO = PartialOrder(thisPO);
-	tmpPO.join(zHelper, other.getPO());
-	thisPO = addToSet(tmpPO);
+PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &other) {
+	PartialOrder *tmpPO = new PartialOrder();
+    tmpPO->copy(curPO);
+    tmpPO->join(other);
+    // fprintf(stderr, "after join: %s\n", tmpPO->toString().c_str());
+    if (hasInstance(*tmpPO)) {
+		auto po = addToSet(tmpPO);
+		delete tmpPO;
+		return po;
+	}
+	else return addToSet(tmpPO);
 }
 
-bool PartialOrderWrapper::isOrderedBefore(InstNum inst1, InstNum inst2) {
-	return thisPO.isOrderedBefore(inst1, inst2);
+PartialOrder PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
+	PartialOrder *tmpPO = new PartialOrder();
+    tmpPO->copy(curPO);
+    tmpPO->remove(inst);
+    // fprintf(stderr, "after remove: %s\n", tmpPO->toString().c_str());
+    if (hasInstance(*tmpPO)) {
+		auto po = addToSet(tmpPO);
+		delete tmpPO;
+		return po;
+	}
+	else return addToSet(tmpPO);
 }
 
-bool PartialOrderWrapper::isExists(InstNum inst) {
-	return thisPO.isExists(inst);
-}
-
-bool PartialOrderWrapper::isConsistent(PartialOrderWrapper &other) {
-	return thisPO.isConsistent(other.getPO());
-}
-
-bool PartialOrderWrapper::isConsistentRMW(PartialOrderWrapper &other) {
-	return thisPO.isConsistentRMW(other.getPO());
-}
-
-bool PartialOrderWrapper::isFeasible(
-	Z3Minimal &zHelper, PartialOrderWrapper &other, InstNum interfInst, InstNum curInst
-) {
-	return thisPO.isFeasible(zHelper, other.getPO(), interfInst, curInst);
-}
-
-void PartialOrderWrapper::remove(InstNum inst) {
-	PartialOrder tmpPO = PartialOrder(thisPO);
-	tmpPO.remove(inst);
-	thisPO = addToSet(tmpPO);
-}
-
-void PartialOrderWrapper::getLasts(unordered_set<InstNum> &lasts) {
-	thisPO.getLasts(lasts);
-}
-
-bool PartialOrderWrapper::operator== (const PartialOrderWrapper &other) const {
-	return (thisPO == other.getPO());
-}
-
-// bool PartialOrderWrapper::operator<  (const PartialOrderWrapper &other) const {
-// 	return (thisPO < other.getPO());
-// }
-void PartialOrderWrapper::operator= (const PartialOrderWrapper &other) {
-	fprintf(stderr, "assigning in POW class\n");
-	thisPO = other.thisPO;
-	fprintf(stderr, "assigned in POW class\n");
-}
-
-// void PartialOrderWrapper::copy (const PartialOrderWrapper &copyFrom) {
-
-// }
-
-PartialOrder& PartialOrderWrapper::getPO() const {
-	return thisPO;
-}
-
-string PartialOrderWrapper::toString() const {
-	// fprintf(stderr, "POW tostring %p\n", thisPO);
-	// printAllPO();
-	return thisPO.toString();
-}
-
-void PartialOrderWrapper::printAllPO() const {
-	fprintf(stderr, "AllPO:\n");
-	for (auto it: allPO) {
-		fprintf(stderr, "%s\n", it.toString().c_str());
+bool PartialOrderWrapper::hasInstance (PartialOrder &po) {
+	auto searchPO = allPO.find(&po);
+	if (searchPO != allPO.end()) {
+		return true;
+	}
+	else {
+		return false;
 	}
 }
 
+void PartialOrderWrapper::printAllPO() {
+	fprintf(stderr, "AllPO:\n");
+	int i=0;
+	for (auto it: allPO) {
+		fprintf(stderr, "%d: %s\n",i , it->toString().c_str());
+		i++;
+	}
+}
+
+void PartialOrderWrapper::clearAllPO() {
+	for (auto it: allPO) {
+		it->clear();
+	}
+	allPO.clear();
+	
+}
