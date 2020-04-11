@@ -82,6 +82,10 @@ bool PartialOrder::append(const InstNum &newinst) {
 		}
 	}
 
+	if(isRMWInst(newinst)) {
+		rmws.insert(newinst);
+	}
+
 	return true;
 }
 
@@ -187,6 +191,7 @@ bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, In
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
 bool PartialOrder::remove(const InstNum &inst) {
+	// if (isRMWInst(inst)) return true;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
@@ -252,8 +257,7 @@ bool PartialOrder::addInst(const InstNum &inst) {
 			// all the instructions ordered before instItr, should also
 			// be ordered before instItr
 			makeTransitiveOrdering(instItr, inst, order.end());
-			
-			// remove older instrutcion
+			// remove older instruction
 			remove(instItr);
 		}
 	}
@@ -269,38 +273,30 @@ bool PartialOrder::addInst(const InstNum &inst) {
 }
 
 bool PartialOrder::isRMWInst(const InstNum &inst) {
-	// if (llvm::AtomicRMWInst *rmwInst = llvm::dyn_cast<llvm::AtomicRMWInst>(getInstByInstNum(inst)))
-	// 	return true;
-	// else 
-		return false;
+	if (llvm::dyn_cast<llvm::AtomicRMWInst>(getInstByInstNum(inst))) {
+		// fprintf(stderr, "rmw inst\n");
+		return true;
+	}
+	else return false;
 }
 
 string PartialOrder::toString() const {
 	std::stringstream ss;
-	// fprintf(stderr, "PartialOrder toString start %lu\n", order.size());
-	if (order.begin()!=order.end()) {
-		// fprintf(stderr, "order not empty\n");
-		for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
-			// fprintf(stderr, "in outer for\n");
-			// fprintf(stderr, "size of second %lu\n", itFrom->second.size());
-			ss << itFrom->first.toString() << " ---> " ;
-			for (auto itTo: itFrom->second) {
-				// fprintf(stderr, "in inner for\n");
-				ss << itTo.toString() << ", ";
-			}
-			ss << ";\t";
+	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
+		// fprintf(stderr, "in outer for\n");
+		// fprintf(stderr, "size of second %lu\n", itFrom->second.size());
+		ss << itFrom->first.toString() << " ---> " ;
+		for (auto itTo: itFrom->second) {
+			// fprintf(stderr, "in inner for\n");
+			ss << itTo.toString() << ", ";
 		}
+		ss << ";\t";
 	}
-	// else fprintf(stderr, "order is empty\n");
-	// fprintf(stderr, "Printing RMWs\n");
-	// // cout << ss.str() << "\n";
-	// ss << "\tRMWs: ";
-	// if (rmws.size()>0)
-	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
-	// 	fprintf(stderr, "in rmws loop\n");
-	// 	ss << it->toString() << ",";
-	// }
-	// fprintf(stderr, "PratialOrder toString(): %s\n",ss.str().c_str());
+	ss << "\tRMWs: ";
+	for (auto it=rmws.begin(); it!=rmws.end(); it++) {
+		// fprintf(stderr, "in rmws loop\n");
+		ss << it->toString() << ",";
+	}
 	return ss.str();
 }
 

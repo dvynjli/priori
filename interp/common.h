@@ -100,7 +100,7 @@ struct hash<InstNum> {
 extern map<llvm::Instruction*, InstNum> instToNum;
 extern map<InstNum, llvm::Instruction*> numToInst;
 
-inline llvm::Instruction* getInstByInstNum(InstNum &instnum) {
+inline llvm::Instruction* getInstByInstNum(const InstNum &instnum) {
 	auto searchInst = numToInst.find(instnum);
 	assert(searchInst != numToInst.end() && "ERROR: the searched instruction number does not exist in map");
 	return searchInst->second;
