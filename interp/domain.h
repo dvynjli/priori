@@ -180,7 +180,8 @@ public:
 
     void emplace(string var, PartialOrder *po) {
         // fprintf(stderr, "changing %s\n", var.c_str());
-        const PartialOrder &poToAdd = PartialOrderWrapper::addToSet(po);
+        bool isAlreadyExists;
+        const PartialOrder &poToAdd = PartialOrderWrapper::addToSet(po, isAlreadyExists);
         auto searchVar = pomo.find(var);
         if (searchVar != pomo.end()) {
             // fprintf(stderr, "assigning\n");

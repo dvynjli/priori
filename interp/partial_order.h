@@ -31,12 +31,12 @@ class PartialOrder {
 
 	// Adds inst such that Va \in order, (a, inst) \in order.
 	// Returns false if inst \in order and order[inst] != {}
-	bool append(const InstNum &inst);
+	void append(const InstNum &inst);
 
 	// Joins two partial orders maintaing the ordering relation in both
 	// If this is not possible (i.e. joining will result in cycle), 
 	// returns false
-	bool join(const PartialOrder &other);
+	void join(const PartialOrder &other);
 
 	// checks if inst is a part of this partial order
 	bool isExists(const InstNum &inst) const;
@@ -44,7 +44,7 @@ class PartialOrder {
 	// Removes inst from the element of the set. It should also remove
 	// all (x, inst) and (inst, x) pair from order for all possible 
 	// values of x
-	bool remove(const InstNum &inst);
+	void remove(const InstNum &inst);
 	
 public:
 	PartialOrder() :
@@ -100,7 +100,7 @@ struct hash<PartialOrder*> {
 class PartialOrderWrapper {	
 public:
 	static unordered_set<PartialOrder*> allPO;
-	static const PartialOrder& addToSet(PartialOrder *po);
+	static const PartialOrder& addToSet(PartialOrder *po, bool &isAlreadyExist);
 
 	// returns pair <true, ref of PO> if found, <false, null> if not found
 	// pair<bool, PartialOrder&> find(PartialOrder *po);

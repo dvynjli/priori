@@ -58,41 +58,34 @@ bool PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
-bool PartialOrder::append(const InstNum &newinst) {
+void PartialOrder::append(const InstNum &newinst) {
 	// cout << "appending Partial order " << newinst << "\n";
+	// If the 'newinst' is already in the order, there should 
+	// not be any instruction ordered after it. Otherwise, 
+	// it cannot be appended.
+	auto searchInst = order.find(newinst);
+	assert((searchInst == order.end() || searchInst->second.empty()) && "some instruction is ordered after the inst to be appended");
+
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ) {
 		if (it->first.isSeqBefore(newinst)) {auto ittmp = it++; remove((ittmp->first));}
-		else it++;
-	}
-
-	// If the 'newinst' is already in the order, it cannot be appended
-	auto searchInst = order.find(newinst);
-	if (searchInst == order.end()) {
-		order.emplace(newinst, unordered_set<InstNum>());
-	}
-	else return false;
-	// if (!order[newinst].empty()) return false;
-	// else order.emplace(newinst, unordered_set<InstNum>());
-	
-	for (auto it=order.begin(); it!=order.end(); ++it) {
-		if (it->first != newinst) {
+		else {
+			// add newinst at in 'to' of it
 			it->second.insert(newinst);
+			it++;
 		}
 	}
-
+	order.emplace(newinst, unordered_set<InstNum>());
 	if(isRMWInst(newinst)) {
 		rmws.insert(newinst);
 	}
-
-	return true;
 }
 
 // Joins two partial orders maintaing the ordering relation in both
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
-bool PartialOrder::join(const PartialOrder &other) {
+void PartialOrder::join(const PartialOrder &other) {
 	// fprintf(stderr, "joining\n");
 	// fprintf(stderr, "%s\t and \t%s\n", toString().c_str(), other.toString().c_str());
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
@@ -101,15 +94,12 @@ bool PartialOrder::join(const PartialOrder &other) {
 			addInst(fromItr->first);
 		}
 		for (auto toItr=fromItr->second.begin(); toItr!=fromItr->second.end(); ++toItr) {
-			if (!addOrder(fromItr->first, *toItr))
-				return false;
+			addOrder(fromItr->first, *toItr);
 		}
 		// if (isRMWInst(fromItr->first))
 		// 	rmws.insert(fromItr->first);
 	}
 	// fprintf(stderr, "after join %s\n", toString().c_str());
-
-	return true;
 }
 
 // checks if (inst1, inst2) \in order
@@ -139,7 +129,6 @@ bool PartialOrder::isConsistent(const PartialOrder &other) {
 			if (isOrderedBefore(itTo, itFrom.first)) return false;
 		}
 	}
-
 	return true;
 }
 
@@ -190,7 +179,7 @@ bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, In
 // Removes inst from the element of the set. It should also remove
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
-bool PartialOrder::remove(const InstNum &inst) {
+void PartialOrder::remove(const InstNum &inst) {
 	// if (isRMWInst(inst)) return true;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
@@ -199,8 +188,6 @@ bool PartialOrder::remove(const InstNum &inst) {
 	order.erase(inst);
 	// if (isRMWInst(inst))
 	// 	rmws.erase(inst);
-	
-	return true;
 }
 
 // get the last instructions in Partial Order
@@ -344,16 +331,17 @@ unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::end
 
 unordered_set<PartialOrder*> PartialOrderWrapper::allPO;
 
-const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po) {
+const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po, bool &isAlreadyExist) {
 	// auto searchPO = allPO.find(*po);
-	auto searchPO = allPO.find(po);
-	if (searchPO != allPO.end()) {
-		return **searchPO;
-	}
-	else {
-		auto inserted = allPO.insert(po);
-		return **(inserted.first);
-	}
+	// auto searchPO = allPO.find(po);
+	// if (searchPO != allPO.end()) {
+	// 	return **searchPO;
+	// }
+	// else {
+	auto inserted = allPO.insert(po);
+	isAlreadyExist = inserted.second;
+	return **(inserted.first);
+	// }
 	// fprintf(stderr, "done. returning\n");
 }
 
@@ -362,12 +350,12 @@ PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &ins
     tmpPO->copy(curPO);
     tmpPO->append(inst);
     // fprintf(stderr, "after append: %s\n", tmpPO->toString().c_str());
-    if (hasInstance(*tmpPO)) {
-		auto po = addToSet(tmpPO);
+	bool isAlreadyExist;
+	auto po = addToSet(tmpPO, isAlreadyExist);
+    if (isAlreadyExist) {
 		delete tmpPO;
-		return po;
 	}
-	else return addToSet(tmpPO);
+	else return po;
 }
 
 PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, InstNum &to) {
@@ -375,12 +363,12 @@ PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, I
     tmpPO->copy(curPO);
     tmpPO->addOrder(from, to);
     // fprintf(stderr, "after addOrder: %s\n", tmpPO->toString().c_str());
-    if (hasInstance(*tmpPO)) {
-		auto po = addToSet(tmpPO);
+    bool isAlreadyExist;
+	auto po = addToSet(tmpPO, isAlreadyExist);
+    if (isAlreadyExist) {
 		delete tmpPO;
-		return po;
 	}
-	else return addToSet(tmpPO);
+	else return po;
 }
 
 PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &other) {
@@ -388,12 +376,12 @@ PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &
     tmpPO->copy(curPO);
     tmpPO->join(other);
     // fprintf(stderr, "after join: %s\n", tmpPO->toString().c_str());
-    if (hasInstance(*tmpPO)) {
-		auto po = addToSet(tmpPO);
+    bool isAlreadyExist;
+	auto po = addToSet(tmpPO, isAlreadyExist);
+    if (isAlreadyExist) {
 		delete tmpPO;
-		return po;
 	}
-	else return addToSet(tmpPO);
+	else return po;
 }
 
 PartialOrder PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
@@ -401,12 +389,12 @@ PartialOrder PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
     tmpPO->copy(curPO);
     tmpPO->remove(inst);
     // fprintf(stderr, "after remove: %s\n", tmpPO->toString().c_str());
-    if (hasInstance(*tmpPO)) {
-		auto po = addToSet(tmpPO);
+    bool isAlreadyExist;
+	auto po = addToSet(tmpPO, isAlreadyExist);
+    if (isAlreadyExist) {
 		delete tmpPO;
-		return po;
 	}
-	else return addToSet(tmpPO);
+	else return po;
 }
 
 bool PartialOrderWrapper::hasInstance (PartialOrder &po) {
