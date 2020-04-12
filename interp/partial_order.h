@@ -15,19 +15,19 @@ class PartialOrder {
 	unordered_set<InstNum> rmws;
 
 	// update ordering relation to get transitivity
-	bool makeTransitiveOrdering(const InstNum &from, 
+	void makeTransitiveOrdering(const InstNum &from, 
 		const InstNum &to, 
 		std::unordered_map<InstNum, std::unordered_set<InstNum>>::iterator toItr);
 
 	// adds an instruction with nothing ordered after it ib the order,
 	// while deleting the older instructions from the same thread
-	bool addInst(const InstNum &inst);
+	void addInst(const InstNum &inst);
 	bool isRMWInst(const InstNum &inst);
 
 	// Adds (from, to) to order if not already. 
 	// Since partial order can't be cyclic, if (to, from) are already
 	// in order, returns false. Else add (from, to) and returns true
-	bool addOrder(const InstNum &from, const InstNum &to);
+	void addOrder(const InstNum &from, const InstNum &to);
 
 	// Adds inst such that Va \in order, (a, inst) \in order.
 	// Returns false if inst \in order and order[inst] != {}

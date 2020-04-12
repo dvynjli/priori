@@ -607,30 +607,6 @@ class VerifierPass : public ModulePass {
             }
         }
 
-        /* for(auto bbItr=F->begin(); bbItr!=F->end(); ++bbItr){
-            BasicBlock *currentBB = &(*bbItr);
-
-            // This check is not required since we are setting the environment of first 
-            // instrution of BasicBlock while analyzing BarnchInst
-            // Environment predEnv = funcInitEnv[F].second;
-            
-            // // initial domain of pred of cur bb to join of all it's pred
-            // for (BasicBlock *Pred : predecessors(currentBB)){
-            //     auto searchPredBBEnv = curFuncEnv.find(Pred->getTerminator());
-            //     if (searchPredBBEnv != curFuncEnv.end())
-            //         predEnv.joinEnvironment(searchPredBBEnv->second);
-            //     // TODO: if the domain is empty? It means pred bb has not been analyzed so far
-            //     // we can't analyze current BB
-            // }
-            // if termination statement
-                // if coditional branching
-                // if unconditional branching
-
-            // errs() << "CurFuncEnv before calling analyzeBB:\n";
-            // printInstToEnvMap(curFuncEnv);
-            analyzeBasicBlock(currentBB, curFuncEnv, &curInterfItr);
-        } */
-
         return curFuncEnv;
     }
 

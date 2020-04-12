@@ -4,11 +4,12 @@
 // Since partial order can't be cyclic, if (to, from) are already
 // in order, returns false. The behavior might be undefined 
 // in this case. Else add (from, to) and returns true
-bool PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
+void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 	// fprintf(stderr, "addOrder %p --> %p\n", from, to);
 	
-	if (isOrderedBefore(from, to)) return true;
-	if (isOrderedBefore(to, from)) return false;
+	if (isOrderedBefore(from, to)) return;
+	// if (isOrderedBefore(to, from)) return false;
+	assert(!isOrderedBefore(to, from) && "adding the order will break anti-symmetry");
 
 	// find instNum of from and to
 	
@@ -35,7 +36,8 @@ bool PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 			}
 			else if (to.isSeqBefore(inst)) {
 				// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
-				return addOrder(from, inst);
+				addOrder(from, inst);
+				return;
 			}
 			if (inst.isSeqBefore(from)) {
 				// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
@@ -43,17 +45,17 @@ bool PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 				remove(inst);
 			}
 			else if (from.isSeqBefore(inst)) {
-				bool done = makeTransitiveOrdering(from, to, toItr);
+				makeTransitiveOrdering(from, to, toItr);
 				remove(from);
 				// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
 				addInst(to);
-				return done;
+				return;
 			}
 		}
 	}
 
 	// set transitive ordering from-->to
-	return makeTransitiveOrdering(from, to, toItr);
+	makeTransitiveOrdering(from, to, toItr);
 }
 
 // Adds inst such that Va \in order, (a, inst) \in order.
@@ -202,16 +204,17 @@ void PartialOrder::getLasts(unordered_set<InstNum> &lasts) const {
 }
 
 // update ordering relation to get transitivity
-bool PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &to, 
+void PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &to, 
 	std::unordered_map<InstNum, std::unordered_set<InstNum>>::iterator toItr
 ){
 	// check for anti-symmetry
-	if (isOrderedBefore(to, from)) return false;
+	assert(!isOrderedBefore(to, from) && "Anti symmetry chcek in PO failed");
+	// if (isOrderedBefore(to, from)) return false;
 
 	// insert 'to' in set of instrcutions partially ordered with 'from'
 	if (order[from].insert(to).second == false) {
 		// 'to' was already added in the ordering. No need to update ordering furthur
-		return true;
+		return;
 	}
 	
 	// set transitive ordering with 'from' of all elements x s.t. to-->x
@@ -226,19 +229,17 @@ bool PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &t
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		auto search = it->second.find(from);
 		if(search != it->second.end()) {
-			if (makeTransitiveOrdering(it->first, to, toItr) == false)
-				return false;
+			makeTransitiveOrdering(it->first, to, toItr);
 		}
 	}
-	return true;
 }
 
-bool PartialOrder::addInst(const InstNum &inst) {
+void PartialOrder::addInst(const InstNum &inst) {
 	for (auto it=order.begin(); it!=order.end(); ) {
 		InstNum instItr = it->first; ++it;
 		if (instItr != inst && inst.isSeqBefore(instItr)) {
 			// Nothing to add, a newer instruction is already there
-			return true;
+			return ;
 		}
 		else if (instItr != inst && instItr.isSeqBefore(inst)) {
 			// all the instructions ordered before instItr, should also
@@ -256,7 +257,7 @@ bool PartialOrder::addInst(const InstNum &inst) {
 	}
 	if (isRMWInst(inst))
 		rmws.insert(inst);
-	return true;
+	return;
 }
 
 bool PartialOrder::isRMWInst(const InstNum &inst) {

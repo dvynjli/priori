@@ -83,28 +83,16 @@ Lazy join of environment (same as Kusano-FSE16)
 
 TODO:
     change pthread to thread
-    Fix error with octagon domain again
-    See if zHelper is required in join and append
-    make Z3Helper global for all files.
-    In join of PartialOrder, need to check if E inst. fromItr --sb--> inst. No need to add from inst (with emptyset) in this case.
     Join of PartialOrder needs to accomodate sb of instructions correctly (example in notepad). In toItr newer will replace older
-    Join operation in EnvironmentPOMO joins only globals of ApDomain. Is it ok?
-    change vector<string> globalVars to pointer
     Check if lastWrites, lastGlobalInst and lastGlobalOfVar are required now - no, delete it 
     select, switch-case instruction
-    test22 and test20 are taking too much time - check why?
-    Q. If instruction a is already in po at some program location, should we apply interf from a again? 
-    Should add a rule to not have stores from conflicting branches in the same interference combination.
-    We will see the interference of inst before thread creates for some thread, which is redundant. How to remove this?
-    Change function analyzeThread to call analyzeBasicBlock using succ information starting from getEntryBlock
-
+    Q. Should add a rule to not have stores from conflicting branches in the same interference combination.
 
 Other functionality that might be added
     Race detection on non-atomics - 
         if a non aomic load can read from more than one writes
         can be done at the time of interference feasiblility checking
-    creation of more than one thread of a function
-        need to change the MHB adding for thread create
+    
 
 RA testcases: 16, 30, 31, 32, 33, 34, 35
 
@@ -112,14 +100,8 @@ Possible Optimizations:
     LoadStore map
     while checking if fixed point is reached, we are comparing domain of all the Instructions. It will be sufficient to compare domain of only stores
         But efficiently  doing this will require changing the data structures and store loads saperately from rest of the thread instr
-    combine some of the interfernce based on flow
-    // delete from environment if domain is bottom - optimize isUnreachable()
-    create interfernce based on data and control dependecies. will result in less z3 queries
-        might be also delete data dep rule from z3
-        feasibility can be checked while making the interfernces - might result in less time complexity
     reduce number of variables
     Remove env if ApDomain is bottom
-    In the new approach, z3 doesn't need to initialized repeatedly
     remove threads (vector of functions) and use funcSet instead
     ------------ Not applicable anymore --------------------------------
     try reducing number of rules

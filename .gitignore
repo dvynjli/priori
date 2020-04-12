@@ -10,3 +10,4 @@ out
 exec_mutiple_times.sh
 code_workspace.code-workspace
 callgrind**
+results/
