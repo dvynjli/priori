@@ -39,15 +39,15 @@ class ApDomain {
     void assignZerosToGlobals(vector<string> &globalVars);
     void initHasChanged(vector<string> &globalVars);
     ap_constyp_t getApConsType(operation oper);
-    void setHasChanged(string var);
-    void performNECmp(string strOp1, int intOp2);
-    void performNECmp(string strOp1, string strOp2);
+    void setHasChanged(const string &var);
+    void performNECmp(string &strOp1, int &intOp2);
+    void performNECmp(string &strOp1, string &strOp2);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t &abs_val);
     // InstNum getRelHead(string var);
     // void setRelHead(string var, InstNum head);
-    void copyVar(ApDomain &fromApDomain, ap_var_t apVar);
-    void joinVar(ApDomain &fromApDomain, ap_var_t apVar);
+    void copyVar(ApDomain &fromApDomain, ap_var_t &apVar);
+    void joinVar(ApDomain &fromApDomain, ap_var_t &apVar);
 
 public:
     bool operator== (const ApDomain &other) const;
@@ -56,20 +56,20 @@ public:
     void copyApDomain(ApDomain &copyFrom);
 
     // Unary Operations
-    void performUnaryOp(operation oper, string strTo, string strOp);
-    void performUnaryOp(operation oper, string strTo, int intOp);
+    void performUnaryOp(operation &oper, string &strTo, string &strOp);
+    void performUnaryOp(operation &oper, string &strTo, int &intOp);
     // Binary Operations and RMW Operations
-    void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
-    void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
-    void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
-    void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    void performBinaryOp(operation &oper, string &strTo, string &strOp1, int &intOp2);
+    void performBinaryOp(operation &oper, string &strTo, int &intOp1,    string &strOp2);
+    void performBinaryOp(operation &oper, string &strTo, int &intOp1,    int &intOp2);
+    void performBinaryOp(operation &oper, string &strTo, string &strOp1, string &strOp2);
     // Cmp Operations
-    void performCmpOp(operation oper, string strOp1, int intOp2);
-    void performCmpOp(operation oper, int intOp1,    string strOp2);
-    void performCmpOp(operation oper, int intOp1,    int intOp2);
-    void performCmpOp(operation oper, string strOp1, string strOp2);
+    void performCmpOp(operation oper, string &strOp1, int &intOp2);
+    void performCmpOp(operation oper, int &intOp1,    string &strOp2);
+    void performCmpOp(operation oper, int &intOp1,    int &intOp2);
+    void performCmpOp(operation oper, string &strOp1, string &strOp2);
     // Other Operations
-    void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
+    void performCmpXchgOp(string &strTo, string &strCmpVal, string &strNewVal);
     
     // Perform join only for the list of variables passed in arg2
     void joinOnVars(ApDomain &other, vector<string> &vars);
@@ -80,11 +80,11 @@ public:
     void applyInterference(string interfVar, ApDomain &fromApDomain, bool isPOMO, map<string, options> *varoptions=nullptr);
     void joinApDomain(ApDomain &other);
     void meetApDomain(ApDomain &other);
-    void setVar(string strVar);
-    void unsetVar(string strVar);
+    void setVar(string &strVar);
+    void unsetVar(string &strVar);
     bool isUnreachable();
 
-    void addVariable(string varName);
+    void addVariable(string &varName);
     void printApDomain();
 };
 
@@ -120,22 +120,22 @@ public:
     virtual void performUnaryOp(operation oper, string strTo, int intOp) = 0;
     
     // Binary Operations
-    virtual void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) = 0;
-    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2) = 0;
-    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2) = 0;
-    virtual void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) = 0;
+    virtual void performBinaryOp(operation oper, string &strTo, string &strOp1, int &intOp2) = 0;
+    virtual void performBinaryOp(operation oper, string &strTo, int &intOp1,    string &strOp2) = 0;
+    virtual void performBinaryOp(operation oper, string &strTo, int &intOp1,    int &intOp2) = 0;
+    virtual void performBinaryOp(operation oper, string &strTo, string &strOp1, string &strOp2) = 0;
     
     // Other Operations
     // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
 
     // Cmp Operations
-    virtual void performCmpOp(operation oper, string strOp1, int intOp2) = 0;
-    virtual void performCmpOp(operation oper, int intOp1,    string strOp2) = 0;
-    virtual void performCmpOp(operation oper, int intOp1,    int intOp2) = 0;
-    virtual void performCmpOp(operation oper, string strOp1, string strOp2) = 0;
+    virtual void performCmpOp(operation oper, string &strOp1, int &intOp2) = 0;
+    virtual void performCmpOp(operation oper, int &intOp1,    string &strOp2) = 0;
+    virtual void performCmpOp(operation oper, int &intOp1,    int &intOp2) = 0;
+    virtual void performCmpOp(operation oper, string &strOp1, string &strOp2) = 0;
 
     // Store Operation
-    virtual void performStoreOp(InstNum &storeInst, string destVarName)=0;
+    virtual void performStoreOp(InstNum &storeInst, string &destVarName)=0;
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
@@ -150,13 +150,12 @@ public:
         * curInst: Current Instruction
         * interfInst: Interferring instruction
         */
-    virtual void applyInterference(string interfVar, T &interfEnv,
+    virtual void applyInterference(string &interfVar, T &interfEnv,
                 InstNum &curInst, InstNum &interfInst) = 0;
-    virtual void carryEnvironment(string interfVar, T &fromEnv) = 0;
     virtual void joinEnvironment(T &other) = 0;
     virtual void meetEnvironment(T &other) = 0;
-    virtual void setVar(string strVar) = 0;
-    virtual void unsetVar(string strVar) = 0;
+    virtual void setVar(string &strVar) = 0;
+    virtual void unsetVar(string &strVar) = 0;
     virtual bool isUnreachable() = 0;
 
     virtual void printEnvironment() = 0;
@@ -298,7 +297,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     //             map<InstNum, map<string, InstNum>> *lastWrites, 
     //             InstNum interfInst, InstNum curInst, Z3Minimal &zHelper);
     void getVarOption (map<string, options> *varoptions, 
-                string varName,
+                const string &varName,
                 PartialOrder &curPartialOrder,
                 const PartialOrder &interfPartialOrder);
 
@@ -322,22 +321,22 @@ public:
     virtual void performUnaryOp(operation oper, string strTo, int intOp);
     
     // Binary Operations
-    virtual void performBinaryOp(operation oper, string strTo, string strOp1, int intOp2);
-    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    string strOp2);
-    virtual void performBinaryOp(operation oper, string strTo, int intOp1,    int intOp2);
-    virtual void performBinaryOp(operation oper, string strTo, string strOp1, string strOp2);
+    virtual void performBinaryOp(operation oper, string &strTo, string &strOp1, int &intOp2);
+    virtual void performBinaryOp(operation oper, string &strTo, int &intOp1,    string &strOp2);
+    virtual void performBinaryOp(operation oper, string &strTo, int &intOp1,    int &intOp2);
+    virtual void performBinaryOp(operation oper, string &strTo, string &strOp1, string &strOp2);
     
     // Other Operations
     // void performCmpXchgOp(string strTo, string strCmpVal, string strNewVal);
 
     // Cmp Operations
-    virtual void performCmpOp(operation oper, string strOp1, int intOp2);
-    virtual void performCmpOp(operation oper, int intOp1,    string strOp2);
-    virtual void performCmpOp(operation oper, int intOp1,    int intOp2);
-    virtual void performCmpOp(operation oper, string strOp1, string strOp2);
+    virtual void performCmpOp(operation oper, string &strOp1, int &intOp2);
+    virtual void performCmpOp(operation oper, int &intOp1,    string &strOp2);
+    virtual void performCmpOp(operation oper, int &intOp1,    int &intOp2);
+    virtual void performCmpOp(operation oper, string &strOp1, string &strOp2);
 
     // Store Operations
-    virtual void performStoreOp(InstNum &storeInst, string destVarName);
+    virtual void performStoreOp(InstNum &storeInst, string &destVarName);
 
     // Thread Join Operation
     // Perform join only for the list of variables passed in arg2
@@ -346,15 +345,13 @@ public:
     // Perform copy only for the list of variables passed in arg2
     virtual void copyOnVars(EnvironmentPOMO &other, vector<string> &vars);
     
-    virtual void applyInterference(string interfVar, EnvironmentPOMO &fromEnv, 
+    virtual void applyInterference(string &interfVar, EnvironmentPOMO &fromEnv, 
                 InstNum &curInst, InstNum &interfInst);
     virtual void joinEnvironment(EnvironmentPOMO &other);
     virtual void meetEnvironment(EnvironmentPOMO &other);
-    // TODO: this function is not required for POMO. change the structure to use append instead of this
-    virtual void carryEnvironment(string interfVar, EnvironmentPOMO &fromEnv);
     // virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
-    virtual void setVar(string strVar);
-    virtual void unsetVar(string strVar);
+    virtual void setVar(string &strVar);
+    virtual void unsetVar(string &strVar);
     virtual bool isUnreachable();
 
     virtual void printEnvironment();

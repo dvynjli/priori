@@ -36,7 +36,7 @@ void ApDomain::initHasChanged(vector<string> &globalVars) {
     }
 }
 
-void ApDomain::setHasChanged(string var) {
+void ApDomain::setHasChanged(const string &var) {
     auto searchHasChanged = hasChanged.find(var);
     if (searchHasChanged != hasChanged.end() && !searchHasChanged->second) {
         hasChanged[var] = true;
@@ -96,7 +96,7 @@ void ApDomain::meetApDomain(ApDomain &other){
     ap_abstract1_meet(man, true, &absValue, &other.absValue);
 }
 
-void ApDomain::addVariable(string varName) {
+void ApDomain::addVariable(string &varName) {
     int newSize = (env->intdim) + 1;
     ap_var_t intAp[newSize];
     for (int i = 0; i < newSize-1; i++){
@@ -118,7 +118,7 @@ void ApDomain::addVariable(string varName) {
     // ap_environment_fdump(stderr, env1);
 }
 
-void ApDomain::performUnaryOp(operation oper, string strTo, int intOp) {
+void ApDomain::performUnaryOp(operation &oper, string &strTo, int &intOp) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     switch(oper) {
         // case LOAD is not possible
@@ -131,7 +131,7 @@ void ApDomain::performUnaryOp(operation oper, string strTo, int intOp) {
     setHasChanged(strTo);
 }
 
-void ApDomain::performUnaryOp(operation oper, string strTo, string strOp) {
+void ApDomain::performUnaryOp(operation &oper, string &strTo, string &strOp) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     switch(oper) {
         case LOAD:
@@ -146,7 +146,7 @@ void ApDomain::performUnaryOp(operation oper, string strTo, string strOp) {
     setHasChanged(strTo);
 }
 
-void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, string &strOp2) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     switch(oper) {
         case ADD:
@@ -169,7 +169,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, stri
     setHasChanged(strTo);
 }
 
-void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, int &intOp2) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     switch(oper) {
         case ADD:
@@ -191,7 +191,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, string strOp1, int 
     setHasChanged(strTo);
 }
 
-void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, string &strOp2) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     switch(oper) {
         case ADD:
@@ -213,7 +213,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, string 
     setHasChanged(strTo);
 }
 
-void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, int &intOp2) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     switch(oper) {
         case ADD:
@@ -234,7 +234,7 @@ void ApDomain::performBinaryOp(operation oper, string strTo, int intOp1, int int
     setHasChanged(strTo);
 }
 
-void ApDomain::performCmpOp(operation oper, string strOp1, int intOp2) {
+void ApDomain::performCmpOp(operation oper, string &strOp1, int &intOp2) {
     if (oper==LT) {
         // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
         performCmpOp(GT, intOp2, strOp1);
@@ -267,7 +267,7 @@ void ApDomain::performCmpOp(operation oper, string strOp1, int intOp2) {
     // printApDomain();
 }
 
-void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
+void ApDomain::performCmpOp(operation oper, int &intOp1, string &strOp2) {
     if (oper==LT) {
         // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
         performCmpOp(GT, strOp2, intOp1);
@@ -300,13 +300,13 @@ void ApDomain::performCmpOp(operation oper, int intOp1, string strOp2) {
     // printApDomain();
 }
 
-void ApDomain::performCmpOp(operation oper, int intOp1, int intOp2) {
+void ApDomain::performCmpOp(operation oper, int &intOp1, int &intOp2) {
     // never occurs
     fprintf(stderr, "ERROR: performCmpOp() with both operand of condition as constant. This function should never called!!");
     exit(0);
 }
 
-void ApDomain::performCmpOp(operation oper, string strOp1, string strOp2) {
+void ApDomain::performCmpOp(operation oper, string &strOp1, string &strOp2) {
     if (oper==LT) {
         // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
         performCmpOp(GT, strOp2, strOp1);
@@ -453,14 +453,14 @@ void ApDomain::applyInterference(string interfVar, ApDomain &fromApDomain, bool 
     // printApDomain();
 }
 
-void ApDomain::setVar(string strVar) {
+void ApDomain::setVar(string &strVar) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 1, AP_END);
     ap_var_t var = (ap_var_t) strVar.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
 }
 
-void ApDomain::unsetVar(string strVar) {
+void ApDomain::unsetVar(string &strVar) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_S_INT, 0, AP_END);
     ap_var_t var = (ap_var_t) strVar.c_str();
@@ -484,7 +484,7 @@ ap_constyp_t ApDomain::getApConsType(operation oper) {
     }
 }
 
-void ApDomain::performNECmp(string strOp1, int intOp2) {
+void ApDomain::performNECmp(string &strOp1, int &intOp2) {
     // ltDomain = strOp1 < intOp2
     ApDomain ltDomain;
     ltDomain.copyApDomain(*this);
@@ -495,7 +495,7 @@ void ApDomain::performNECmp(string strOp1, int intOp2) {
     joinApDomain(ltDomain);
 }
 
-void ApDomain::performNECmp(string strOp1, string strOp2) {
+void ApDomain::performNECmp(string &strOp1, string &strOp2) {
     // ltDomain = strOp1 < intOp2
     ApDomain ltDomain;
     ltDomain.copyApDomain(*this);
@@ -541,14 +541,14 @@ void ApDomain::performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstr
 }
 
 // copy the variable from the fromApDomain
-void ApDomain::copyVar(ApDomain &fromApDomain, ap_var_t apVar) {
+void ApDomain::copyVar(ApDomain &fromApDomain, ap_var_t &apVar) {
     ap_interval_t *fromInterval = ap_abstract1_bound_variable(fromApDomain.man, &fromApDomain.absValue, apVar);
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
     ap_linexpr1_set_list(&expr, AP_CST_I, fromInterval, AP_END);
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, apVar, &expr, NULL);
 }
 
-void ApDomain::joinVar(ApDomain &fromApDomain, ap_var_t apVar) {
+void ApDomain::joinVar(ApDomain &fromApDomain, ap_var_t &apVar) {
     ap_abstract1_t tmpValue = ap_abstract1_copy(man, &absValue);
                 
     // initialize tmp domain with the value of variable to be joined
@@ -627,55 +627,55 @@ void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, int intOp) {
     }
 }
 
-void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, string strOp1, int intOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, string &strOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
     }
 }
 
-void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, int intOp1, string strOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, int &intOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
     }
 }
 
-void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, int intOp1, int intOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, int &intOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
     }
 }
 
-void EnvironmentPOMO::performBinaryOp(operation oper, string strTo, string strOp1, string strOp2) {
+void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, string &strOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
     }
 }
 
-void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, int intOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, intOp2);
     }
 }
 
-void EnvironmentPOMO::performCmpOp(operation oper, int intOp1, string strOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, int &intOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, strOp2);
     }
 }
 
-void EnvironmentPOMO::performCmpOp(operation oper, int intOp1, int intOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, int &intOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, intOp2);
     }
 }
 
-void EnvironmentPOMO::performCmpOp(operation oper, string strOp1, string strOp2) {
+void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, strOp2);
     }
 }
 
-void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string destVarName) {
+void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string &destVarName) {
     unordered_map <POMO, ApDomain> newEnv;
     for (auto it: environment) {
         POMO tmpPomo=it.first;
@@ -815,7 +815,7 @@ void EnvironmentPOMO::copyOnVars(EnvironmentPOMO &other, vector<string> &vars) {
 }
 
 void EnvironmentPOMO::applyInterference(
-    string interfVar, 
+    string &interfVar, 
     EnvironmentPOMO &interfEnv, 
     InstNum &curInst,
     InstNum &interfInst
@@ -906,26 +906,6 @@ void EnvironmentPOMO::applyInterference(
     // printEnvironment();
 }
 
-void EnvironmentPOMO::carryEnvironment(string interfVar, EnvironmentPOMO &fromEnv) {
-    /* map <REL_HEAD, ApDomain> newEnvironment;
-        for (auto interfItr=fromEnv.environment.begin(); interfItr!=fromEnv.environment.end(); ++interfItr) {
-            for (auto curItr=environment.begin(); curItr!=environment.end(); ++curItr) {
-                REL_HEAD curRelHead(curItr->first);
-                REL_HEAD interfRelHead(interfItr->first);
-                curRelHead[interfVar] = interfRelHead[interfVar];
-                ApDomain newDomain;
-                newDomain.copyApDomain(curItr->second);
-                newDomain.applyInterference(interfVar, interfItr->second, true);
-                auto searchRelHead = environment.find(curRelHead);
-                // if (searchRelHead != environment.end()) {
-                //     newDomain.joinApDomain(searchRelHead->second);
-                // }
-                newEnvironment[curRelHead] = newDomain;
-            }
-        }
-        environment = newEnvironment; */
-}
-
 void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
     for (auto it=other.begin(); it!=other.end(); ++it) {
         POMO pomo = it->first;
@@ -976,7 +956,7 @@ void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
     // printEnvironment();
 }
 
-void EnvironmentPOMO::setVar(string strVar) {
+void EnvironmentPOMO::setVar(string &strVar) {
     for (auto it=environment.begin(); it!=environment.end();) {
         if (it->second.isUnreachable()) {
             it = environment.erase(it);
@@ -988,7 +968,7 @@ void EnvironmentPOMO::setVar(string strVar) {
     }
 }
 
-void EnvironmentPOMO::unsetVar(string strVar) {
+void EnvironmentPOMO::unsetVar(string &strVar) {
    for (auto it=environment.begin(); it!=environment.end();) {
         if (it->second.isUnreachable()) {
             it = environment.erase(it);
@@ -1013,7 +993,7 @@ bool EnvironmentPOMO::isUnreachable() {
 }
 
 void EnvironmentPOMO::getVarOption (map<string, options> *varoptions, 
-    string varName,
+    const string &varName,
     PartialOrder &curPartialOrder,
     const PartialOrder &interfPartialOrder
 ) {
