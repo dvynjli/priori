@@ -497,8 +497,6 @@ class VerifierPass : public ModulePass {
                 vector <forward_list<const pair<Instruction*, Instruction*>*>> curFuncInterfs;
                 unordered_map<Instruction*, Environment> newFuncEnv;
                 
-                auto searchCurFuncInitEnv = funcInitEnv.find(curFunc);
-                assert(searchCurFuncInitEnv!=funcInitEnv.end() && "Intial Environment of the function not found");
                 // errs() << "Init Env:\n";
                 // searchCurFuncInitEnv->second.printEnvironment();
                 
@@ -510,11 +508,14 @@ class VerifierPass : public ModulePass {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
                         forward_list<const pair<Instruction*, Instruction*>*> interf;
-                        newFuncEnv = analyzeThread(curFunc, &interf, searchCurFuncInitEnv->second, 
-                                            searchCurFuncInitEnv->second.isModified());
+                        newFuncEnv = analyzeThread(curFunc, interf);
                         programStateCurItr.emplace(curFunc, newFuncEnv);
                     }
-                    else searchCurFuncInitEnv->second.setNotModified();
+                    else {
+                        auto searchCurFuncInitEnv = funcInitEnv.find(curFunc);
+                        assert(searchCurFuncInitEnv!=funcInitEnv.end() && "Intial Environment of the function not found");
+                        searchCurFuncInitEnv->second.setNotModified();
+                    }
                 }
                 
                 // if (searchCurFuncInitEnv->second.isModified()) { 
@@ -523,7 +524,7 @@ class VerifierPass : public ModulePass {
                     // analyze the Thread for each interference
                     // #pragma omp parallel for shared(programStateCurItr) private(newFuncEnv) chunksize(500)
                     #pragma omp task if(curFuncInterfs.size() > 200) \
-                    shared(programStateCurItr) firstprivate(curFuncInterfs,funcItr,searchCurFuncInitEnv,curFunc) private(newFuncEnv)
+                    shared(programStateCurItr) firstprivate(curFuncInterfs,funcItr,curFunc) private(newFuncEnv)
                     {
                     for (auto interfItr=curFuncInterfs.begin(); interfItr!=curFuncInterfs.end(); ++interfItr){
                         // errs() << "\n***Forinterf\n";
@@ -533,8 +534,7 @@ class VerifierPass : public ModulePass {
                         //     printValue(listItr->second); errs() << "\n";
                         // }
 
-                        newFuncEnv = analyzeThread(*funcItr, &(*interfItr), searchCurFuncInitEnv->second, 
-                                            searchCurFuncInitEnv->second.isModified());
+                        newFuncEnv = analyzeThread(*funcItr, (*interfItr));
 
                         // join newFuncEnv of all feasibleInterfs and replace old one in state
                         auto searchFunEnv = programStateCurItr.find(curFunc);
@@ -578,8 +578,7 @@ class VerifierPass : public ModulePass {
     }
 
     unordered_map<Instruction*, Environment> analyzeThread (Function *F, 
-        forward_list<const pair<Instruction*, Instruction*>*> *interf,
-        Environment initEnv, bool hasFuncInitEnvChanged
+        forward_list<const pair<Instruction*, Instruction*>*> &interf
     ) {
         //call analyze BB, do the merging of BB depending upon term condition
         //init for next BB with assume
@@ -587,7 +586,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Instruction*, Environment> curFuncEnv;
         // errs() << "MOD: setting curfuncEnv, duncinitENv modified: " << funcInitEnv[F].isModified() <<"\n";
         curFuncEnv[&(F->getEntryBlock().front())] = funcInitEnv[F];
-        auto curInterfItr = interf->begin();
+        auto curInterfItr = interf.begin();
         // errs() << "CurFuncEnv before checking preds:\n";
         // printInstToEnvMap(curFuncEnv);
         queue<BasicBlock*> basicBlockQ;
@@ -599,7 +598,7 @@ class VerifierPass : public ModulePass {
             BasicBlock* BB = basicBlockQ.front();
             basicBlockQ.pop();
 
-            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf->end());
+            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end());
 
             for (auto succBB: successors(BB)) {
                 if (basicBlockSet.insert(succBB).second)
@@ -752,7 +751,7 @@ class VerifierPass : public ModulePass {
                 
             }
 
-            curFuncEnv[currentInst] = curEnv;
+            curFuncEnv.emplace(currentInst, curEnv);
             predEnv.copyEnvironment(curEnv);
             if (!noPrint) curEnv.printEnvironment();
         }
@@ -780,7 +779,7 @@ class VerifierPass : public ModulePass {
 
     Environment checkCmpInst (
         CmpInst* cmpInst, 
-        Environment curEnv, 
+        Environment &curEnv, 
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) { 
         // need to computer Environment of both true and false branch
@@ -877,7 +876,7 @@ class VerifierPass : public ModulePass {
 
     Environment checkLogicalInstruction (
         BinaryOperator* logicalOp, 
-        Environment curEnv, 
+        Environment &curEnv, 
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
         string destVarName = getNameFromValue(logicalOp);
@@ -1003,7 +1002,7 @@ class VerifierPass : public ModulePass {
     }
 
     //  call approprproate function for the inst passed
-    Environment checkBinInstruction(BinaryOperator* binOp, Environment curEnv) {
+    Environment checkBinInstruction(BinaryOperator* binOp, Environment &curEnv) {
         operation oper;
         switch (binOp->getOpcode()) {
             case Instruction::Add:
@@ -1052,7 +1051,7 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
-    Environment checkStoreInst(StoreInst* storeInst, Environment curEnv) {
+    Environment checkStoreInst(StoreInst* storeInst, Environment &curEnv) {
         Value* destVar = storeInst->getPointerOperand();
         #ifdef ALIAS
         // if (storeInst->isAtomic() && getGlobalAliases(destVar, aliasAnalyses[storeInst->getFunction()]).size()>1) {
@@ -1107,9 +1106,9 @@ class VerifierPass : public ModulePass {
 
     Environment checkUnaryInst(
         UnaryInstruction* unaryInst, 
-        Environment curEnv, 
+        Environment &curEnv, 
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
-        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator &endCurInterfItr
     ) {
         Value* fromVar = unaryInst->getOperand(0);
         string fromVarName = getNameFromValue(fromVar);
@@ -1156,7 +1155,7 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
-    void checkThreadCreate(CallInst *callInst, Environment curEnv) {
+    void checkThreadCreate(CallInst *callInst, Environment &curEnv) {
         // TODO: need to call this oper only if curEnv has changed and set changed to false
         // Carry the environment of current thread to the newly created thread. 
         // Need to copy only globals, discard locals.
@@ -1173,7 +1172,7 @@ class VerifierPass : public ModulePass {
         }
     }
 
-    Environment checkThreadJoin(CallInst *callInst, Environment curEnv) {
+    Environment checkThreadJoin(CallInst *callInst, Environment &curEnv) {
         // Join the environments of joinee thread with this thread. 
         // Need to copy only globals, discard locals.
         bool modified = curEnv.isModified();
@@ -1208,7 +1207,7 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
-    Environment checkAssumeCall(CallInst *callInst, Environment curEnv,
+    Environment checkAssumeCall(CallInst *callInst, Environment &curEnv,
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
         if (Instruction* assumedInst = dyn_cast<Instruction>(callInst->getArgOperand(0)))
@@ -1218,9 +1217,9 @@ class VerifierPass : public ModulePass {
 
     Environment checkRMWInst(
         AtomicRMWInst *rmwInst, 
-        Environment curEnv, 
+        Environment &curEnv, 
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
-        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator &endCurInterfItr
     ) { 
         Value *pointerVar = rmwInst->getPointerOperand();
         string pointerVarName = getNameFromValue(pointerVar);
@@ -1282,9 +1281,9 @@ class VerifierPass : public ModulePass {
 
     Environment applyInterfToLoad(
         Instruction* loadInst, 
-        Environment curEnv, 
+        Environment &curEnv, 
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
-        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr,
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator &endCurInterfItr,
         string varName
     ) {
         // errs() << "Applying interf\n";
