@@ -18,7 +18,7 @@ Might need to run ```make``` as sudo
 
 # Running the pass
 ```
-opt -basicaa -load build/interp/VerifierPass.so -verifier -<domain> -z3-minimal -useMOPO tests/test1.ll
+opt -load build/interp/VerifierPass.so -verifier -<domain> -stop-on-fail -eager-pruning tests/test1.ll
 ```
 Supported abstract domains
 - ```interval```: interval domain
@@ -26,9 +26,9 @@ Supported abstract domains
 
 Other supported options
 - ```no-print```: No debug prints. Prints only #errors and time elapsed
-- ```z3-minimal```: Enable interferce pruning using Z3 using Release Head based analysis
-- ```useMOHead```: Enable interference pruning using Z3 using modification order head based analysis
-- ```useMOPO```: Enable interference pruning using Z3 using partial order over modification order based analysis
+- ```stop-on-fail```: Stop the analysis as soon as assertion is failed
+- ```eager-pruning```: Eagerly prune infeasible interference combinations
+- ```no-interf-comb```: Use analysis without interference combinations
 
 
 # Compile a source file

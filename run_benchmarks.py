@@ -40,7 +40,7 @@ print('Name, Time, Iterations')
 
 for benchmark in benchmarks:
 	command = ['opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-				'-no-print', '-stop-on-fail', '-eager', 'tests/benchmarks/' + benchmark + '.ll']
+				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/benchmarks/' + benchmark + '.ll']
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()
 	if ('ERROR:' in str(err) or 'core dumped' in str(err)):

@@ -8,7 +8,7 @@ using namespace std;
 atomic<int> x;
 
 void* fun1(void * arg){
-	x.store(1, memory_order_release);
+	// x.store(1, memory_order_release);
 	int tmp1 = x.load(memory_order_acquire);
 	// testcase to check if thread create is working correctly
 	// tmp1 != 0 should pass
