@@ -705,19 +705,22 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
     // printEnvironment();
     if (other.isUnreachable()) {
         environment.clear();
+        // fprintf(stderr, "other is empty. returning\n");
         return;
     }
     
     for (auto curItr: environment) {
+        // fprintf(stderr, "in curItr loop\n");
         POMO curPomo = curItr.first;
-        POMO newPomo=curPomo;
-        ApDomain tmpDomain;
-        tmpDomain.copyApDomain(curItr.second);
+        // POMO newPomo=curPomo;
+        // ApDomain tmpDomain;
+        // tmpDomain.copyApDomain(curItr.second);
                 
         for (auto otherItr: other) {
             POMO otherPomo = otherItr.first;
+            ApDomain tmpDomain;
             tmpDomain.copyApDomain(curItr.second);
-            newPomo = curPomo;
+            POMO newPomo = curPomo;
 
             bool apply = true;
             for (auto varItr: curPomo) {
@@ -774,7 +777,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
             }
             newenvironment[newPomo] = tmpDomain;
         }
-        newenvironment[newPomo] = tmpDomain;
+        // newenvironment[newPomo] = tmpDomain;
     }
     environment = newenvironment;
     if (other.isModified() && !isModified()) setModified();

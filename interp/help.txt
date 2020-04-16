@@ -88,6 +88,7 @@ TODO:
     select, switch-case instruction
     Q. Should add a rule to not have stores from conflicting branches in the same interference combination.
     **** Check test16: env after pthread join in #iter = 2 is wrong.
+    rejecting test22. Too complicated and useless.
 
 Other functionality that might be added
     Race detection on non-atomics - 

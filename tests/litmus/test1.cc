@@ -35,20 +35,30 @@ void* fun4(void * arg){
 	return NULL;
 }
 
-int main () {
-	pthread_t t1,t2,t3,t4;
-	pthread_create(&t1, NULL, fun1, NULL);
-	pthread_create(&t2, NULL, fun2, NULL);
-	pthread_create(&t3, NULL, fun3, NULL);
-	pthread_create(&t4, NULL, fun4, NULL);
-	pthread_join(t1, NULL);
-	pthread_join(t2, NULL);
-	pthread_join(t3, NULL);
-	pthread_join(t4, NULL);
+void *property (void *arg) {
 	int a = done1.load(memory_order_relaxed);
 	int b = done2.load(memory_order_relaxed);
 	// no total ordering on writes of x and y. assertion should fail.
 	assert(a!=1 || b!=1);
+	return NULL;
+}
+
+int main () {
+	pthread_t t1,t2,t3,t4, t5;
+	pthread_create(&t1, NULL, fun1, NULL);
+	pthread_create(&t2, NULL, fun2, NULL);
+	pthread_create(&t3, NULL, fun3, NULL);
+	pthread_create(&t4, NULL, fun4, NULL);
+	pthread_create(&t5, NULL, property, NULL);
+	pthread_join(t1, NULL);
+	pthread_join(t2, NULL);
+	pthread_join(t3, NULL);
+	pthread_join(t4, NULL);
+	pthread_join(t5, NULL);
+	// int a = done1.load(memory_order_relaxed);
+	// int b = done2.load(memory_order_relaxed);
+	// no total ordering on writes of x and y. assertion should fail.
+	// assert(a!=1 || b!=1);
 	
 	return 0;
 }
