@@ -859,7 +859,7 @@ class VerifierPass : public ModulePass {
             else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
                 // errs() << "initial env:\n";
                 // curEnv.printEnvironment();
-                // curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr, endCurInterfItr);
+                curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr, endCurInterfItr);
             }
             else checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
 
@@ -1335,8 +1335,8 @@ class VerifierPass : public ModulePass {
     Environment checkUnaryInst(
         UnaryInstruction* unaryInst, 
         Environment &curEnv, 
-        vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::iterator *curInterfItr,
-        vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::const_iterator endCurInterfItr
+        vector<pair<Instruction*, vector<Instruction*>>>::iterator *curInterfItr,
+        vector<pair<Instruction*, vector<Instruction*>>>::const_iterator &endCurInterfItr
     ) {
         Value* fromVar = unaryInst->getOperand(0);
         string fromVarName = getNameFromValue(fromVar);
@@ -1504,6 +1504,70 @@ class VerifierPass : public ModulePass {
         Environment &curEnv, 
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
         forward_list<const pair<Instruction*, Instruction*>*>::const_iterator &endCurInterfItr
+    ) { 
+        Value *pointerVar = rmwInst->getPointerOperand();
+        string pointerVarName = getNameFromValue(pointerVar);
+        string destVarName = getNameFromValue(rmwInst);
+        
+        // what type of RMWInst
+        operation oper;
+        switch(rmwInst->getOperation()) {
+            case AtomicRMWInst::BinOp::Add:
+                oper = ADD;
+                break;
+            case AtomicRMWInst::BinOp::Sub:
+                oper = SUB;
+                break;
+            default:
+                errs() << "WARNING: unsupported operation " << rmwInst->getOpcodeName() << "\n";
+                printValue(rmwInst);
+                return curEnv;
+        }
+
+        // apply the interf on load of global for RMW
+        if (GEPOperator *gepOp = dyn_cast<GEPOperator>(pointerVar)) {
+            pointerVar = gepOp->getPointerOperand();
+        }
+        if (dyn_cast<GlobalVariable>(pointerVar)) {
+            curEnv = applyInterfToLoad(rmwInst, curEnv, curInterfItr, endCurInterfItr, pointerVarName);
+        }
+        // errs() << "After applyInterf:\n";
+        // curEnv.printEnvironment();
+
+        // the old value of global is returned
+        curEnv.performUnaryOp(LOAD, destVarName.c_str(), pointerVarName.c_str());
+
+        // errs() << "After assigning to the destVar:\n";
+        // curEnv.printEnvironment();
+
+        // find the argument to perform RMW with and 
+        // update the new value of global variable
+        Value *withVar = rmwInst->getValOperand();
+        if (ConstantInt *constWithVar = dyn_cast<ConstantInt>(withVar)) {
+            int constIntWithVar= constWithVar->getValue().getSExtValue();
+            curEnv.performBinaryOp(oper, pointerVarName, pointerVarName, constIntWithVar);
+        }
+        else {
+            string withVarName = getNameFromValue(withVar);
+            curEnv.performBinaryOp(oper, pointerVarName, pointerVarName, withVarName);
+        }
+
+        // errs() << "After performing binOp:\n";
+        // curEnv.printEnvironment();
+
+        // append the current instruction in POMO
+        curEnv.performStoreOp(getInstNumByInst(rmwInst), pointerVarName);
+
+        // errs() << "After appending store:\n";
+        // curEnv.printEnvironment();
+        return curEnv;
+    }
+
+    Environment checkRMWInst(
+        AtomicRMWInst *rmwInst, 
+        Environment &curEnv, 
+        vector<pair<Instruction*, vector<Instruction*>>>::iterator *curInterfItr,
+        vector<pair<Instruction*, vector<Instruction*>>>::const_iterator &endCurInterfItr
     ) { 
         Value *pointerVar = rmwInst->getPointerOperand();
         string pointerVarName = getNameFromValue(pointerVar);
