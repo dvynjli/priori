@@ -8,6 +8,7 @@ import datetime
 
 domain = 'interval' 	# options are interval, octagon
 num_runs = 4
+interfcomb = False
 
 # following benchamrks are unfenced version of mutex algorithms from VBMC and have errors
 # szymanski and peterson_3 are left
@@ -41,6 +42,8 @@ print('Name, Time, Iterations')
 for benchmark in benchmarks:
 	command = ['opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
 				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/benchmarks/' + benchmark + '.ll']
+	if not interfcomb:
+		command.append('-no-interf-comb')
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()
 	if ('ERROR:' in str(err) or 'core dumped' in str(err)):
