@@ -68,8 +68,8 @@ class VerifierPass : public ModulePass {
             unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> feasibleInterfences;
             initThreadDetails(M, feasibleInterfences);
             errs() << "\n Feasible Interfs:\n";
-            printLoadsToAllStores(feasibleInterfences);
-            // analyzeProgram(M, feasibleInterfences);
+            // printLoadsToAllStores(feasibleInterfences);
+            analyzeProgram(M, feasibleInterfences);
         }
         else  {
             map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
@@ -622,7 +622,7 @@ class VerifierPass : public ModulePass {
             errs() << "_________________________________________________\n";
             errs() << "Fixed point reached in " << iterations << " iterations\n";
             errs() << "Final domain:\n";
-            printProgramState();
+            printProgramState(programState);
         }
     }
 
@@ -635,13 +635,15 @@ class VerifierPass : public ModulePass {
         bool isFixedPointReached = false;
 
         while (!isFixedPointReached) {
-            programState.clear();
+            // programState.clear();
             programState = programStateCurItr;
+            programStateCurItr.clear();
 
             if (!noPrint) {
                 errs() << "_________________________________________________\n";
                 errs() << "Iteration: " << iterations << "\n";
                 // printProgramState();
+                // errs() << "-------------------------------------------------\n";
             }
             // errs() << "Iteration: " << iterations << "\n";
             // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
@@ -663,15 +665,13 @@ class VerifierPass : public ModulePass {
                 // searchCurFuncInitEnv->second.printEnvironment();
                 
                 auto searchInterf = feasibleInterfences.find(curFunc);           
-                if (searchInterf != feasibleInterfences.end()) {
-                    curFuncInterfs = (searchInterf->second);
-                    programStateCurItr[curFunc].clear();  // will cause problems in parallelization 
-                } else {
+                if (searchInterf == feasibleInterfences.end()) {
                     if (!noPrint) errs() << "WARNING: No interf found for Function. It will be analyzed only ones.\n";
                     if (iterations == 0) {
-                        forward_list<const pair<Instruction*, Instruction*>*> interf;
-                        newFuncEnv = analyzeThread(curFunc, interf);
-                        programStateCurItr.emplace(curFunc, newFuncEnv);
+                        // forward_list<const pair<Instruction*, Instruction*>*> interf;
+                        // newFuncEnv = analyzeThread(curFunc, interf);
+                        // programStateCurItr.emplace(curFunc, newFuncEnv);
+                        // continue;
                     }
                     else {
                         auto searchCurFuncInitEnv = funcInitEnv.find(curFunc);
@@ -679,13 +679,16 @@ class VerifierPass : public ModulePass {
                         searchCurFuncInitEnv->second.setNotModified();
                     }
                 }
-                
-                // if (searchCurFuncInitEnv->second.isModified()) { 
+                else {
+                    curFuncInterfs = (searchInterf->second);
+                    // programStateCurItr[curFunc].clear();  // will cause problems in parallelization
+                    // if (searchCurFuncInitEnv->second.isModified()) { 
                     // init env has changed. analyze for all interfs
-                    newFuncEnv = analyzeThread(*funcItr, curFuncInterfs);
+                }
+                newFuncEnv = analyzeThread(*funcItr, curFuncInterfs);
 
-                    // join newFuncEnv of all feasibleInterfs and replace old one in state
-                    programStateCurItr.emplace(curFunc, newFuncEnv);
+                // join newFuncEnv of all feasibleInterfs and replace old one in state
+                programStateCurItr.emplace(curFunc, newFuncEnv);
             }
             }
             if (iterations == 0) {
@@ -710,7 +713,7 @@ class VerifierPass : public ModulePass {
             errs() << "_________________________________________________\n";
             errs() << "Fixed point reached in " << iterations << " iterations\n";
             errs() << "Final domain:\n";
-            printProgramState();
+            // printProgramState();
         }
     }
 
@@ -851,119 +854,14 @@ class VerifierPass : public ModulePass {
             // flag might change if the corresponding flag in the other thread is set.
             if (LoadInst *loadInst = dyn_cast<LoadInst>(instItr)) {
                 // errs() << "checking unary inst:"; printValue(loadInst);
-                // curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr, endCurInterfItr);
-            }
-            else if (CallInst *callInst = dyn_cast<CallInst>(instItr)) {
-                if (stopOnFail && callInst->getCalledFunction()->getName() == "__assert_fail") {
-                    // errs() << "*** found assert" << "\n";
-                    // printValue(callInst);
-                    if (!curEnv.isUnreachable()) {
-                        errs() << "Assertion failed:\n";
-                        printValue(callInst);
-                        if (!noPrint) {
-                            curEnv.printEnvironment();
-                        }
-                        errs() << "___________________________________________________\n";
-                        errs() << "# Failed Asserts: 1\n";
-                        double time = omp_get_wtime() - start_time;
-                        fprintf(stderr, "Time elapsed: %f\n", time);
-                        fprintf(stderr, "#iterations: %d\n", iterations+1);
-                        exit(0);
-                    }
-                }
-                else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
-                    if (Function* newThread = dyn_cast<Function> (callInst->getArgOperand(2))) {
-                        // Change the funcInitEnv of newThread
-                        checkThreadCreate(callInst, curEnv);
-                    }
-                }
-                else if (!callInst->getCalledFunction()->getName().compare("pthread_join")) {
-                    // errs() << "Env before thread join:\n";
-                    // curEnv.printEnvironment();
-                    curEnv = checkThreadJoin(callInst, curEnv);
-                    // errs() << "Env after thread join:\n";
-                    // curEnv.printEnvironment();
-                }
-                else if (callInst->getCalledFunction()->getName() == "_Z6assumeb") {
-                    // errs() << "Assume function call: "; printValue(callInst);
-                    // errs() << "Env before Assume call:\n";
-                    // curEnv.printEnvironment();
-                    curEnv = checkAssumeCall(callInst, curEnv, branchEnv);
-                    // errs() << "Env after Assume call:\n";
-                    // curEnv.printEnvironment();
-
-                }
+                curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr, endCurInterfItr);
             }
             else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
                 // errs() << "initial env:\n";
                 // curEnv.printEnvironment();
                 // curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr, endCurInterfItr);
             }
-            // Other instructions don't need to be re-checked if modified flag is unset
-            else if (!curEnv.isModified()) {
-                // errs() << "MOD: not analyzing further\n";
-                curEnv = programState[instItr->getFunction()][&(*instItr)];
-                // if(curEnv.isModified()) curEnv.setNotModified();
-            }
-            // All the instructions need to be re-analyzed if modification flag is set.
-            else if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(currentInst)) {
-                // auto searchName = valueToName.find(currentInst);
-                // if (searchName == valueToName.end()) {
-                //     fprintf(stderr, "ERROR: new mem alloca");
-                //     allocaInst->dump();
-                //     exit(0);
-                // }
-            }
-            else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(instItr)) {
-                auto oper = binOp->getOpcode();
-                if (oper == Instruction::And || oper == Instruction::Or) {
-                    curEnv = checkLogicalInstruction(binOp, curEnv, branchEnv);
-                    // errs() << "True branch Env:\n";
-                    // branchEnv[&(*instItr)].first.printEnvironment();
-                    // errs() << "False branch Env:\n";
-                    // branchEnv[&(*instItr)].second.printEnvironment();
-                }
-                else curEnv = checkBinInstruction(binOp, curEnv);
-            }
-            else if (StoreInst *storeInst = dyn_cast<StoreInst>(instItr)) {
-                curEnv = checkStoreInst(storeInst, curEnv);
-            }
-            else if (CmpInst *cmpInst = dyn_cast<CmpInst> (instItr)) {
-                // errs() << "Env before cmp:\n";
-                // curEnv.printEnvironment();
-                curEnv = checkCmpInst(cmpInst, curEnv, branchEnv);
-                // errs() << "\nCmp result:\n";
-                // curEnv.printEnvironment();
-                // errs() <<"True Branch:\n";
-                // branchEnv[cmpInst].first.printEnvironment();
-                // errs() <<"Flase Branch:\n";
-                // branchEnv[cmpInst].second.printEnvironment();
-            }
-            else if (BranchInst *branchInst = dyn_cast<BranchInst>(instItr)) {
-                if (branchInst->isConditional()) {
-                    Instruction *branchCondition = dyn_cast<Instruction>(branchInst->getCondition());
-                    Instruction *trueBranch = &(*(branchInst->getSuccessor(0)->begin()));
-                    curFuncEnv[trueBranch].joinEnvironment(branchEnv[branchCondition].first);
-                    Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
-                    curFuncEnv[falseBranch].joinEnvironment(branchEnv[branchCondition].second);
-                    // errs() << "\nTrue Branch:\n";
-                    // printValue(trueBranch);
-                    // errs() << "True branch Env:\n";
-                    // curFuncEnv[trueBranch].printEnvironment();
-                    // errs() << "\nFalse Branch:\n";
-                    // printValue(falseBranch);
-                    // errs() << "False branch Env:\n";
-                    // curFuncEnv[falseBranch].printEnvironment();
-                }
-                else {
-                    Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
-                    curFuncEnv[successors].joinEnvironment(curEnv);
-                }
-            }  
-            // CMPXCHG
-            else {
-                
-            }
+            else checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
 
             curFuncEnv.emplace(currentInst, curEnv);
             predEnv.copyEnvironment(curEnv);
@@ -1021,8 +919,10 @@ class VerifierPass : public ModulePass {
         }
         // Other instructions don't need to be re-checked if modified flag is unset
         else if (!curEnv.isModified()) {
-            // errs() << "MOD: not analyzing further\n";
-            return programState[inst->getFunction()][inst];
+            curEnv = programState[inst->getFunction()][inst];
+            // errs() << "MOD: not analyzing further. Returning\n";
+            // programState[inst->getFunction()][inst].printEnvironment();
+            return curEnv;
             // if(curEnv.isModified()) curEnv.setNotModified();
         }
         // All the instructions need to be re-analyzed if modification flag is set.
@@ -1435,6 +1335,57 @@ class VerifierPass : public ModulePass {
     Environment checkUnaryInst(
         UnaryInstruction* unaryInst, 
         Environment &curEnv, 
+        vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::iterator *curInterfItr,
+        vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::const_iterator endCurInterfItr
+    ) {
+        Value* fromVar = unaryInst->getOperand(0);
+        string fromVarName = getNameFromValue(fromVar);
+        string destVarName = getNameFromValue(unaryInst);
+        
+        /* if (LoadInst *loadInst = dyn_cast<LoadInst>(unaryInst)) {
+            if (loadInst->isAtomic()) {
+                if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                    fromVar = gepOp->getPointerOperand();
+                }           
+                if (dyn_cast<GlobalVariable>(fromVar)) {
+                    // errs() << "Load of global\n";
+                    // errs() << "Env before:";
+                    // curEnv.printEnvironment();
+                    curEnv = applyInterfToLoad(unaryInst, curEnv, interf, fromVarName);
+                }
+            }
+            curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str());
+        } */
+        switch (unaryInst->getOpcode()) {
+            case Instruction::Load:
+                // Apply interfernce before analyzing the instruction
+                if(GEPOperator *gepOp = dyn_cast<GEPOperator>(fromVar)){
+                    fromVar = gepOp->getPointerOperand();
+                }           
+                if (dyn_cast<GlobalVariable>(fromVar)) {
+                    // errs() << "Load of global\n";
+                    // errs() << "Env before:";
+                    // curEnv.printEnvironment();
+                    curEnv = applyInterfToLoad(unaryInst, curEnv, curInterfItr, endCurInterfItr, fromVarName);
+                }
+                break;
+            // TODO: add more cases
+            default: 
+                if (!noPrint) {
+                    fprintf(stderr, "ERROR: unknown operation: ");
+                    unaryInst->print(errs());
+                }
+                return curEnv;
+        }
+        
+        curEnv.performUnaryOp(LOAD, destVarName.c_str(), fromVarName.c_str());
+
+        return curEnv;
+    }
+
+    Environment checkUnaryInst(
+        UnaryInstruction* unaryInst, 
+        Environment &curEnv, 
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
         forward_list<const pair<Instruction*, Instruction*>*>::const_iterator &endCurInterfItr
     ) {
@@ -1695,6 +1646,63 @@ class VerifierPass : public ModulePass {
             }
             // else errs() << "interf env not found\n";
         }
+        return curEnv;
+    }
+
+    Environment applyInterfToLoad(
+        Instruction* loadInst, 
+        Environment &curEnv, 
+        vector<pair<Instruction*, vector<Instruction*>>>::iterator *curInterfItr,
+        vector<pair<Instruction*, vector<Instruction*>>>::const_iterator endCurInterfItr,
+        string varName
+    ) {
+        // errs() << "Applying interf\n";
+        // find interfering instruction
+        // auto searchInterf = interf.find(loadInst);
+        // if (searchInterf == interf.end()) {
+        //     errs() << "ERROR: Interfernce for the load instrction not found\n";
+        //     printValue(loadInst);
+        //     return curEnv;
+        // }
+        // fprintf(stderr, "curInterfItr: %p\n", curInterfItr);
+        // fprintf(stderr, "*curInterfItr: %p\n", (*curInterfItr));
+        // no interferece left for this thread. Load will be from same context
+        if (*curInterfItr == endCurInterfItr) return curEnv;
+        // auto curLsPair = (**curInterfItr);
+        // errs() << "found curLsPair\n";
+        if (loadInst != (*curInterfItr)->first && !noPrint) {
+            errs() << "No interf for load\n"; printValue(loadInst);
+        }
+        Environment predEnv = curEnv;
+        for (auto interfInst=(*curInterfItr)->second.begin(); 
+            interfInst!=(*curInterfItr)->second.end(); interfInst++) {
+            Environment tmpEnv = predEnv;
+            if (!noPrint) {
+                errs() << "\nInterf with Store: ";
+                (*interfInst)->print(errs());
+                errs() << "\n";
+            }
+            auto searchInterfFunc = programState.find((*interfInst)->getFunction());
+            if (searchInterfFunc != programState.end()) {
+                // errs() << "Interf env found\n";
+                auto searchInterfEnv = searchInterfFunc->second.find(*interfInst);
+                if (searchInterfEnv != searchInterfFunc->second.end()) {
+                    // apply the interference
+                    // errs() << "Before Interf:\n";
+                    // curEnv.printEnvironment();
+
+                    if (searchInterfEnv->second.isModified() || curEnv.isModified())
+                        tmpEnv.applyInterference(varName, searchInterfEnv->second, 
+                            getInstNumByInst(loadInst), getInstNumByInst(*interfInst));
+                    else {
+                        // errs() << "MOD: not applying interf\n";
+                        tmpEnv.setNotModified();
+                    }
+                    curEnv.joinEnvironment(tmpEnv);
+                }
+            }
+        }
+        (*curInterfItr)++;
         return curEnv;
     }
 
@@ -2370,8 +2378,8 @@ class VerifierPass : public ModulePass {
         }
     }
 
-    void printProgramState() {
-        for (auto it1=programState.begin(); it1!=programState.end(); ++it1) {
+    void printProgramState(unordered_map <Function*, unordered_map<Instruction*, Environment>> newProgramState) {
+        for (auto it1=newProgramState.begin(); it1!=newProgramState.end(); ++it1) {
             errs() << "\n-----------------------------------------------\n";
             errs() << "Function " << it1->first->getName() << ":\n";
             errs() << "-----------------------------------------------\n";
@@ -2380,6 +2388,9 @@ class VerifierPass : public ModulePass {
     }
 
     bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Environment>> newProgramState) {
+        // errs() << "checking fixed point...\n";
+        // errs() << "old state:\n"; printProgramState(programState);
+        // errs() << "new program state:\n"; printProgramState(newProgramState);
         // errs() << "Program state size: " << programState.size();
         // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
         return (newProgramState == programState);
