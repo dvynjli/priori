@@ -150,10 +150,10 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, s
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     switch(oper) {
         case ADD:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2.c_str(), AP_END);
             break;
         case SUB:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, -1, strOp2, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, -1, strOp2.c_str(), AP_END);
             break;
         case MUL:
             // for multiplication of two variables, need to intervalize one
@@ -167,9 +167,15 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, s
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     setHasChanged(strTo);
+    // if (oper == ADD) {
+    //     fprintf(stderr, "Var assigned: %s\n", var);
+    //     fprintf(stderr, "After add on to: %s, op1: %s, op2: %s. ApDom:\n", strTo.c_str(), strOp1.c_str(), strOp2.c_str());
+    //     printApDomain();
+    // }
 }
 
 void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, int &intOp2) {
+    // fprintf(stderr, "performBinOp called str int\n");
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 0);
     switch(oper) {
         case ADD:
@@ -189,19 +195,23 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, i
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     setHasChanged(strTo);
+    // if (oper == ADD) {
+    //     fprintf(stderr, "After add ApDom:\n");
+    //     printApDomain();
+    // }
 }
 
 void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, string &strOp2) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
     switch(oper) {
         case ADD:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp2, AP_CST_S_INT, intOp1, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp2.c_str(), AP_CST_S_INT, intOp1, AP_END);
             break;
         case SUB:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, -1, strOp2, AP_CST_S_INT, intOp1, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, -1, strOp2.c_str(), AP_CST_S_INT, intOp1, AP_END);
             break;
         case MUL:
-            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2, AP_END);
+            ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, intOp1, strOp2.c_str(), AP_END);
             break;
         default:
             fprintf(stderr, "WARNING: unsupported binary operation\n");
@@ -211,6 +221,10 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, stri
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     setHasChanged(strTo);
+    // if (oper == ADD) {
+    //     fprintf(stderr, "After add ApDom:\n");
+    //     printApDomain();
+    // }
 }
 
 void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, int &intOp2) {
@@ -232,6 +246,10 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, int 
     ap_var_t var = (ap_var_t) strTo.c_str();
     absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
     setHasChanged(strTo);
+    // if (oper == ADD) {
+    //     fprintf(stderr, "After add ApDom:\n");
+    //     printApDomain();
+    // }
 }
 
 void ApDomain::performCmpOp(operation oper, string &strOp1, int &intOp2) {

@@ -67,7 +67,7 @@ class VerifierPass : public ModulePass {
         if (noInterfComb) {
             unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> feasibleInterfences;
             initThreadDetails(M, feasibleInterfences);
-            errs() << "\n Feasible Interfs:\n";
+            // errs() << "\n Feasible Interfs:\n";
             // printLoadsToAllStores(feasibleInterfences);
             analyzeProgram(M, feasibleInterfences);
         }
@@ -1734,8 +1734,9 @@ class VerifierPass : public ModulePass {
         if (*curInterfItr == endCurInterfItr) return curEnv;
         // auto curLsPair = (**curInterfItr);
         // errs() << "found curLsPair\n";
-        if (loadInst != (*curInterfItr)->first && !noPrint) {
-            errs() << "No interf for load\n"; printValue(loadInst);
+        if (loadInst != (*curInterfItr)->first) {
+            if(!noPrint) {errs() << "No interf for load\n"; printValue(loadInst);}
+            return curEnv;
         }
         Environment predEnv = curEnv;
         for (auto interfInst=(*curInterfItr)->second.begin(); 
