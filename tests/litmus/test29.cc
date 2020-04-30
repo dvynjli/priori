@@ -15,8 +15,8 @@ void* fun1(void * arg){
 	x.store(1, memory_order_release);
 	// x.store(2, memory_order_release);
 	int t1 = x.load(memory_order_acquire) == 1;
-	int t2 = y.load(memory_order_acquire)==1;
-	assume(t1|| !t2);
+	int t2 = y.load(memory_order_acquire) ==1;
+	assume(t1 || !t2);
 	return NULL;
 }
 
