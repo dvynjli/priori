@@ -1174,7 +1174,9 @@ class VerifierPass : public ModulePass {
         trueBranchEnv.copyEnvironment(fromVar1TrueEnv);
         falseBranchEnv.copyEnvironment(fromVar1FalseEnv);
         if (oper == Instruction::And) {
+            // errs() << "taking meet\n";
             trueBranchEnv.meetEnvironment(fromVar2TrueEnv);
+            // errs() << "taking join\n";
             falseBranchEnv.joinEnvironment(fromVar2FalseEnv);
         }
 
@@ -1184,7 +1186,7 @@ class VerifierPass : public ModulePass {
             // trueBranchEnv.printEnvironment();
             // errs() << "T2:\n";
             // fromVar2TrueEnv.printEnvironment();
-            //-//
+            // -//
             trueBranchEnv.joinEnvironment(fromVar2TrueEnv);
             // errs() << "T1 join T2:\n";
             // trueBranchEnv.printEnvironment();

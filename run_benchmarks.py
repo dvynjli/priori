@@ -6,7 +6,7 @@ import os
 import sys
 import datetime
 
-domain = 'interval' 	# options are interval, octagon
+domain = 'intreval' 	# options are interval, octagon
 num_runs = 4
 interfcomb = False
 
@@ -36,8 +36,8 @@ else:
 	print('Flags: ""/-vuf/-vf/-tnb/-a')
 	exit(0)
 
-print('Results generated at ', str(datetime.datetime.now()))
-print('Name, Time, Iterations')
+# print('Results generated at ', str(datetime.datetime.now()))
+print('Name & Time & Iterations \\\\')
 
 for benchmark in benchmarks:
 	command = ['opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
@@ -64,7 +64,7 @@ for benchmark in benchmarks:
 		
 		start_index_of_iter = end_index_of_time + str(err)[end_index_of_time: ].find('#iterations: ') + len('#iterations: ')
 		end_index_of_iter = start_index_of_iter + str(err)[start_index_of_iter: ].find(r'\n')
-		print(benchmark, ',', time/runs, ',', str(err)[start_index_of_iter : end_index_of_iter])
+		print(benchmark, '&', time/runs, '&', str(err)[start_index_of_iter : end_index_of_iter], '\\\\')
 		
 duration = .1  # seconds
 freq = 440  # Hz

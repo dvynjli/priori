@@ -67,6 +67,9 @@ public:
 	void getLasts(unordered_set<InstNum> &lasts) const;
 	// checks if (inst1, inst2) \in order
 	bool isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const;
+	// 
+	bool lessThan(const PartialOrder &other) const;
+
 
 	unordered_map<InstNum, unordered_set<InstNum>>::const_iterator begin() const;
 	unordered_map<InstNum, unordered_set<InstNum>>::const_iterator end() const;
@@ -109,6 +112,9 @@ public:
 	static PartialOrder append(const PartialOrder &curPO, InstNum &inst);
 	static PartialOrder addOrder(PartialOrder &curPO, InstNum &from, InstNum &to);
 	static PartialOrder join(PartialOrder &curPO, const PartialOrder &other);
+	// compute meet of two partial orders i.e. leave only common 
+	// instruction and common ordered pair
+	static PartialOrder meet(PartialOrder &curPO, const PartialOrder &other);
 	static PartialOrder remove(PartialOrder &curPO, InstNum &inst);
 
 	static void printAllPO();

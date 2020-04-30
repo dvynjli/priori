@@ -257,7 +257,6 @@ void PartialOrder::addInst(const InstNum &inst) {
 	}
 	if (isRMWInst(inst))
 		rmws.insert(inst);
-	return;
 }
 
 bool PartialOrder::isRMWInst(const InstNum &inst) {
@@ -266,6 +265,37 @@ bool PartialOrder::isRMWInst(const InstNum &inst) {
 		return true;
 	}
 	else return false;
+}
+
+bool PartialOrder::lessThan(const PartialOrder &other) const {
+	for (auto curIt=rmws.begin(); curIt!=rmws.end(); curIt++) {
+		auto searchRmw = other.rmws.find(*curIt);
+		if (searchRmw == other.rmws.end()) {
+			return false;
+		}
+	}
+	for (auto curIt=order.begin(); curIt!=order.end(); curIt++) {
+		bool foundBiggerInst = false;
+		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
+			if (curIt->first.isSeqBefore(otherIt->first)) {
+				foundBiggerInst = true;
+				// find if all ordered after insts are also less than some inst in other
+				for (auto curItTo=curIt->second.begin();curItTo!=curIt->second.end(); curItTo++) {
+					foundBiggerInst = false;
+					for (auto otherItTo=otherIt->second.begin(); otherItTo!=otherIt->second.end(); otherItTo++) {
+						if (curItTo->isSeqBefore(*otherItTo)) {
+							foundBiggerInst = true;
+							break;
+						}
+					}
+					if (!foundBiggerInst) return false;
+				}
+				break;
+			}
+		}
+		if (!foundBiggerInst) return false;
+	}
+	return true;
 }
 
 string PartialOrder::toString() const {
@@ -380,6 +410,63 @@ PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &
     bool isAlreadyExist;
 	auto po = addToSet(tmpPO, isAlreadyExist);
     if (isAlreadyExist) {
+		delete tmpPO;
+	}
+	else return po;
+}
+
+PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &other) {
+	PartialOrder *tmpPO = new PartialOrder();
+	for (auto curIt=curPO.begin(); curIt!=curPO.end(); curIt++) {
+		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
+			if (curIt->first.isSeqBefore(otherIt->first)) {
+				// curIt should be part of meet
+				tmpPO->addInst(curIt->first);
+				// add the insts ordered after curIt->first
+				for (auto curItTo=curIt->second.begin(); curItTo!=curIt->second.end(); curItTo++) {
+					for (auto otherItTo=otherIt->second.begin(); otherItTo!=otherIt->second.end(); otherItTo++) {
+						if (curItTo->isSeqBefore(*otherItTo)) {
+							tmpPO->addOrder(curIt->first, *curItTo);
+						}
+						else if (otherItTo->isSeqBefore(*curItTo)) {
+							tmpPO->addOrder(curIt->first, *otherItTo);
+						}
+					}
+				}
+			}
+			else if (otherIt->first.isSeqBefore(curIt->first)) {
+				// otherIt should be part of meet
+				tmpPO->addInst(otherIt->first);
+				// add inst ordered after other->first
+				for (auto curItTo=curIt->second.begin(); curItTo!=curIt->second.end(); curItTo++) {
+					for (auto otherItTo=otherIt->second.begin(); otherItTo!=otherIt->second.end(); otherItTo++) {
+						if (curItTo->isSeqBefore(*otherItTo)) {
+							tmpPO->addOrder(otherIt->first, *curItTo);
+						}
+						else if (otherItTo->isSeqBefore(*curItTo)) {
+							tmpPO->addOrder(otherIt->first, *otherItTo);
+						}
+					}
+				}
+			}
+			// else none of them should be in meet, skip
+		}
+	}
+
+	// remove the rmws that are not in other
+	for (auto curIt=curPO.rmws.begin(); curIt!=curPO.rmws.end(); curIt++) {
+		auto searchRmw = other.rmws.find(*curIt);
+		if (searchRmw != other.rmws.end()) {
+			// add it to tmpPO
+			tmpPO->rmws.insert(*curIt);
+		}
+	}
+
+	// add to the set of all POs
+	// fprintf(stderr, "after join: %s\n", tmpPO->toString().c_str());
+	bool isAlreadyExist;
+	auto po = addToSet(tmpPO, isAlreadyExist);
+	if (isAlreadyExist) {
 		delete tmpPO;
 	}
 	else return po;

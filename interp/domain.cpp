@@ -940,7 +940,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
         if (searchPomo != environment.end()) {
             newDomain.joinApDomain(searchPomo->second);
         }
-        if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
+        else if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
         if (other.isModified() && !isModified()) setModified();
     }
 }
@@ -949,26 +949,40 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
 void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
     unordered_map <POMO, ApDomain> newenvironment;
     
-    for (auto curIt: environment) {
-        for (auto otherIt: other) {
-            // join the POMOs
-            POMO joinedPomo;
-            joinPOMO(curIt.first, otherIt.first, joinedPomo);
-            // fprintf(stderr, "joinedPomo:\n");
-            // printPOMO(joinedPomo);
-
+    for (auto curIt=environment.begin(); curIt!=environment.end(); curIt++) {
+        for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
             // meet of ApDomain
             ApDomain newDomain;
-            newDomain.copyApDomain(curIt.second);
-            newDomain.meetApDomain(otherIt.second);
+            newDomain.copyApDomain(curIt->second);
+            newDomain.meetApDomain(otherIt->second);
 
-            // if curPomo alread exist join the newDomain with existing one
-            auto searchPomo = newenvironment.find(joinedPomo);
-            if (searchPomo != newenvironment.end()) {
-                newDomain.joinApDomain(searchPomo->second);
+            if (curIt->first.lessThan(otherIt->first)) {
+                auto searchPomo = newenvironment.find(curIt->first);
+                if (searchPomo != newenvironment.end()) {
+                    newDomain.joinApDomain(searchPomo->second);
+                }
+                else if(!newDomain.isUnreachable())
+                newenvironment[curIt->first] = newDomain;
             }
-            if(!newDomain.isUnreachable())
-                newenvironment[joinedPomo] = newDomain;
+            else if (otherIt->first.lessThan(curIt->first)) {
+                auto searchPomo = newenvironment.find(otherIt->first);
+                if (searchPomo != newenvironment.end()) {
+                    newDomain.joinApDomain(searchPomo->second);
+                }
+                else if(!newDomain.isUnreachable())
+                newenvironment[otherIt->first] = newDomain;
+            }
+            else {
+                POMO newPomo;
+                meetPOMO(curIt->first, otherIt->first, newPomo);
+                // if curPomo alread exist join the newDomain with existing one
+                auto searchPomo = newenvironment.find(newPomo);
+                if (searchPomo != newenvironment.end()) {
+                    newDomain.joinApDomain(searchPomo->second);
+                }
+                else if(!newDomain.isUnreachable())
+                    newenvironment[newPomo] = newDomain;
+                }
         }
     }
     environment = newenvironment;
@@ -1077,6 +1091,25 @@ void EnvironmentPOMO::joinPOMO (const POMO &pomo1, const POMO &pomo2, POMO &join
         // join the two partial orders
         PartialOrder tmpPO = PartialOrderWrapper::join(it.second, searchPomo2->second);
         joinedPOMO.emplace(it.first, tmpPO);
+    }
+}
+
+void EnvironmentPOMO::meetPOMO (const POMO &pomo1, const POMO &pomo2, POMO &meetPOMO){
+    // fprintf(stderr, "joining:\n");
+    // printPOMO(pomo1);
+    // printPOMO(pomo2);
+    meetPOMO = pomo1;
+    if (pomo2.empty())
+        return;
+    for (auto it:pomo1) {
+        auto searchPomo2 = pomo2.find(it.first);
+        if (searchPomo2 == pomo2.end()) {
+            fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in meetPOMO\n", it.first.c_str());
+            exit(0);
+        }
+        // join the two partial orders
+        PartialOrder tmpPO = PartialOrderWrapper::meet(it.second, searchPomo2->second);
+        meetPOMO.emplace(it.first, tmpPO);
     }
 }
 

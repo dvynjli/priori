@@ -212,6 +212,16 @@ public:
         return pomo == other.pomo;
         // return true;
     }
+    bool lessThan (const POMO &other) const {
+        for (auto varIt=pomo.begin(); varIt!=pomo.end(); varIt++) {
+            auto searchVarInOther = other.find(varIt->first);
+            assert (searchVarInOther != other.end() && "Other does not have variable");
+            if (!varIt->second.lessThan(searchVarInOther->second)) {
+                return false;
+            }
+        }
+        return true;
+    }
     // void operator= (const POMO &other) {
     //     pomo = other.pomo;
     // }
@@ -289,6 +299,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     
     // void printPOMO(const POMO &pomo);
     void joinPOMO (const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
+    void meetPOMO (const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
     
     unordered_map<POMO, ApDomain>::iterator begin();
 	unordered_map<POMO, ApDomain>::iterator end();
