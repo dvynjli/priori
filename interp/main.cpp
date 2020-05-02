@@ -634,7 +634,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
-        while (!isFixedPointReached) {
+        while (!isFixedPointReached && iterations<4) {
             // programState.clear();
             programState = programStateCurItr;
             programStateCurItr.clear();
@@ -738,7 +738,7 @@ class VerifierPass : public ModulePass {
             BasicBlock* BB = basicBlockQ.front();
             basicBlockQ.pop();
 
-            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end());
+            // analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end());
 
             for (auto succBB: successors(BB)) {
                 if (basicBlockSet.insert(succBB).second)
@@ -765,12 +765,31 @@ class VerifierPass : public ModulePass {
         unordered_set<BasicBlock*> basicBlockSet;
         basicBlockQ.push(&*F->begin());
         basicBlockSet.insert(&*F->begin());
-
+        unordered_set<BasicBlock*> done;
+        // cmp instr will add the corresponding true and false branch environment to branchEnv. 
+        // cmpVar -> (true branch env, false branch env)
+        map<Instruction*, pair<Environment, Environment>> branchEnv;
+        
         while (!basicBlockQ.empty()) {
             BasicBlock* BB = basicBlockQ.front();
             basicBlockQ.pop();
 
-            analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end());
+            // check if all pred BBs are analyzed
+            bool doAnalyze = true;
+            for (auto predBB: predecessors(BB)) {
+                auto searchPred = done.find(predBB);
+                if (searchPred == done.end()) {
+                    doAnalyze = false;
+                    break;
+                }
+            }
+            if (doAnalyze) {
+                analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end(), branchEnv);
+                done.insert(BB);
+            }
+            else {
+                basicBlockQ.push(BB);
+            }
 
             for (auto succBB: successors(BB)) {
                 if (basicBlockSet.insert(succBB).second)
@@ -784,15 +803,14 @@ class VerifierPass : public ModulePass {
     Environment analyzeBasicBlock (BasicBlock *B, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
-        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr
+        forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr,
+        map<Instruction*, pair<Environment, Environment>> &branchEnv
+        
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
         Environment predEnv = curFuncEnv[&(*(B->begin()))];
         // errs() << "MOD: predEnv modified:" << predEnv.isModified() << "\n";
-        // cmp instr will add the corresponding true and false branch environment to branchEnv. 
-        // cmpVar -> (true branch env, false branch env)
-        map<Instruction*, pair<Environment, Environment>> branchEnv;
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
@@ -829,7 +847,8 @@ class VerifierPass : public ModulePass {
     Environment analyzeBasicBlock (BasicBlock *B, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
         vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::iterator *curInterfItr,
-        vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::const_iterator endCurInterfItr
+        vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::const_iterator endCurInterfItr,
+        map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
@@ -837,7 +856,6 @@ class VerifierPass : public ModulePass {
         // errs() << "MOD: predEnv modified:" << predEnv.isModified() << "\n";
         // cmp instr will add the corresponding true and false branch environment to branchEnv. 
         // cmpVar -> (true branch env, false branch env)
-        map<Instruction*, pair<Environment, Environment>> branchEnv;
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
@@ -937,11 +955,12 @@ class VerifierPass : public ModulePass {
         else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(inst)) {
             auto oper = binOp->getOpcode();
             if (oper == Instruction::And || oper == Instruction::Or) {
-                return checkLogicalInstruction(binOp, curEnv, branchEnv);
+                Environment env = checkLogicalInstruction(binOp, curEnv, branchEnv);
                 // errs() << "True branch Env:\n";
-                // branchEnv[&(*instItr)].first.printEnvironment();
+                // branchEnv[inst].first.printEnvironment();
                 // errs() << "False branch Env:\n";
-                // branchEnv[&(*instItr)].second.printEnvironment();
+                // branchEnv[inst].second.printEnvironment();
+                return env;
             }
             else return checkBinInstruction(binOp, curEnv);
         }
@@ -951,13 +970,14 @@ class VerifierPass : public ModulePass {
         else if (CmpInst *cmpInst = dyn_cast<CmpInst> (inst)) {
             // errs() << "Env before cmp:\n";
             // curEnv.printEnvironment();
-            return checkCmpInst(cmpInst, curEnv, branchEnv);
+            Environment env =  checkCmpInst(cmpInst, curEnv, branchEnv);
             // errs() << "\nCmp result:\n";
             // curEnv.printEnvironment();
             // errs() <<"True Branch:\n";
             // branchEnv[cmpInst].first.printEnvironment();
-            // errs() <<"Flase Branch:\n";
+            // errs() <<"False Branch:\n";
             // branchEnv[cmpInst].second.printEnvironment();
+            return env;
         }
         else if (BranchInst *branchInst = dyn_cast<BranchInst>(inst)) {
             if (branchInst->isConditional()) {
@@ -980,6 +1000,23 @@ class VerifierPass : public ModulePass {
                 curFuncEnv[successors].joinEnvironment(curEnv);
             }
         }  
+        else if (PHINode *phinode = dyn_cast<PHINode>(inst)) {
+            // errs() << "all binop in branchenv:\n";
+            // for (auto it=branchEnv.begin(); it!=branchEnv.end(); it++) {
+            //     printValue(it->first);
+            //     if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(it->first)) {
+            //         auto oper = binOp->getOpcode();
+            //         if (oper == Instruction::And || oper == Instruction::Or) {
+            //             errs() << "bin Op. ";
+            //             errs() << "true:\n";
+            //             it->second.first.printEnvironment();
+            //             errs() << "false:\n";
+            //             it->second.second.printEnvironment();
+            //         }
+            //     }
+            // }
+            return checkPhiNode(phinode, curEnv, branchEnv);
+        }
         // CMPXCHG
         else {
             
@@ -1219,15 +1256,75 @@ class VerifierPass : public ModulePass {
         }
 
         // set the value of destination variable in Environment
-        // if (trueBranchEnv.isUnreachable()) {
-        //     curEnv.unsetVar(destVarName);
-        // } else {
-        //     curEnv.setVar(destVarName);
-        // }
-        // trueBranchEnv.setVar(destVarName);
-        // falseBranchEnv.unsetVar(destVarName);
+        if (trueBranchEnv.isUnreachable()) {
+            curEnv.unsetVar(destVarName);
+        } else {
+            curEnv.setVar(destVarName);
+        }
+        trueBranchEnv.setVar(destVarName);
+        falseBranchEnv.unsetVar(destVarName);
 
         branchEnv[logicalOp] = make_pair(trueBranchEnv, falseBranchEnv);
+        return curEnv;
+    }
+
+
+    Environment checkPhiNode (
+        PHINode* phinode,
+        Environment &curEnv,
+        map<Instruction*, pair<Environment, Environment>> &branchEnv
+    ) {
+        unsigned int numIncoming = phinode->getNumIncomingValues(); 
+        // errs() << "Phi Node. #incoming edges: " << numIncoming << "\n";
+        string destVarName = getNameFromValue(phinode);
+
+        for (auto i=0; i<numIncoming; i++) {
+            // errs() << "Terminator of "<< i << "th BB: ";
+            // printValue(phinode->getIncomingBlock(i)->getTerminator());
+            Environment phiEnv = programState[phinode->getFunction()]
+                                            [phinode->getIncomingBlock(i)->getTerminator()];
+            // errs() << "Value of ith BB: "; printValue(phinode->getIncomingValue(i));
+            // errs() << "Dest Var: " << destVarName << "\n";
+            auto *phiVal = phinode->getIncomingValue(i);
+
+            if (ConstantInt *constInt = dyn_cast<ConstantInt>(phiVal)) {
+                // errs() << "Const int width: " << constInt->getBitWidth() << "\n";
+                if (constInt->getBitWidth() == 1) {
+                    // errs() << "Bool value: " << constInt->isOne() << "\n";
+                    phiEnv.performUnaryOp(STORE, destVarName, constInt->isOne());
+                }
+                else {
+                    // errs() << "Const int Value: " << constInt->getSExtValue() << "\n";
+                    phiEnv.performUnaryOp(STORE, destVarName, constInt->getSExtValue());
+                }
+            }
+            else {
+                if (CmpInst *cmpInst = dyn_cast<CmpInst>(phiVal)) {
+                    phiEnv = branchEnv[cmpInst].first;
+                    phiEnv.joinEnvironment(branchEnv[cmpInst].second);
+                }
+                else if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(phiVal)) {
+                    if (binOp->getOpcode() == Instruction::And || binOp->getOpcode() == Instruction::Or) {
+                        // errs() << "found logical inst\n";
+                        phiEnv = branchEnv[binOp].first;
+                        // errs() << "true env:\n";
+                        // phiEnv.printEnvironment();
+                        // branchEnv[binOp].first.printEnvironment();
+                        // errs() << "false env:\n";
+                        // branchEnv[binOp].second.printEnvironment();
+                        phiEnv.joinEnvironment(branchEnv[binOp].second);
+                        // errs() << "true+false env:\n";
+                        // phiEnv.printEnvironment();
+                    }
+                }
+                string sourceVarName = getNameFromValue(phiVal);
+                // errs() << "Source Var: " << sourceVarName << "\n";
+                phiEnv.performUnaryOp(STORE, destVarName, sourceVarName);
+            }
+            if (i==0) curEnv = phiEnv;
+            else curEnv.joinEnvironment(phiEnv);
+            // curEnv.printEnvironment();
+        }
         return curEnv;
     }
 
@@ -1496,8 +1593,19 @@ class VerifierPass : public ModulePass {
     Environment checkAssumeCall(CallInst *callInst, Environment &curEnv,
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
-        if (Instruction* assumedInst = dyn_cast<Instruction>(callInst->getArgOperand(0)))
-        curEnv = branchEnv[assumedInst].first;
+        if (Instruction* assumedInst = dyn_cast<Instruction>(callInst->getArgOperand(0))) {
+            auto searchAssumedInst = branchEnv.find(assumedInst);
+            if (searchAssumedInst != branchEnv.end()) {
+                // ture env of the branch inst
+                curEnv = searchAssumedInst->second.first;
+            }
+            else {
+                // keep the env in which assumedInst var is non-zero
+                int zero = 0;
+                string assumedVar = getNameFromValue(assumedInst);
+                curEnv.performCmpOp(NE, assumedVar, zero);
+            }
+        }
         return curEnv;
     }
 
