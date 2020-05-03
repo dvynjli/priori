@@ -733,12 +733,31 @@ class VerifierPass : public ModulePass {
         unordered_set<BasicBlock*> basicBlockSet;
         basicBlockQ.push(&*F->begin());
         basicBlockSet.insert(&*F->begin());
+        unordered_set<BasicBlock*> done;
+        // cmp instr will add the corresponding true and false branch environment to branchEnv. 
+        // cmpVar -> (true branch env, false branch env)
+        map<Instruction*, pair<Environment, Environment>> branchEnv;
 
         while (!basicBlockQ.empty()) {
             BasicBlock* BB = basicBlockQ.front();
             basicBlockQ.pop();
 
-            // analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end());
+            // check if all pred BBs are analyzed
+            bool doAnalyze = true;
+            for (auto predBB: predecessors(BB)) {
+                auto searchPred = done.find(predBB);
+                if (searchPred == done.end()) {
+                    doAnalyze = false;
+                    break;
+                }
+            }
+            if (doAnalyze) {
+                analyzeBasicBlock(BB, curFuncEnv, &curInterfItr, interf.end(), branchEnv);
+                done.insert(BB);
+            }
+            else {
+                basicBlockQ.push(BB);
+            }
 
             for (auto succBB: successors(BB)) {
                 if (basicBlockSet.insert(succBB).second)
@@ -805,7 +824,6 @@ class VerifierPass : public ModulePass {
         forward_list<const pair<Instruction*, Instruction*>*>::iterator *curInterfItr,
         forward_list<const pair<Instruction*, Instruction*>*>::const_iterator endCurInterfItr,
         map<Instruction*, pair<Environment, Environment>> &branchEnv
-        
     ) {
         // check type of inst, and performTrasformations
         Environment curEnv;
