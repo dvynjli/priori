@@ -6,7 +6,7 @@ import os
 import sys
 import datetime
 
-domain = 'intreval' 	# options are interval, octagon
+domain = 'interval' 	# options are interval, octagon
 num_runs = 4
 interfcomb = False
 

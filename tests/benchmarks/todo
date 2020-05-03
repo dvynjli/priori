@@ -7,7 +7,7 @@ hehner_c11:
 tbar_unfenenced:
 	Doesn't have bug in 2 unrolling
 peterson_assume_unfenced_thr3
-	some redundent loads and assume conditions are removed
+	some redundent loads and assume conditions are removed - not anymore
 	Implemented PhiNode
 lamport_assume_fenced
 	the three comments fencess are not required
