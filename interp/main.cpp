@@ -239,10 +239,27 @@ class VerifierPass : public ModulePass {
             unordered_set<BasicBlock*> basicBlockSet;
             basicBlockQ.push(&*func->begin());
             basicBlockSet.insert(&*func->begin());
+            unordered_set<BasicBlock*> done;
             
             while (!basicBlockQ.empty()) {
                 BasicBlock* BB = basicBlockQ.front();
                 basicBlockQ.pop();
+
+                // errs() << "checking BB: "; printValue(BB);
+
+                bool doAnalyze = true;
+                for (auto predBB: predecessors(BB)) {
+                    auto searchPred = done.find(predBB);
+                    if (searchPred == done.end()) {
+                        doAnalyze = false;
+                        break;
+                    }
+                }
+                if (!doAnalyze) {
+                    basicBlockQ.push(BB);
+                    // errs() << "Not Analyzed\n";
+                    continue;
+                }
 
                 // errs() << "\nchecking basic block ";
                 // BB->print(errs());
@@ -430,12 +447,11 @@ class VerifierPass : public ModulePass {
                     lastWrites.emplace(make_pair(&(*I),lastWritesCurInst));
                 }
 
-            
-            
                 for (auto succBB: successors(BB)) {
                     if (basicBlockSet.insert(succBB).second)
                         basicBlockQ.push(succBB);
                 }
+                done.insert(BB);
             }
                 // }
             // Save loads stores function wise
@@ -1306,14 +1322,16 @@ class VerifierPass : public ModulePass {
             auto *phiVal = phinode->getIncomingValue(i);
 
             if (ConstantInt *constInt = dyn_cast<ConstantInt>(phiVal)) {
-                // errs() << "Const int width: " << constInt->getBitWidth() << "\n";
-                if (constInt->getBitWidth() == 1) {
-                    // errs() << "Bool value: " << constInt->isOne() << "\n";
-                    phiEnv.performUnaryOp(STORE, destVarName, constInt->isOne());
-                }
-                else {
-                    // errs() << "Const int Value: " << constInt->getSExtValue() << "\n";
-                    phiEnv.performUnaryOp(STORE, destVarName, constInt->getSExtValue());
+                if (!phiEnv.isUnreachable()) {
+                    // errs() << "Const int width: " << constInt->getBitWidth() << "\n";
+                    if (constInt->getBitWidth() == 1) {
+                        // errs() << "Bool value: " << constInt->isOne() << "\n";
+                        phiEnv.performUnaryOp(STORE, destVarName, constInt->isOne());
+                    }
+                    else {
+                        // errs() << "Const int Value: " << constInt->getSExtValue() << "\n";
+                        phiEnv.performUnaryOp(STORE, destVarName, constInt->getSExtValue());
+                    }
                 }
             }
             else {
@@ -1337,7 +1355,10 @@ class VerifierPass : public ModulePass {
                 }
                 string sourceVarName = getNameFromValue(phiVal);
                 // errs() << "Source Var: " << sourceVarName << "\n";
-                phiEnv.performUnaryOp(STORE, destVarName, sourceVarName);
+                if (!phiEnv.isUnreachable())
+                    phiEnv.performUnaryOp(STORE, destVarName, sourceVarName);
+                // errs() << "PhiEnv:\n";
+                // phiEnv.printEnvironment();
             }
             if (i==0) curEnv = phiEnv;
             else curEnv.joinEnvironment(phiEnv);

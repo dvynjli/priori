@@ -229,7 +229,7 @@ public:
     void printPOMO() const {
         // fprintf(stderr, "Printing POMO\n");
         for (auto it=pomo.begin(); it!=pomo.end(); ++it) {
-            fprintf(stderr, "%s %p: ", it->first.c_str(), &it->second);
+            fprintf(stderr, "%s: ", it->first.c_str());
             // if (it->second)
             fprintf(stderr, "%s\n", it->second.toString().c_str());
             // else fprintf(stderr, "NULL");

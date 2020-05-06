@@ -11,7 +11,7 @@ atomic<int> k;
 
 atomic<int> var;
 
-atomic<int> __fence_var;
+// atomic<int> __fence_var;
 
 void* t0(void *arg)
 {
@@ -23,28 +23,20 @@ void* t0(void *arg)
 
   	// for (int jj=0; jj<LOOP; jj++) {
   		// for (int j=0; j<LOOP; j++) {
-  			_k = k.load(memory_order_acquire); 
-			if (_k == tid) {
-				// break;
-			}
-	    	else {
+			_k = k.load(memory_order_acquire);	  
+			if (_k!=tid) {
 				int tmp1;
-				if (_k==0) tmp1 = interested0.load(memory_order_acquire);
-				else tmp1 = interested1.load(memory_order_acquire);
+				tmp1 = interested1.load(memory_order_acquire);
 				if (tmp1==0)
 					k.store(tid, memory_order_release);
-				//second iteration of loop
-				_k = k.load(memory_order_acquire); 
-				if (_k==tid) {
-					// break;
-				}
-				else {
+				
+				// second iteration of j loop
+				_k = k.load(memory_order_acquire);	  
+				if (_k!=tid) {
 					int tmp1;
-					if (_k==0) tmp1 = interested0.load(memory_order_acquire);
-					else tmp1 = interested1.load(memory_order_acquire);
+					tmp1 = interested1.load(memory_order_acquire);
 					if (tmp1==0)
 						k.store(tid, memory_order_release);
-					
 				}
 			}
 			assume(_k == tid);
@@ -89,23 +81,14 @@ void* t1(void *arg)
   	// for (int jj=0; jj<LOOP; jj++) {
   		// for (int j=0; j<LOOP; j++) {
   			_k = k.load(memory_order_acquire);
-			if (_k == tid) {
-				// break;
-			}
-	    	else {
-				int tmp1;
-				if (_k==0) tmp1 = interested0.load(memory_order_acquire);
-				else tmp1 = interested1.load(memory_order_acquire);
+			if (_k != tid) {
+				int tmp1 = interested0.load(memory_order_acquire);
 				if (tmp1==0)
 					k.store(tid, memory_order_release);
-				_k = k.load(memory_order_acquire); 
-				if (_k==tid) {
-					// break;
-				}
-				else {
-					int tmp1;
-					if (_k==0) tmp1 = interested0.load(memory_order_acquire);
-					else tmp1 = interested1.load(memory_order_acquire);
+				// second iteration of j loop
+				_k = k.load(memory_order_acquire);
+				if (_k != tid) {
+					int tmp1 = interested0.load(memory_order_acquire);
 					if (tmp1==0)
 						k.store(tid, memory_order_release);
 				}
