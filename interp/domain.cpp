@@ -1121,7 +1121,7 @@ void EnvironmentPOMO::printEnvironment() {
         fprintf (stderr, "Modification Order:\n");
         pomo.printPOMO();
         // printPOMO(pomo);
-        fprintf(stderr, "printing ApDomain\n");
+        // fprintf(stderr, "printing ApDomain\n");
         it->second.printApDomain();
         fprintf(stderr, "\n");
     }
