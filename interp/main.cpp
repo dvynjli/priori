@@ -67,6 +67,10 @@ class VerifierPass : public ModulePass {
         if (noInterfComb) {
             unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> feasibleInterfences;
             initThreadDetails(M, feasibleInterfences);
+            // errs() << "Valriable to instName map:\n";
+            // for (auto it: nameToValue) {
+            //     errs() << it.first << ":"; printValue(it.second);
+            // }
             // errs() << "\n Feasible Interfs:\n";
             // printLoadsToAllStores(feasibleInterfences);
             analyzeProgram(M, feasibleInterfences);
@@ -75,8 +79,8 @@ class VerifierPass : public ModulePass {
             map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
             initThreadDetails(M, feasibleInterfences);
             analyzeProgram(M, feasibleInterfences);
-            // printFeasibleInterf(feasibleInterfences);
             // countNumFeasibleInterf(feasibleInterfences);
+            // printFeasibleInterf(feasibleInterfences);
         }
         // printInstMaps();
         // testPO();
@@ -401,13 +405,14 @@ class VerifierPass : public ModulePass {
                         #endif
                     }
                     else {
-                        Instruction *inst = dyn_cast<Instruction>(I);
-                        string varName = "var" + to_string(ssaVarCounter);
-                        ssaVarCounter++;
-                        nameToValue.emplace(varName, inst);
-                        valueToName.emplace(inst, varName);
-                        funcVars.push_back(varName);
-
+                        if (!dyn_cast<BranchInst>(I)) {
+                            Instruction *inst = dyn_cast<Instruction>(I);
+                            string varName = "var" + to_string(ssaVarCounter);
+                            ssaVarCounter++;
+                            nameToValue.emplace(varName, inst);
+                            valueToName.emplace(inst, varName);
+                            funcVars.push_back(varName);
+                        }
                         if (LoadInst *loadInst = dyn_cast<LoadInst>(I)) {
                             Value* fromVar = loadInst->getOperand(0);
                             #ifdef ALIAS
@@ -650,7 +655,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
-        while (!isFixedPointReached && iterations<4) {
+        while (!isFixedPointReached) {
             // programState.clear();
             programState = programStateCurItr;
             programStateCurItr.clear();
@@ -704,6 +709,7 @@ class VerifierPass : public ModulePass {
                 newFuncEnv = analyzeThread(*funcItr, curFuncInterfs);
 
                 // join newFuncEnv of all feasibleInterfs and replace old one in state
+                programStateCurItr.erase(curFunc);
                 programStateCurItr.emplace(curFunc, newFuncEnv);
             }
             }
@@ -878,7 +884,7 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
-    Environment analyzeBasicBlock (BasicBlock *B, 
+    void analyzeBasicBlock (BasicBlock *B, 
         unordered_map <Instruction*, Environment> &curFuncEnv,
         vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::iterator *curInterfItr,
         vector<pair<llvm::Instruction*, vector<llvm::Instruction*>>>::const_iterator endCurInterfItr,
@@ -918,9 +924,13 @@ class VerifierPass : public ModulePass {
             curFuncEnv.emplace(currentInst, curEnv);
             predEnv.copyEnvironment(curEnv);
             if (!noPrint) curEnv.printEnvironment();
+            // if (PHINode *phi = dyn_cast<PHINode>(currentInst)) {
+            //     errs() << "Phi Inst: "; printValue(phi);
+            //     curEnv.printEnvironment();
+            // }
         }
         
-        return curEnv;
+        // return curEnv;
     }
 
     Environment checkNonInterfInsts (Instruction *inst, Environment &curEnv,
@@ -970,6 +980,24 @@ class VerifierPass : public ModulePass {
             }
         }
         // Other instructions don't need to be re-checked if modified flag is unset
+        else if (PHINode *phinode = dyn_cast<PHINode>(inst)) {
+            // errs() << "all binop in branchenv:\n";
+            // for (auto it=branchEnv.begin(); it!=branchEnv.end(); it++) {
+            //     printValue(it->first);
+            //     if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(it->first)) {
+            //         auto oper = binOp->getOpcode();
+            //         if (oper == Instruction::And || oper == Instruction::Or) {
+            //             errs() << "bin Op. ";
+            //             errs() << "true:\n";
+            //             it->second.first.printEnvironment();
+            //             errs() << "false:\n";
+            //             it->second.second.printEnvironment();
+            //         }
+            //     }
+            // }
+            // errs() << "Debug: Analyzing phi node: "; printValue(phinode); 
+            return checkPhiNode(phinode, curEnv, branchEnv);
+        }
         else if (!curEnv.isModified()) {
             curEnv = programState[inst->getFunction()][inst];
             // errs() << "MOD: not analyzing further. Returning\n";
@@ -1033,24 +1061,7 @@ class VerifierPass : public ModulePass {
                 Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
                 curFuncEnv[successors].joinEnvironment(curEnv);
             }
-        }  
-        else if (PHINode *phinode = dyn_cast<PHINode>(inst)) {
-            // errs() << "all binop in branchenv:\n";
-            // for (auto it=branchEnv.begin(); it!=branchEnv.end(); it++) {
-            //     printValue(it->first);
-            //     if (BinaryOperator *binOp = dyn_cast<BinaryOperator>(it->first)) {
-            //         auto oper = binOp->getOpcode();
-            //         if (oper == Instruction::And || oper == Instruction::Or) {
-            //             errs() << "bin Op. ";
-            //             errs() << "true:\n";
-            //             it->second.first.printEnvironment();
-            //             errs() << "false:\n";
-            //             it->second.second.printEnvironment();
-            //         }
-            //     }
-            // }
-            return checkPhiNode(phinode, curEnv, branchEnv);
-        }
+        } 
         // CMPXCHG
         else {
             
@@ -1315,8 +1326,26 @@ class VerifierPass : public ModulePass {
         for (auto i=0; i<numIncoming; i++) {
             // errs() << "Terminator of "<< i << "th BB: ";
             // printValue(phinode->getIncomingBlock(i)->getTerminator());
-            Environment phiEnv = programState[phinode->getFunction()]
-                                            [phinode->getIncomingBlock(i)->getTerminator()];
+            Environment phiEnv;
+            TerminatorInst *termInst = phinode->getIncomingBlock(i)->getTerminator();
+            if (BranchInst *branch = dyn_cast<BranchInst>(termInst)) {
+                if (branch->isConditional()) {
+                    Instruction *branchCondition = dyn_cast<Instruction>(branch->getCondition());
+                    if (branch->getSuccessor(0) == phinode->getParent()) {
+                        phiEnv.copyEnvironment(branchEnv[branchCondition].first);
+                    }
+                    else {
+                        assert(branch->getSuccessor(1) == phinode->getParent() && "We do not support branch with more than two successors");
+                        phiEnv.copyEnvironment(branchEnv[branchCondition].second);
+                    }
+                }
+                else {
+                    phiEnv.copyEnvironment(programState[phinode->getFunction()][branch]);
+                }
+            }
+            else {
+                phiEnv.copyEnvironment(programState[phinode->getFunction()][termInst]);
+            }
             // errs() << "Value of ith BB: "; printValue(phinode->getIncomingValue(i));
             // errs() << "Dest Var: " << destVarName << "\n";
             auto *phiVal = phinode->getIncomingValue(i);
@@ -1359,9 +1388,14 @@ class VerifierPass : public ModulePass {
                     phiEnv.performUnaryOp(STORE, destVarName, sourceVarName);
                 // errs() << "PhiEnv:\n";
                 // phiEnv.printEnvironment();
+                // errs() << "PhiEnv done\n";
             }
             if (i==0) curEnv = phiEnv;
-            else curEnv.joinEnvironment(phiEnv);
+            else {
+                // errs() << "Joining: "; curEnv.printEnvironment(); 
+                // errs() << "with: "; phiEnv.printEnvironment();
+                curEnv.joinEnvironment(phiEnv);
+            }
             // curEnv.printEnvironment();
         }
         return curEnv;
@@ -2602,9 +2636,11 @@ class VerifierPass : public ModulePass {
     }
 
     bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Environment>> newProgramState) {
-        // errs() << "checking fixed point...\n";
-        // errs() << "old state:\n"; printProgramState(programState);
-        // errs() << "new program state:\n"; printProgramState(newProgramState);
+        // if (iterations == 4) {
+        //     errs() << "checking fixed point...\n";
+        //     errs() << "old state:\n"; printProgramState(programState);
+        //     errs() << "new program state:\n"; printProgramState(newProgramState);    
+        // }
         // errs() << "Program state size: " << programState.size();
         // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
         return (newProgramState == programState);
