@@ -67,6 +67,7 @@ class VerifierPass : public ModulePass {
         if (noInterfComb) {
             unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> feasibleInterfences;
             initThreadDetails(M, feasibleInterfences);
+            // printInstMaps();
             // errs() << "Valriable to instName map:\n";
             // for (auto it: nameToValue) {
             //     errs() << it.first << ":"; printValue(it.second);
@@ -709,7 +710,7 @@ class VerifierPass : public ModulePass {
                 newFuncEnv = analyzeThread(*funcItr, curFuncInterfs);
 
                 // join newFuncEnv of all feasibleInterfs and replace old one in state
-                programStateCurItr.erase(curFunc);
+                // programStateCurItr.erase(curFunc);
                 programStateCurItr.emplace(curFunc, newFuncEnv);
             }
             }
@@ -2835,9 +2836,10 @@ class VerifierPass : public ModulePass {
     void printInstMaps() {
         errs() << "\n\n-----------Printing inst to inst num-----------\n";
         for (auto it: instToNum) {
-            fprintf(stderr, "%p: ", it.first);
-            it.first->print(errs());
-            errs() << "\t" << it.second.toString() << "\n";
+            // fprintf(stderr, "%s: ", it.second.toString());
+            errs() << it.second.toString() << ": ";
+            printValue(it.first);
+            // errs() << "\t" << it.second.toString() << "\n";
         }
     }
 

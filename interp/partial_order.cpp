@@ -71,7 +71,12 @@ void PartialOrder::append(const InstNum &newinst) {
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ) {
-		if (it->first.isSeqBefore(newinst)) {auto ittmp = it++; remove((ittmp->first));}
+		if (it->first == newinst) {
+			it++; continue;
+		}
+		if (it->first.isSeqBefore(newinst) && !isRMWInst(it->first)) {
+			auto ittmp = it++; remove((ittmp->first));
+		}
 		else {
 			// add newinst at in 'to' of it
 			it->second.insert(newinst);
@@ -102,13 +107,26 @@ void PartialOrder::join(const PartialOrder &other) {
 		// 	rmws.insert(fromItr->first);
 	}
 	// fprintf(stderr, "after join %s\n", toString().c_str());
+	rmws.insert(other.rmws.begin(), other.rmws.end());
 }
 
 // checks if (inst1, inst2) \in order
 bool PartialOrder::isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const {
 	// if (!isExists(inst1)) return false;
+	if (inst1==inst2) return true;
+	if (inst1.isSeqBefore(inst2)) return true;
 	auto searchInst1 = order.find(inst1);
-	if (searchInst1 == order.end()) return false;
+	if (searchInst1 == order.end()) {
+		// search if some inst seqeunces after inst1 is in order
+		for (auto it=order.begin(); it!=order.end(); it++) {
+			if (inst1.isSeqBefore(it->first)) {
+				searchInst1 = it;
+				break;
+			}
+		}
+		// no such inst found, hence inst1 or any inst sequenced after inst1 is not in order
+		if (searchInst1 == order.end()) return false;
+	}
 	auto searchInst2 = searchInst1->second.find(inst2);
 	if (searchInst2 == searchInst1->second.end()) return false;
 	else return true;
@@ -149,6 +167,7 @@ bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 	// fprintf(stderr, "\n");
 	for (auto itCur: rmws) {
 		for (auto itOther: other.rmws) {
+			if (itCur == itOther) continue;
 			if (!(isExists(itOther) || other.isExists(itCur))) {
 				// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
 					// itOther,isExists(itOther),itCur,other.isExists(itCur));
@@ -208,6 +227,7 @@ void PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &t
 	std::unordered_map<InstNum, std::unordered_set<InstNum>>::iterator toItr
 ){
 	// check for anti-symmetry
+	if (to == from) return;
 	assert(!isOrderedBefore(to, from) && "Anti symmetry chcek in PO failed");
 	// if (isOrderedBefore(to, from)) return false;
 
