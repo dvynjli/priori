@@ -3,10 +3,7 @@
 
 /* There are N weak traces */
 
-#include <iostream>
-#include <pthread.h>
-#include <assert.h>
-#include <atomic>
+#include "verify.h"
 
 using namespace std;
 

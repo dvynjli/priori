@@ -22,6 +22,7 @@ void *p0(void *arg)
 	var.store(0, memory_order_release);
 	int tmp = var.load(memory_order_acquire);
     assert(tmp==0);
+	flag0.store(0, memory_order_release);
 
 	return NULL;
 }
@@ -40,6 +41,7 @@ void *p1(void *arg)
 	var.store(1, memory_order_release);
 	int tmp = var.load(memory_order_acquire);
     assert(tmp==1);
+	flag1.store(0, memory_order_release);
 
 	return NULL;
 }

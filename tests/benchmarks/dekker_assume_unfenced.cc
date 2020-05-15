@@ -52,7 +52,7 @@ void* p1(void *arg)
 			flag2.store(0, memory_order_release);
 			rturn_2 = turn.load(memory_order_acquire);
 			assume(rturn_2 == 1);
-			flag2 = 1;
+			flag2.store(1, memory_order_release);
 		}
 		rflag1 = flag1.load(memory_order_acquire);
 	}
