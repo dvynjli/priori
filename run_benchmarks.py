@@ -10,8 +10,8 @@ domain = 'interval' 	# options are interval, octagon
 num_runs = 4
 interfcomb = False
 
-buggy = ['bakery', 'burns', 'dekker', 'dekker_sim', 
-				'lamport', 'peterson', 'peterson3'] #'dijkstra
+buggy = ['dijkstra', 'bakery', 'burns', 'dekker', 'dekker_sim', 
+				'lamport', 'peterson', 'peterson3']
 non_buggy = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 
 				'dijkstra_fen', 'bakery_fen', 'burns_fen',  
 				'lamport_fen','peterson_fen', 'tbar_fen'] # 'dekker_fen', 'tbar_fenced_2'] 

@@ -668,7 +668,7 @@ class VerifierPass : public ModulePass {
                 // printProgramState();
                 // errs() << "-------------------------------------------------\n";
             }
-            errs() << "Iteration: " << iterations << "\n";
+            // errs() << "Iteration: " << iterations << "\n";
             // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
             #pragma omp parallel num_threads(threads.size()) if (maxFeasibleInterfs > 200)
             #pragma omp single
