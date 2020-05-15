@@ -656,7 +656,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
-        while (!isFixedPointReached) {
+        while (!isFixedPointReached && iterations < 6) {
             // programState.clear();
             programState = programStateCurItr;
             programStateCurItr.clear();
@@ -667,7 +667,7 @@ class VerifierPass : public ModulePass {
                 // printProgramState();
                 // errs() << "-------------------------------------------------\n";
             }
-            // errs() << "Iteration: " << iterations << "\n";
+            errs() << "Iteration: " << iterations << "\n";
             // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
             #pragma omp parallel num_threads(threads.size()) if (maxFeasibleInterfs > 200)
             #pragma omp single
@@ -902,7 +902,7 @@ class VerifierPass : public ModulePass {
             Instruction *currentInst = &(*instItr);
             curEnv.copyEnvironment(predEnv);
         
-            if (!noPrint) {
+            if (!noPrint || iterations >=4) {
                 errs() << "DEBUG: Analyzing: ";
                 printValue(currentInst);
             }
@@ -914,11 +914,13 @@ class VerifierPass : public ModulePass {
             if (LoadInst *loadInst = dyn_cast<LoadInst>(instItr)) {
                 // errs() << "checking unary inst:"; printValue(loadInst);
                 curEnv = checkUnaryInst(loadInst, curEnv, curInterfItr, endCurInterfItr);
+                if (iterations >= 4) curEnv.printEnvironment();
             }
             else if(AtomicRMWInst *rmwInst = dyn_cast<AtomicRMWInst>(instItr)) {
                 // errs() << "initial env:\n";
                 // curEnv.printEnvironment();
                 curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr, endCurInterfItr);
+                if (iterations >= 4) curEnv.printEnvironment();
             }
             else checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
 
@@ -956,7 +958,7 @@ class VerifierPass : public ModulePass {
                     exit(0);
                 }
             }
-            else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
+            /* else if(!callInst->getCalledFunction()->getName().compare("pthread_create")) {
                 if (Function* newThread = dyn_cast<Function> (callInst->getArgOperand(2))) {
                     // Change the funcInitEnv of newThread
                     checkThreadCreate(callInst, curEnv);
@@ -970,7 +972,7 @@ class VerifierPass : public ModulePass {
                 // errs() << "Env after thread join:\n";
                 // curEnv.printEnvironment();
             }
-            else if (callInst->getCalledFunction()->getName() == "_Z6assumeb") {
+             */else if (callInst->getCalledFunction()->getName() == "_Z6assumeb") {
                 // errs() << "Assume function call: "; printValue(callInst);
                 // errs() << "Env before Assume call:\n";
                 // curEnv.printEnvironment();

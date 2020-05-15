@@ -1122,7 +1122,7 @@ void EnvironmentPOMO::printEnvironment() {
         pomo.printPOMO();
         // printPOMO(pomo);
         // fprintf(stderr, "printing ApDomain\n");
-        it->second.printApDomain();
+        // it->second.printApDomain();
         fprintf(stderr, "\n");
     }
 }
