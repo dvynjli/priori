@@ -10,30 +10,39 @@ domain = 'interval' 	# options are interval, octagon
 num_runs = 4
 interfcomb = False
 
-buggy = ['bakery', 'burns', 'dekker', 'dekker_sim', 
-				'lamport', 'peterson', 'peterson3'] #'dijkstra
-non_buggy = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 
-				'dijkstra_fen', 'bakery_fen', 'burns_fen',  
-				'lamport_fen','peterson_fen', 'tbar_fen'] # 'dekker_fen', 'tbar_fenced_2'] 
+# following benchamrks are unfenced version of mutex algorithms from VBMC and have errors
+# szymanski and peterson_3 are left
+vbmc_unfenced = ['bakery_assume_unfenced', 'burns_assume_unfenced', 'dekker_assume_unfenced', 
+						'lamport_assume_unfenced', 'peterson_assume_unfenced', 
+						'dekker_simple_unfenced'] 
+# following benchamrks are version of mutex algorithms from VBMC and do not have errors
+# 
+vbmc_fenced = ['bakery_assume_fenced', 'peterson_assume_fenced', 
+				'tbar_fenced', 'tbar_fenced_2', 'lamport_assume_fenced']
+# following benchmarks do not have errors and are from Tracer
+tracer_no_bug = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 'dijkstra_assume_fenced',
+				'burns_assume_fenced']
 benchmarks = []
 
 if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
-	benchmarks = buggy + non_buggy
-elif sys.argv[1] == '-buggy':
-	benchmarks = buggy
-elif sys.argv[1] == '-non-buggy':
-	benchmarks = non_buggy
+	benchmarks = vbmc_unfenced + vbmc_fenced + tracer_no_bug
+elif sys.argv[1] == '-vbmc-febced' or sys.argv[1] == '-vf':
+	benchmarks = vbmc_fenced
+elif sys.argv[1] == '-tracer-no-bug' or sys.argv[1] == '-tnb':
+	benchmarks = tracer_no_bug
+elif sys.argv[1] == '-vbmc-unfenced' or sys.argv[1] == '-vuf':
+	benchmarks = vbmc_unfenced
 else:
 	print('Flags: ""/-vuf/-vf/-tnb/-a')
 	exit(0)
 
-print('Results generated at ', str(datetime.datetime.now()))
-print('Name & Time & Iterations & Time & Iterations \\\\')
+# print('Results generated at ', str(datetime.datetime.now()))
+print('Name & Time & Iterations \\\\')
 
 for benchmark in benchmarks:
 	command = ['opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/benchmarks/' + benchmark + '.ll']
-	if (not interfcomb):
+				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/benchmarks_set/' + benchmark + '.ll']
+	if not interfcomb:
 		command.append('-no-interf-comb')
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()

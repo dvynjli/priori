@@ -74,6 +74,7 @@ class VerifierPass : public ModulePass {
             // }
             // errs() << "\n Feasible Interfs:\n";
             // printLoadsToAllStores(feasibleInterfences);
+            // countNumFeasibleInterf(feasibleInterfences);
             analyzeProgram(M, feasibleInterfences);
         }
         else  {
@@ -2657,6 +2658,26 @@ class VerifierPass : public ModulePass {
             if (it.second.size()>maxFeasibleInterfs)
                 maxFeasibleInterfs = it.second.size();
             errs() << it.first->getName() << " : " << it.second.size() << "\n";
+        }
+    }
+
+    void countNumFeasibleInterf (const unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> feasibleInterfences) {
+        // errs() << "Number of feasible interferences per thread" << 
+        //         "Format: (total, per load interferences, max interfs\n";
+        errs() << "num_interfs: ";
+        for (auto it: feasibleInterfences) {
+            errs() << it.first->getName();
+            int num_loads=0;
+            int max=0;
+            int total=0;
+            for (auto it2: it.second) {
+                int interfcount = it2.second.size();
+                total += interfcount;
+                num_loads++;
+                if (interfcount > max) max = interfcount;
+            }
+            errs() << "(" << total << "," << (total/num_loads) << "," 
+                    <<  max << ")\n";
         }
     }
 

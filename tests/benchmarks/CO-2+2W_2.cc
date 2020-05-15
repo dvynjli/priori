@@ -3,7 +3,7 @@
 
 /* There are N weak traces */
 
-#include "verify.h"
+#include "../verify.h"
 
 using namespace std;
 

@@ -15,8 +15,8 @@ void *p0(void *arg)
 	waiting0.store(0, REL);
 	// __fence_var.fetch_add(0, ACQREL);
 	rwaiting = waiting0.load(ACQ);
-	// rlevel1 = level1.load(ACQ);
-	// rlevel2 = level2.load(ACQ);
+	rlevel1 = level1.load(ACQ);
+	rlevel2 = level2.load(ACQ);
 	assume(rwaiting != 0);
 	level0.store(1, REL);
 	// __fence_var.fetch_add(0, ACQREL);
