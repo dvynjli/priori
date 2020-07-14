@@ -1307,7 +1307,7 @@ class VerifierPass : public ModulePass {
         // set the value of destination variable in Environment
         if (trueBranchEnv.isUnreachable()) {
             curEnv.unsetVar(destVarName);
-        } else {
+        } else if (falseBranchEnv.isUnreachable()){
             curEnv.setVar(destVarName);
         }
         trueBranchEnv.setVar(destVarName);

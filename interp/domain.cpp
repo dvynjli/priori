@@ -754,7 +754,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
                 if (!varItr.second.isConsistent(searchVarOtherItr->second)) {
                     apply = false;
                     // fprintf(stderr, "Inconsistent POMOs on var %s\n", varItr.first.c_str());
-                    // printPOMO(curPomo);printPOMO(otherPomo);
+                    // curPomo.printPOMO();otherPomo.printPOMO();
                     break;
                 }
                 if (!varItr.second.isConsistentRMW(searchVarOtherItr->second)) {
@@ -791,9 +791,35 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
                 }
 
                 // create new ApDomain for this POMO
+                // print varoptions
+                // for (auto it=varoptions.begin(); it!=varoptions.end(); it++) {
+                //     fprintf(stderr, "%s: ",it->first.c_str());
+                //     switch (it->second) {
+                //         case UNKNOWN:
+                //             fprintf(stderr, "Unknown");
+                //             break;
+                //         case DONOTHING:
+                //             fprintf(stderr, "Do nothing");
+                //             break;
+                //         case MERGE:
+                //             fprintf(stderr, "Merge");
+                //             break;
+                //         case COPY:
+                //             fprintf(stderr, "Copy");
+                //             break;
+                //         default:
+                //             fprintf(stderr, "Default");
+                //             break;
+                //     }
+                //     fprintf(stderr, "\n");
+                // }
                 tmpDomain.applyInterference("", otherItr.second, true, &varoptions);
             }
-            newenvironment[newPomo] = tmpDomain;
+            auto searchNewPomo = newenvironment.find(newPomo);
+            if (searchNewPomo == newenvironment.end())
+                newenvironment[newPomo] = tmpDomain;
+            else
+                searchNewPomo->second.joinApDomain(tmpDomain);
         }
         // newenvironment[newPomo] = tmpDomain;
     }
@@ -1122,7 +1148,7 @@ void EnvironmentPOMO::printEnvironment() {
         pomo.printPOMO();
         // printPOMO(pomo);
         // fprintf(stderr, "printing ApDomain\n");
-        // it->second.printApDomain();
+        it->second.printApDomain();
         fprintf(stderr, "\n");
     }
 }
