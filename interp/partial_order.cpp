@@ -170,17 +170,18 @@ bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 	// 	fprintf(stderr, "%p,", it);
 	// }
 	// fprintf(stderr, "\n");
-	for (auto itCur: rmws) {
-		for (auto itOther: other.rmws) {
+	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur) {
+		for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
 			if (itCur == itOther) continue;
-			if (!(isExists(itOther) || other.isExists(itCur))) {
+			if (!(isExists(*itOther) || other.isExists(*itCur))) {
 				// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
 					// itOther,isExists(itOther),itCur,other.isExists(itCur));
 				return false;
 			}
-			else if (!(isOrderedBefore(itCur, itOther) || isOrderedBefore(itOther, itCur) ||
-				other.isOrderedBefore(itCur, itOther) ||
-				other.isOrderedBefore(itOther, itCur)))
+			else if (!(isOrderedBefore(*itCur, *itOther) || 
+				isOrderedBefore(*itOther, *itCur) ||
+				other.isOrderedBefore(*itCur, *itOther) ||
+				other.isOrderedBefore(*itOther, *itCur)))
 				return false;
 		}
 	}
@@ -192,12 +193,12 @@ bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 // domain-level feasibility checking
 bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, InstNum &curInst) {
 	// curInst should not be ordered before any inst in interferring domain
-	for (auto it:other) {
-		if (curInst.isSeqBefore(it.first)) return false;
+	for (auto it=other.begin(); it!=other.end(); it++) {
+		if (curInst.isSeqBefore(it->first)) return false;
 	}
 	// interfInst should not be ordered before any inst in current domain
-	for (auto it:order) {
-		if (interfInst.isSeqBefore(it.first)) return false;
+	for (auto it=order.begin(); it!=order.end(); it++) {
+		if (interfInst.isSeqBefore(it->first)) return false;
 	}
 	return true;
 }
@@ -220,10 +221,10 @@ void PartialOrder::remove(const InstNum &inst) {
 // inst \in lasts iff nEa (inst, a) \in order
 void PartialOrder::getLasts(unordered_set<InstNum> &lasts) const {
 	// iterate over all instructions in order
-	for (auto it:order) {
+	for (auto it=order.begin(); it!=order.end(); it++) {
 		// if nothing is ordered after this, insert it into lasts
-		if (it.second.empty())
-			lasts.insert(it.first);
+		if (it->second.empty())
+			lasts.insert(it->first);
 	}
 }
 
