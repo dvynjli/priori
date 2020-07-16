@@ -779,7 +779,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
                     
                     // join the two partial orders
                     // tmpPO.copy(varItr.second);
-                    // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
+                    // fprintf (stderr, "Joining:%s and %s\n", varItr.second.toString().c_str(), searchOtherPomo->second.toString().c_str());
                     PartialOrder tmpPO = PartialOrderWrapper::join(varItr.second, searchOtherPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     // check what to do for each variable
@@ -787,7 +787,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
 
                     newPomo.emplace(varItr.first, tmpPO);
                     // fprintf(stderr, "Pomo so far:\n");
-                    // printPOMO(newPomo);
+                    // newPomo.printPOMO();
                 }
 
                 // create new ApDomain for this POMO

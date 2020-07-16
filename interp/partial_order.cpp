@@ -141,12 +141,17 @@ bool PartialOrder::isExists(const InstNum &inst) const {
 
 // checks if the partial order other is consistent with this partial order
 // Two parial orders are consistent only if  Va.Vb (a,b) \in order 
-// (b,a) \notin other.order, or viceversa
+// (c,d) \notin other.order such that b--sb-->c and d--sb-->a
 bool PartialOrder::isConsistent(const PartialOrder &other) {
-	for (auto itFrom:other) {
-		for (auto itTo:itFrom.second) {
-			// if ordering is conistent 
-			if (isOrderedBefore(itTo, itFrom.first)) return false;
+	for (auto itFrom=order.begin(); itFrom!=order.end(); itFrom++) {	// a
+		for (auto itTo=itFrom->second.begin(); itTo!=itFrom->second.end(); itTo++) { // b
+			for (auto itOtherFrom=other.begin(); itOtherFrom!=other.end(); itOtherFrom++) { // c
+				if (itTo->isSeqBefore(itOtherFrom->first)) {
+					// we found (a,b) \in p1, (c,-) \in p2 such that b--sb-->c
+					for (auto itOtherTo=itOtherFrom->second.begin(); itOtherTo!=itOtherFrom->second.end(); itOtherTo++) 	// d
+						if (itOtherTo->isSeqBefore(itFrom->first)) return false;
+				}
+			} 
 		}
 	}
 	return true;
@@ -330,11 +335,11 @@ string PartialOrder::toString() const {
 		}
 		ss << ";\t";
 	}
-	ss << "\tRMWs: ";
-	for (auto it=rmws.begin(); it!=rmws.end(); it++) {
-		// fprintf(stderr, "in rmws loop\n");
-		ss << it->toString() << ",";
-	}
+	// ss << "\tRMWs: ";
+	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
+	// 	// fprintf(stderr, "in rmws loop\n");
+	// 	ss << it->toString() << ",";
+	// }
 	return ss.str();
 }
 
