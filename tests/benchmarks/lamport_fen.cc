@@ -41,7 +41,7 @@ void* t0(void *arg)
 		}
 		assume(rb2 < 1);
 		// end while line 36
-		// __fence_var.fetch_add(0, memory_order_acq_rel);
+		__fence_var.fetch_add(0, memory_order_acq_rel);
 		ry3 = y.load(memory_order_acquire);
 		if (ry3 != 1){
 			ry4 = y.load(memory_order_acquire);
@@ -60,9 +60,9 @@ void* t0(void *arg)
 	_cc_X.store(0, memory_order_release);
 	rx = _cc_X.load(memory_order_acquire);
 	assert(rx <= 0);
-	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	__fence_var.fetch_add(0, memory_order_acq_rel);
 	y.store(0, memory_order_release);
-	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	__fence_var.fetch_add(0, memory_order_acq_rel);
 	b1.store(0, memory_order_release);
 
 	// end first while(1) loop
@@ -120,9 +120,9 @@ void *t1(void *arg)
 	_cc_X.store(1, memory_order_release);
 	rx = _cc_X.load(memory_order_acquire);
 	assert(rx >= 1);
-	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	__fence_var.fetch_add(0, memory_order_acq_rel);
 	y.store(0, memory_order_release);
-	// __fence_var.fetch_add(0, memory_order_acq_rel);
+	__fence_var.fetch_add(0, memory_order_acq_rel);
 	b1.store(0, memory_order_release);
 
 	// end first while(1) loop
