@@ -92,6 +92,7 @@ TODO:
     Func to review : checkThreadJoin
     getInterferences (no interf comb): try to not run loop again and do eager pruning
     change vector to forward list so that searching is not required or change to umap
+    **** Check isConsistent in partial order. Something is last update did not work. (test11)
 
 Other functionality that might be added
     Race detection on non-atomics - 

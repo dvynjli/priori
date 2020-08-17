@@ -22,7 +22,6 @@ cl::opt<bool> noInterfComb   ("no-interf-comb", cl::desc("Use analysis without i
 
 map<llvm::Instruction*, InstNum> instToNum;
 map<InstNum, llvm::Instruction*> numToInst;
-set<pair<Instruction*, Instruction*>> allLSPairs;
 
 class VerifierPass : public ModulePass {
 
@@ -33,15 +32,19 @@ class VerifierPass : public ModulePass {
     unordered_map <Function*, unordered_map<Instruction*, Environment>> programState;
     // initial environment of the function. A map from Func-->(isChanged, Environment)
     unordered_map <Function*, Environment> funcInitEnv;
-    set<pair<Instruction*, Instruction*>> allLSPair;
+    set<pair<Instruction*, Instruction*>> allLSPairs;
     // map <Function*, forward_list<InterfNode*>> newFeasibleInterfs;
     int maxFeasibleInterfs=0;
 
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
+    unordered_map <string, set<Instruction*>> lockVarToUnlocks;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
     
     vector<string> globalVars;
+    vector<string> lockVars;
+    unordered_map<Instruction*, Instruction*> lockToUnlock;
+
     unsigned int iterations = 0;
     double start_time;
 
@@ -60,7 +63,7 @@ class VerifierPass : public ModulePass {
     
     bool runOnModule (Module &M) {
         start_time = omp_get_wtime();
-        globalVars = getGlobalIntVars(M);
+        getGlobalIntVars(M);
         // errs() << "#global vars:" << globalVars.size() << "\n";
         // zHelper.initZ3(globalVars);
         // errs() << "init\n";
@@ -75,7 +78,7 @@ class VerifierPass : public ModulePass {
             // errs() << "\n Feasible Interfs:\n";
             // printLoadsToAllStores(feasibleInterfences);
             // countNumFeasibleInterf(feasibleInterfences);
-            analyzeProgram(M, feasibleInterfences);
+            // analyzeProgram(M, feasibleInterfences);
         }
         else  {
             map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
@@ -103,15 +106,14 @@ class VerifierPass : public ModulePass {
         return true;
     }
 
-    vector<string> getGlobalIntVars(Module &M) {
-        vector<string> intVars;
+    void getGlobalIntVars(Module &M) {
         for (auto it = M.global_begin(); it != M.global_end(); it++){
             // errs() << "Global var: " << it->getName() << "\tType: ";
             // it->getValueType()->print(errs());
             // errs() << "\n";
             if (it->getValueType()->isIntegerTy() && it->getName()!="__dso_handle") {
                 string varName = it->getName();
-                intVars.push_back(varName);
+                globalVars.push_back(varName);
                 Value * varInst = &(*it);
                 nameToValue.emplace(varName, varInst);
                 valueToName.emplace(varInst, varName);
@@ -132,13 +134,27 @@ class VerifierPass : public ModulePass {
                 }
             } */
             else if (StructType* structTy = dyn_cast<StructType>(it->getValueType())) {
+                // errs() << "structName:" << it->getValueType()->getStructName() << "\n";
+                // errs() << "found structty:"; structTy->print(errs()); errs() << "\n";
+                // it->getValueType()->getStructElementType(0)->print(errs()); errs() <<"\n";
+                // errs() << "ele type id: " << tmp->getTypeID() << ", FuncType:" << tmp->isFunctionTy() << ", Pointer Ty: " << tmp->isPointerTy() << ", isInt: " << tmp->isIntegerTy() << ", isTokenTy: " << tmp->isTokenTy() << ", isStruct: " << tmp->isStructTy() << "\n";
                 if  (!structTy->getName().find("struct.std::atomic")) {
                     string varName = it->getName();
-                    intVars.push_back(varName);
+                    globalVars.push_back(varName);
                     Value * varInst = &(*it);
                     nameToValue.emplace(varName, varInst);
                     valueToName.emplace(varInst, varName);
                     // errs() << "added the global var\n";
+                }
+                else if  (StructType *substruct = dyn_cast<StructType>(structTy->getStructElementType(0))) {
+                    if (substruct->getName()=="union.pthread_mutex_t") {
+                        string varName = it->getName();
+                        lockVars.push_back(varName);
+                        Value * varInst = &(*it);
+                        nameToValue.emplace(varName, varInst);
+                        valueToName.emplace(varInst, varName);
+                        // errs() << "\nadded the lock var: " << varName << " Type: "<< structTy->getName() << "\n";
+                    }
                 }
                 else {
                     // errs() << "WARNING: found global structure:" << structTy->getName() << ". It will not be analyzed\n";
@@ -158,9 +174,10 @@ class VerifierPass : public ModulePass {
             // }
 
         }
-        if (!noPrint)
-            errs() << "DEBUG: Total global var = " << intVars.size() << "\n";
-        return intVars;
+        if (!noPrint) {
+            errs() << "DEBUG: Total global vars = " << globalVars.size() << "\n";
+            errs() << "DEBUG: Tota; lock vars = " << lockVars.size() << "\n";
+        }
     }
 
     Function* getMainFunction(Module &M){
@@ -220,7 +237,7 @@ class VerifierPass : public ModulePass {
         funcSet.insert(mainF);
     
         int ssaVarCounter = 0;
-        unsigned short int tid = 1;                     // main always have tid 0
+        unsigned short int tid = 1;                     // main always have tid 1
 
         while(!funcQ.empty())
         {
@@ -246,6 +263,7 @@ class VerifierPass : public ModulePass {
             basicBlockQ.push(&*func->begin());
             basicBlockSet.insert(&*func->begin());
             unordered_set<BasicBlock*> done;
+            Instruction *lastLockInst = nullptr;
             
             while (!basicBlockQ.empty()) {
                 BasicBlock* BB = basicBlockQ.front();
@@ -300,6 +318,22 @@ class VerifierPass : public ModulePass {
                             // TODO: need to add dominates rules
                             Function* joineeThread = findFunctionFromPthreadJoin(call);
                             funcToTJoin.emplace(joineeThread, call);
+                        }
+                        else if (call->getCalledFunction()->getName().find("unlock")!=llvm::StringRef::npos) {
+                            assert(lastLockInst && "Unlock with no matching lock instruction found");
+                            lockToUnlock[lastLockInst] = call;
+                            lastLockInst = nullptr;
+
+                            // add to lockVarsToUnlock Map
+                            if (BitCastOperator *bcOp = dyn_cast<BitCastOperator>(call->getOperand(0))) {
+                                lockVarToUnlocks[bcOp->getOperand(0)->getName()].insert(call);
+                                // errs() << "Lock Op 0: "; printValue(bcOp->getOperand(0));
+                                // errs() << "Name: " << bcOp->getOperand(0)->getName() << "\n";
+                            }
+                        }
+                        else if (call->getCalledFunction()->getName().find("lock")!=llvm::StringRef::npos) {
+                            // errs() << "*** Found lock inst: "; printValue(call);
+                            lastLockInst = call;
                         }
                         else {
                             if (!noPrint) {
@@ -481,6 +515,19 @@ class VerifierPass : public ModulePass {
             funcInitEnv[func] = curFuncEnv;
             tid++;
         }
+
+        // errs() << "\nLock-to-Unlock Inst map:\n";
+        // for (auto it=lockToUnlock.begin(); it!=lockToUnlock.end(); it++) {
+        //     printValue(it->first); errs () << "\t--->\t"; printValue(it->second);
+
+        // }
+        // errs() << "lockVar-to-Unlock Map:\n";
+        // for (auto it:lockVarToUnlocks) {
+        //     errs() << "\n" << it.first << " :\n";
+        //     for (auto it1:it.second) {
+        //         printValue(it1);
+        //     }
+        // }
 
     }
 
@@ -981,6 +1028,12 @@ class VerifierPass : public ModulePass {
                 // errs() << "Env after Assume call:\n";
                 // curEnv.printEnvironment();
 
+            }
+            else if (callInst->getCalledFunction()->getName().find("lock")!=llvm::StringRef::npos) {
+                return checkAcquireLock(callInst);
+            }
+            else if (callInst->getCalledFunction()->getName().find("unlock")!=llvm::StringRef::npos) {
+                return checkReleaseLock(callInst);
             }
         }
         // Other instructions don't need to be re-checked if modified flag is unset
@@ -1665,6 +1718,14 @@ class VerifierPass : public ModulePass {
             curEnv = olderEnv;
         }
         return curEnv;
+    }
+
+    Environment checkAcquireLock(CallInst *callInst) {
+
+    }
+
+    Environment checkReleaseLock(CallInst *callInst) {
+        
     }
 
     Environment checkAssumeCall(CallInst *callInst, Environment &curEnv,
