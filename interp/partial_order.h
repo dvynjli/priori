@@ -2,6 +2,7 @@
 #define _PO
 
 #include "common.h"
+#include <functional>
 // #include "z3_handler.h"
 
 class PartialOrder {
@@ -13,6 +14,7 @@ class PartialOrder {
 	// set and ~E x. inst \in order[x]
 	unordered_map<InstNum, unordered_set<InstNum>> order;
 	unordered_set<InstNum> rmws;
+	const bool deleteOlder;
 
 	// update ordering relation to get transitivity
 	void makeTransitiveOrdering(const InstNum &from, 
@@ -47,13 +49,20 @@ class PartialOrder {
 	void remove(const InstNum &inst);
 	
 public:
-	PartialOrder() :
+	// PartialOrder() :
+	// 	order(unordered_map<InstNum, unordered_set<InstNum>>()), 
+	// 	rmws(unordered_set<InstNum>()), deleteOlder(true) {order.clear(); 
+	// 	// fprintf(stderr, "PO cons called\n");
+	// 	}
+	PartialOrder(bool delOlder) :
 		order(unordered_map<InstNum, unordered_set<InstNum>>()), 
-		rmws(unordered_set<InstNum>()) {order.clear(); 
+		rmws(unordered_set<InstNum>()), deleteOlder(delOlder) {order.clear(); 
 		// fprintf(stderr, "PO cons called\n");
 		}
 	// ~PartialOrder() = default;
-	PartialOrder(const PartialOrder &po) : order(po.order), rmws(po.rmws) {};
+	PartialOrder(const PartialOrder &po) : 
+		order(po.order), rmws(po.rmws), 
+		deleteOlder(po.deleteOlder) {};
 
 	// checks if the partial order other is consistent with this partial order
 	// Two parial orders are consistent only if Va.Vb (a,b) \in order
@@ -69,6 +78,7 @@ public:
 	bool isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const;
 	// 
 	bool lessThan(const PartialOrder &other) const;
+	bool isDeleteOlderSet() const {return deleteOlder;}
 
 
 	unordered_map<InstNum, unordered_set<InstNum>>::const_iterator begin() const;
@@ -85,13 +95,13 @@ namespace std{
 template<>
 struct hash<PartialOrder*> {
 	size_t operator() (const PartialOrder *po) const {
-		// return (hash<unsigned short>()(in.getTid()) ^ 
-		auto it = po->begin();
-		if (it == po->end())
-			return hash<InstNum>()(InstNum(0,0));
-		size_t curhash = hash<InstNum>()(it->first);
-		it++;
-		for (; it!=po->end(); it++) {
+		size_t curhash = hash<bool>{}(po->isDeleteOlderSet());
+		// auto it = po->begin();
+		// if (it == po->end())
+		// 	return hash<InstNum>()(InstNum(0,0));
+		// size_t curhash = hash<InstNum>()(it->first);
+		// it++;
+		for (auto it=po->begin(); it!=po->end(); it++) {
 			curhash = curhash ^ hash<InstNum>()(it->first);
 		}
 		// fprintf(stderr, "returning hash\n");
@@ -109,13 +119,14 @@ public:
 	// pair<bool, PartialOrder&> find(PartialOrder *po);
 	static bool hasInstance(PartialOrder &po);
 	
+	static PartialOrder getEmptyPartialOrder(bool delOlder=true);
 	static PartialOrder append(const PartialOrder &curPO, InstNum &inst);
 	static PartialOrder addOrder(PartialOrder &curPO, InstNum &from, InstNum &to);
 	static PartialOrder join(PartialOrder &curPO, const PartialOrder &other);
 	// compute meet of two partial orders i.e. leave only common 
 	// instruction and common ordered pair
 	static PartialOrder meet(PartialOrder &curPO, const PartialOrder &other);
-	static PartialOrder remove(PartialOrder &curPO, InstNum &inst);
+	static PartialOrder& remove(PartialOrder &curPO, InstNum &inst);
 
 	static void printAllPO();
 	static void clearAllPO();

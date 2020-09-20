@@ -99,6 +99,7 @@ struct hash<InstNum> {
 
 extern map<llvm::Instruction*, InstNum> instToNum;
 extern map<InstNum, llvm::Instruction*> numToInst;
+extern unordered_map <string, set<llvm::Instruction*>> lockVarToUnlocks;
 
 inline llvm::Instruction* getInstByInstNum(const InstNum &instnum) {
 	auto searchInst = numToInst.find(instnum);

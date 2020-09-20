@@ -32,7 +32,7 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 			if (inst.isSeqBefore(to)) {
 				// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
 				addOrder(inst, to); 
-				remove(inst);
+				if (deleteOlder) remove(inst);
 			}
 			else if (to.isSeqBefore(inst)) {
 				// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
@@ -42,11 +42,11 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 			if (inst.isSeqBefore(from)) {
 				// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
 				addOrder(inst, from); 
-				remove(inst);
+				if (deleteOlder) remove(inst);
 			}
 			else if (from.isSeqBefore(inst)) {
 				makeTransitiveOrdering(from, to, toItr);
-				remove(from);
+				if (deleteOlder) remove(from);
 				// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
 				addInst(to);
 				return;
@@ -74,7 +74,7 @@ void PartialOrder::append(const InstNum &newinst) {
 		if (it->first == newinst) {
 			it++; continue;
 		}
-		if (it->first.isSeqBefore(newinst) && !isRMWInst(it->first)) {
+		if (deleteOlder && it->first.isSeqBefore(newinst) && !isRMWInst(it->first)) {
 			auto ittmp = it++; remove((ittmp->first));
 		}
 		else {
@@ -207,6 +207,7 @@ bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, In
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
 void PartialOrder::remove(const InstNum &inst) {
+	assert(deleteOlder && "Removing inst from PO for which deleteOlder is unset");
 	// if (isRMWInst(inst)) return true;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
@@ -272,7 +273,7 @@ void PartialOrder::addInst(const InstNum &inst) {
 			// be ordered before instItr
 			makeTransitiveOrdering(instItr, inst, order.end());
 			// remove older instruction
-			remove(instItr);
+			if (deleteOlder) remove(instItr);
 		}
 	}
 	auto findInst = order.find(inst);
@@ -326,26 +327,28 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 
 string PartialOrder::toString() const {
 	std::stringstream ss;
-	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
-		// fprintf(stderr, "in outer for\n");
-		// fprintf(stderr, "size of second %lu\n", itFrom->second.size());
-		ss << itFrom->first.toString() << " ---> " ;
-		for (auto itTo: itFrom->second) {
-			// fprintf(stderr, "in inner for\n");
-			ss << itTo.toString() << ", ";
-		}
-		ss << ";\t";
-	}
+	fprintf(stderr, "in toString\n");
+	// for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
+	// 	fprintf(stderr, "in outer for\n");
+	// 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
+	// 	ss << itFrom->first.toString() << " ---> " ;
+	// 	for (auto itTo: itFrom->second) {
+	// 		// fprintf(stderr, "in inner for\n");
+	// 		ss << itTo.toString() << ", ";
+	// 	}
+	// 	ss << ";\t";
+	// }
 	// ss << "\tRMWs: ";
 	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
 	// 	// fprintf(stderr, "in rmws loop\n");
 	// 	ss << it->toString() << ",";
 	// }
+	fprintf(stderr, "returning from toString\n");
 	return ss.str();
 }
 
 bool PartialOrder::operator==(const PartialOrder &other) const {
-	return order == other.order;
+	return deleteOlder == other.deleteOlder && order == other.order;
 }
 
 // void PartialOrder::operator= (const PartialOrder &other) {
@@ -402,8 +405,18 @@ const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po, bool &isAlre
 	// fprintf(stderr, "done. returning\n");
 }
 
+PartialOrder PartialOrderWrapper::getEmptyPartialOrder(bool delOlder=true) {
+	PartialOrder *tmpPO = new PartialOrder(delOlder);
+	bool isAlreadyExist;
+	auto po = addToSet(tmpPO, isAlreadyExist);
+    if (isAlreadyExist) {
+		delete tmpPO;
+	}
+	else return po;
+}
+
 PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
-	PartialOrder *tmpPO = new PartialOrder();
+	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->append(inst);
     // fprintf(stderr, "after append: %s\n", tmpPO->toString().c_str());
@@ -416,7 +429,7 @@ PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &ins
 }
 
 PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, InstNum &to) {
-	PartialOrder *tmpPO = new PartialOrder();
+	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->addOrder(from, to);
     // fprintf(stderr, "after addOrder: %s\n", tmpPO->toString().c_str());
@@ -429,7 +442,7 @@ PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, I
 }
 
 PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &other) {
-	PartialOrder *tmpPO = new PartialOrder();
+	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->join(other);
     // fprintf(stderr, "after join: %s\n", tmpPO->toString().c_str());
@@ -442,7 +455,7 @@ PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &
 }
 
 PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &other) {
-	PartialOrder *tmpPO = new PartialOrder();
+	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
 	for (auto curIt=curPO.begin(); curIt!=curPO.end(); curIt++) {
 		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
 			if (curIt->first.isSeqBefore(otherIt->first)) {
@@ -498,8 +511,8 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 	else return po;
 }
 
-PartialOrder PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
-	PartialOrder *tmpPO = new PartialOrder();
+PartialOrder& PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
+	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->remove(inst);
     // fprintf(stderr, "after remove: %s\n", tmpPO->toString().c_str());

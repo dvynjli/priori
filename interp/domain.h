@@ -80,6 +80,8 @@ public:
     void applyInterference(string interfVar, ApDomain &fromApDomain, bool isPOMO, map<string, options> *varoptions=nullptr);
     void joinApDomain(ApDomain &other);
     void meetApDomain(ApDomain &other);
+	void performReleaseLock(string &lockVar);
+	void performAcquireLock(string &lockVar);
     void setVar(string &strVar);
     void unsetVar(string &strVar);
     bool isUnreachable();
@@ -112,7 +114,8 @@ public:
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
-    virtual void init(vector<string> &globalVars, vector<string> &functionVars) = 0;
+    virtual void init(vector<string> &globalVars, vector<string> &functionVars,
+                vector<string> &locks) = 0;
     virtual void copyEnvironment(T &copyFrom) = 0;
 
     // Unary Operation
@@ -253,9 +256,9 @@ struct hash<POMO> {
 		// return (hash<unsigned short>()(in.getTid()) ^ 
 		auto it = pomo.begin();
 		if (it == pomo.end()) {
-            PartialOrder *po = new PartialOrder();
-			return hash<PartialOrder*>()(po);
-            delete po;
+            PartialOrder po = PartialOrderWrapper::getEmptyPartialOrder(true);
+			return hash<PartialOrder*>()(&po);
+            // delete po;
         }
 		size_t curhash = hash<PartialOrder*>()(&it->second);
 		it++;
@@ -291,12 +294,13 @@ struct hash<POMO> {
 
 class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 
-    // relHead: var -> relHeadInstruction
-    // environment: relHead -> ApDomain
+    // POMO: vars \cup lockvars -> PO
+    // environment: POMO -> ApDomain
     unordered_map <POMO, ApDomain> environment;
     
-    void initPOMO(vector<string> &globalVars, POMO &pomo);
-    
+    void initPOMO(vector<string> &globalVars, vector<string> &locks, POMO &pomo);
+    // void initLockset(vector<string> &locks);
+
     // void printPOMO(const POMO &pomo);
     void joinPOMO (const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
     void meetPOMO (const POMO &pomo1, const POMO &pomo2, POMO &joinedPOMO);
@@ -324,7 +328,8 @@ public:
     // map <REL_HEAD, ApDomain>::iterator begin();
     // map <REL_HEAD, ApDomain>::iterator end();
 
-    virtual void init(vector<string> &globalVars, vector<string> &functionVars);
+    virtual void init(vector<string> &globalVars, vector<string> &functionVars,
+                vector<string> &locks);
     virtual void copyEnvironment(EnvironmentPOMO &copyFrom);
 
     // Unary Operation
@@ -361,6 +366,8 @@ public:
     virtual void joinEnvironment(EnvironmentPOMO &other);
     virtual void meetEnvironment(EnvironmentPOMO &other);
     // virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
+	virtual void performReleaseLock(string &lockVar, InstNum unlockInst);
+	virtual void performAcquireLock(string &lockVar, InstNum unlockInst);
     virtual void setVar(string &strVar);
     virtual void unsetVar(string &strVar);
     virtual bool isUnreachable();

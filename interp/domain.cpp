@@ -148,6 +148,7 @@ void ApDomain::performUnaryOp(operation &oper, string &strTo, string &strOp) {
 
 void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, string &strOp2) {
     ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 2);
+    ap_interval_t *fromInterval=nullptr; 
     switch(oper) {
         case ADD:
             ap_linexpr1_set_list(&expr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, 1, strOp2.c_str(), AP_END);
@@ -157,7 +158,7 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, string &strOp1, s
             break;
         case MUL:
             // for multiplication of two variables, need to intervalize one
-            ap_interval_t *fromInterval = ap_abstract1_bound_variable(man, &absValue, (ap_var_t)strOp2.c_str());
+			fromInterval = ap_abstract1_bound_variable(man, &absValue, (ap_var_t)strOp2.c_str());
             ap_linexpr1_set_list(&expr, AP_COEFF_I, fromInterval, strOp1.c_str(), AP_END);
             break;
         default:
@@ -590,9 +591,12 @@ bool EnvironmentPOMO::operator== (const EnvironmentPOMO &other) const {
 }
 
 
-void EnvironmentPOMO::init(vector<string> &globalVars, vector<string> &functionVars){
+void EnvironmentPOMO::init(vector<string> &globalVars, 
+    vector<string> &functionVars, 
+    vector<string> &locks)
+{
     POMO pomo;
-    initPOMO(globalVars,   pomo);
+    initPOMO(globalVars, locks, pomo);
     // fprintf(stderr, "pomo initialized\n");
     // pomo.printPOMO();
     ApDomain dom;
@@ -602,12 +606,16 @@ void EnvironmentPOMO::init(vector<string> &globalVars, vector<string> &functionV
     // printEnvironment();
 }
 
-void EnvironmentPOMO::initPOMO(vector<string> &globalVars, POMO &pomo){
+void EnvironmentPOMO::initPOMO(vector<string> &globalVars, vector<string> &locks, POMO &pomo){
     // fprintf(stderr, "decl pomo\n");
     // POMO pomo;
-    PartialOrder *po = new PartialOrder();
+    PartialOrder po = PartialOrderWrapper::getEmptyPartialOrder(true);
     // fprintf(stderr, "assigning empty to pomo\n");
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
+        pomo.emplace((*it), po);
+    }
+    PartialOrder polocks = PartialOrderWrapper::getEmptyPartialOrder(false);
+    for (auto it=locks.begin(); it!=locks.end(); ++it) {
         pomo.emplace((*it), po);
     }
     // delete po;
@@ -691,6 +699,46 @@ void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, string &strOp
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, strOp2);
     }
+}
+
+void EnvironmentPOMO::performReleaseLock(string &lockVar, InstNum unlockInst) {
+    unordered_map <POMO, ApDomain> newEnv;
+    for (auto it=environment.begin(); it!=environment.end(); it++) {
+        POMO tmpPomo=it->first;
+        auto searchLockVar = tmpPomo.find(lockVar);
+        assert(searchLockVar != tmpPomo.end() && "LockVar not found in POMO");
+
+        unordered_set<InstNum> lastInPO;
+        searchLockVar->second.getLasts(lastInPO);
+        // last in PO for lockVar should be a lock instruction
+        assert(lastInPO.size()==1 && "Last if PO for lockVar has to be a single inst");
+
+        PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, unlockInst);
+        tmpPomo.emplace(lockVar, tmpPO);
+        newEnv[tmpPomo] = it->second;
+    }
+    environment = newEnv;
+}
+
+void EnvironmentPOMO::performAcquireLock(string &lockVar, InstNum lockInst) {
+    unordered_map <POMO, ApDomain> newEnv;
+    for (auto it=environment.begin(); it!=environment.end(); it++) {
+        POMO tmpPomo=it->first;
+        fprintf(stderr, "tmpPomo:\n");
+        tmpPomo.printPOMO();
+        fprintf(stderr, "lockVar: %s", lockVar.c_str());
+        auto searchLockVar = tmpPomo.find(lockVar);
+        assert(searchLockVar == tmpPomo.end() && "LockVar not found in POMO");
+
+        fprintf(stderr, "calling toString\n");
+        fprintf(stderr, "PO before append: %s\n", searchLockVar->second.toString().c_str());
+        // PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, lockInst);
+        // fprintf(stderr, "PO after append: %s\n", tmpPO.toString().c_str());
+
+        // tmpPomo.emplace(lockVar, tmpPO);
+        // newEnv[tmpPomo] = it->second;
+    }
+    environment = newEnv;
 }
 
 void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string &destVarName) {
@@ -928,7 +976,7 @@ void EnvironmentPOMO::applyInterference(
                     
                     // for interfVar, add the store intruction in the end
                     if (varIt.first == interfVar) {   
-                        tmpPO = PartialOrderWrapper::append(tmpPO, interfInst);
+                        PartialOrderWrapper::append(tmpPO, interfInst);
                     }
 
                     // check what to do for each variable

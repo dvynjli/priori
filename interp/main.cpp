@@ -22,6 +22,7 @@ cl::opt<bool> noInterfComb   ("no-interf-comb", cl::desc("Use analysis without i
 
 map<llvm::Instruction*, InstNum> instToNum;
 map<InstNum, llvm::Instruction*> numToInst;
+unordered_map <string, set<llvm::Instruction*>> lockVarToUnlocks;
 
 class VerifierPass : public ModulePass {
 
@@ -38,7 +39,6 @@ class VerifierPass : public ModulePass {
 
     unordered_map <string, Value*> nameToValue;
     unordered_map <Value*, string> valueToName;
-    unordered_map <string, set<Instruction*>> lockVarToUnlocks;
     map<Instruction*, map<string, Instruction*>> lastWrites; 
     
     vector<string> globalVars;
@@ -64,7 +64,8 @@ class VerifierPass : public ModulePass {
     bool runOnModule (Module &M) {
         start_time = omp_get_wtime();
         getGlobalIntVars(M);
-        // errs() << "#global vars:" << globalVars.size() << "\n";
+        errs() << "#global vars:" << globalVars.size() << "\n";
+        errs() << "#lock vars:" << lockVars.size() << "\n";
         // zHelper.initZ3(globalVars);
         // errs() << "init\n";
         if (noInterfComb) {
@@ -78,7 +79,7 @@ class VerifierPass : public ModulePass {
             // errs() << "\n Feasible Interfs:\n";
             // printLoadsToAllStores(feasibleInterfences);
             // countNumFeasibleInterf(feasibleInterfences);
-            // analyzeProgram(M, feasibleInterfences);
+            analyzeProgram(M, feasibleInterfences);
         }
         else  {
             map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
@@ -509,7 +510,7 @@ class VerifierPass : public ModulePass {
             // errs() << "making env\n";
             Environment curFuncEnv;
             // errs() << "init env\n";
-            curFuncEnv.init(globalVars, funcVars);
+            curFuncEnv.init(globalVars, funcVars, lockVars);
             // errs() << "adding to func init env\n";
             // curFuncEnv.printEnvironment();
             funcInitEnv[func] = curFuncEnv;
@@ -1030,10 +1031,10 @@ class VerifierPass : public ModulePass {
 
             }
             else if (callInst->getCalledFunction()->getName().find("lock")!=llvm::StringRef::npos) {
-                return checkAcquireLock(callInst);
+                return checkAcquireLock(callInst, curEnv);
             }
             else if (callInst->getCalledFunction()->getName().find("unlock")!=llvm::StringRef::npos) {
-                return checkReleaseLock(callInst);
+                return checkReleaseLock(callInst, curEnv);
             }
         }
         // Other instructions don't need to be re-checked if modified flag is unset
@@ -1720,12 +1721,48 @@ class VerifierPass : public ModulePass {
         return curEnv;
     }
 
-    Environment checkAcquireLock(CallInst *callInst) {
+    Environment checkAcquireLock(CallInst *callInst, Environment &curEnv) {
+		auto lockVar = callInst->getArgOperand(0);
+		string lockName = getNameFromValue(lockVar);
+        errs() << "Checking acquire lock of variable " << lockName << "\n";
 
+		// apply interf from all unlock inst of this lock variable
+        Environment tmpEnv = curEnv;
+		for (auto it=lockVarToUnlocks[lockName].begin(); it!=lockVarToUnlocks[lockName].end(); it++) {
+            errs() << "interf from unlock: ";
+            printValue(*it);
+			auto searchInterfFunc = programState.find((*it)->getFunction());
+            if (searchInterfFunc != programState.end()) {
+                // errs() << "Interf env found\n";
+                auto searchInterfEnv = searchInterfFunc->second.find(*it);
+                if (searchInterfEnv != searchInterfFunc->second.end()) {
+                    // apply the interference
+                    // errs() << "Before Interf lock:\n";
+                    // curEnv.printEnvironment();
+
+                    if (searchInterfEnv->second.isModified() || curEnv.isModified()) {
+                        errs () << "Modified. Applying interf\n";
+                        tmpEnv.applyInterference(lockName, searchInterfEnv->second, 
+                            getInstNumByInst(callInst), getInstNumByInst(*it));
+                    }
+                    else {
+                        // errs() << "MOD: not applying interf\n";
+                        tmpEnv.setNotModified();
+                    }
+                    curEnv.joinEnvironment(tmpEnv);
+                }
+            }
+		}
+        errs() << "After applying interf: \n";
+        curEnv.printEnvironment();
+
+        curEnv.performAcquireLock(lockName, getInstNumByInst(callInst));
     }
 
-    Environment checkReleaseLock(CallInst *callInst) {
-        
+    Environment checkReleaseLock(CallInst *callInst, Environment &curEnv) {
+		auto lockVar = callInst->getArgOperand(0);
+		string lockName = getNameFromValue(lockVar);
+    	curEnv.performReleaseLock(lockName, getInstNumByInst(callInst));
     }
 
     Environment checkAssumeCall(CallInst *callInst, Environment &curEnv,
@@ -2018,6 +2055,44 @@ class VerifierPass : public ModulePass {
         (*curInterfItr)++;
         return curEnv;
     }
+
+    // Environment applyInterfToLock(
+    //     Instruction* lockInst, 
+    //     Environment &curEnv, 
+    // ) {
+    //     Environment predEnv = curEnv;
+    //     for (auto )
+    //     for (auto interfInst=(*curInterfItr)->second.begin(); 
+    //         interfInst!=(*curInterfItr)->second.end(); interfInst++) {
+    //         Environment tmpEnv = predEnv;
+    //         if (!noPrint) {
+    //             errs() << "\nInterf with Store: ";
+    //             (*interfInst)->print(errs());
+    //             errs() << "\n";
+    //         }
+    //         auto searchInterfFunc = programState.find((*interfInst)->getFunction());
+    //         if (searchInterfFunc != programState.end()) {
+    //             // errs() << "Interf env found\n";
+    //             auto searchInterfEnv = searchInterfFunc->second.find(*interfInst);
+    //             if (searchInterfEnv != searchInterfFunc->second.end()) {
+    //                 // apply the interference
+    //                 // errs() << "Before Interf:\n";
+    //                 // curEnv.printEnvironment();
+
+    //                 if (searchInterfEnv->second.isModified() || curEnv.isModified())
+    //                     tmpEnv.applyInterference(varName, searchInterfEnv->second, 
+    //                         getInstNumByInst(loadInst), getInstNumByInst(*interfInst));
+    //                 else {
+    //                     // errs() << "MOD: not applying interf\n";
+    //                     tmpEnv.setNotModified();
+    //                 }
+    //                 curEnv.joinEnvironment(tmpEnv);
+    //             }
+    //         }
+    //     }
+    //     (*curInterfItr)++;
+    //     return curEnv;
+    // }
 
     /* void getLoadsToAllStoresMap (
         unordered_map<Function*, forward_list<pair<Instruction*, string>>> &allLoads,
