@@ -4,7 +4,7 @@
 bool ApDomain::operator== (const ApDomain &other) const {
     ap_abstract1_t tempAbsVal = other.absValue;
     return ap_environment_is_eq(env, other.env) && 
-        ap_abstract1_is_eq(man, &absValue, &tempAbsVal);
+        ap_abstract1_is_eq(man, (ap_abstract1_t *) &absValue, &tempAbsVal);
 }
 
 // bool ApDomain::operator!= (ApDomain other) {
@@ -378,7 +378,7 @@ void ApDomain::printApDomain() {
 }
 
 void ApDomain::applyInterference(string interfVar, ApDomain &fromApDomain, bool isPOMO, 
-            map<string, options> *varoptions=nullptr
+            map<string, options> *varoptions
 ) {
     ap_var_t apInterVar;
 
@@ -597,8 +597,8 @@ void EnvironmentPOMO::init(vector<string> &globalVars,
 {
     POMO pomo;
     initPOMO(globalVars, locks, pomo);
-    // fprintf(stderr, "pomo initialized\n");
-    // pomo.printPOMO();
+    fprintf(stderr, "pomo initialized\n");
+    pomo.printPOMO();
     ApDomain dom;
     dom.init(globalVars, functionVars);
     // fprintf(stderr, "dom done. assign to env\n");

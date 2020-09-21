@@ -1757,12 +1757,14 @@ class VerifierPass : public ModulePass {
         curEnv.printEnvironment();
 
         curEnv.performAcquireLock(lockName, getInstNumByInst(callInst));
+		return curEnv;
     }
 
     Environment checkReleaseLock(CallInst *callInst, Environment &curEnv) {
 		auto lockVar = callInst->getArgOperand(0);
 		string lockName = getNameFromValue(lockVar);
     	curEnv.performReleaseLock(lockName, getInstNumByInst(callInst));
+		return curEnv;
     }
 
     Environment checkAssumeCall(CallInst *callInst, Environment &curEnv,

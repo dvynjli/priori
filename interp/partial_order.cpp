@@ -327,23 +327,23 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 
 string PartialOrder::toString() const {
 	std::stringstream ss;
-	fprintf(stderr, "in toString\n");
-	// for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
+	//fprintf(stderr, "in toString\n");
+	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
 	// 	fprintf(stderr, "in outer for\n");
 	// 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
-	// 	ss << itFrom->first.toString() << " ---> " ;
-	// 	for (auto itTo: itFrom->second) {
-	// 		// fprintf(stderr, "in inner for\n");
-	// 		ss << itTo.toString() << ", ";
-	// 	}
-	// 	ss << ";\t";
-	// }
+		ss << itFrom->first.toString() << " ---> " ;
+	 	for (auto itTo: itFrom->second) {
+	 		// fprintf(stderr, "in inner for\n");
+	 		ss << itTo.toString() << ", ";
+	 	}
+	 	ss << ";\t";
+	 }
 	// ss << "\tRMWs: ";
 	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
 	// 	// fprintf(stderr, "in rmws loop\n");
 	// 	ss << it->toString() << ",";
 	// }
-	fprintf(stderr, "returning from toString\n");
+	//fprintf(stderr, "returning from toString\n");
 	return ss.str();
 }
 
@@ -405,7 +405,7 @@ const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po, bool &isAlre
 	// fprintf(stderr, "done. returning\n");
 }
 
-PartialOrder PartialOrderWrapper::getEmptyPartialOrder(bool delOlder=true) {
+PartialOrder PartialOrderWrapper::getEmptyPartialOrder(bool delOlder) {
 	PartialOrder *tmpPO = new PartialOrder(delOlder);
 	bool isAlreadyExist;
 	auto po = addToSet(tmpPO, isAlreadyExist);
