@@ -170,7 +170,7 @@ bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 	// 	fprintf(stderr, "%p,", it);
 	// }
 	// fprintf(stderr, "\n");
-	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur) {
+	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
 		for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
 			if (itCur == itOther) continue;
 			if (!(isExists(*itOther) || other.isExists(*itCur))) {
@@ -412,7 +412,7 @@ PartialOrder PartialOrderWrapper::getEmptyPartialOrder(bool delOlder) {
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	else return po;
+	return po;
 }
 
 PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
@@ -425,7 +425,7 @@ PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &ins
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	else return po;
+	return po;
 }
 
 PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, InstNum &to) {
@@ -438,7 +438,7 @@ PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, I
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	else return po;
+	return po;
 }
 
 PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &other) {
@@ -451,7 +451,7 @@ PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	else return po;
+	return po;
 }
 
 PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &other) {
@@ -508,7 +508,7 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 	if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	else return po;
+	return po;
 }
 
 PartialOrder& PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
@@ -521,7 +521,7 @@ PartialOrder& PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	else return po;
+	return po;
 }
 
 bool PartialOrderWrapper::hasInstance (PartialOrder &po) {
