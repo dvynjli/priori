@@ -137,8 +137,8 @@ Possible Optimizations:
 
 for laptop
 export CPLUS_INCLUDE_PATH=/home/divyanjali/apron/include/
-export LIBRARY_PATH=/home/divyanjali/apron/lib/
 export LD_LIBRARY_PATH=/home/divyanjali/apron/lib/
+export LIBRARY_PATH=/home/divyanjali/apron/lib/
  
 for lab system
 export LIBRARY_PATH=/usr/local/lib/
@@ -146,7 +146,8 @@ export LD_LIBRARY_PATH=/usr/local/lib/
 
 
 Running ASAN:
-export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/7/libasan.so
-cmake with cmake .. -DCMAKE_CXX_FLAGS="-fsanitize=address  -fsanitize=leak -g" -DCMAKE_C_FLAGS="-fsanitize=address  -fsanitize=leak -g" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address  -fsanitize=leak" -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=address  -fsanitize=leak"
+default is true. not needed: ASAN_OPTIONS=detect_leaks=true 
+cmake with: cmake .. -DCMAKE_CXX_FLAGS="-fsanitize=address" -DCMAKE_C_FLAGS="-fsanitize=address"
+
 Use Valgrind:
 valgrind --leak-check=yes --track-origins=yes opt -load build/interp/VerifierPass.so -verifier -interval -useMOPO -no-print tests/benchmarks/fibonacci.ll 
