@@ -14,7 +14,7 @@ class PartialOrder {
 	// set and ~E x. inst \in order[x]
 	unordered_map<InstNum, unordered_set<InstNum>> order;
 	unordered_set<InstNum> rmws;
-	const bool deleteOlder;
+	bool deleteOlder;
 
 	// update ordering relation to get transitivity
 	void makeTransitiveOrdering(const InstNum &from, 

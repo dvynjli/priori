@@ -65,6 +65,7 @@ void PartialOrder::append(const InstNum &newinst) {
 	// If the 'newinst' is already in the order, there should 
 	// not be any instruction ordered after it. Otherwise, 
 	// it cannot be appended.
+	// fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
 	auto searchInst = order.find(newinst);
 	assert((searchInst == order.end() || searchInst->second.empty()) && "some instruction is ordered after the inst to be appended");
 
@@ -327,7 +328,7 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 
 string PartialOrder::toString() const {
 	std::stringstream ss;
-	//fprintf(stderr, "in toString\n");
+	fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
 	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
 	// 	fprintf(stderr, "in outer for\n");
 	// 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
@@ -368,6 +369,7 @@ bool PartialOrder::operator==(const PartialOrder &other) const {
 void PartialOrder::copy (const PartialOrder &copyFrom) {
 	order = copyFrom.order;
 	rmws = copyFrom.rmws;
+	deleteOlder = copyFrom.deleteOlder;
 }
 
 void PartialOrder::clear() {

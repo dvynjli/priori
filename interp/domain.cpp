@@ -500,6 +500,9 @@ ap_constyp_t ApDomain::getApConsType(operation oper) {
             return AP_CONS_SUP;
         case GE:
             return AP_CONS_SUPEQ;
+		default:
+			fprintf(stderr, "Not valid operation\n");
+			exit(0);
     }
 }
 
@@ -597,8 +600,8 @@ void EnvironmentPOMO::init(vector<string> &globalVars,
 {
     POMO pomo;
     initPOMO(globalVars, locks, pomo);
-    fprintf(stderr, "pomo initialized\n");
-    pomo.printPOMO();
+    // fprintf(stderr, "pomo initialized\n");
+    // pomo.printPOMO();
     ApDomain dom;
     dom.init(globalVars, functionVars);
     // fprintf(stderr, "dom done. assign to env\n");
@@ -616,7 +619,7 @@ void EnvironmentPOMO::initPOMO(vector<string> &globalVars, vector<string> &locks
     }
     PartialOrder polocks = PartialOrderWrapper::getEmptyPartialOrder(false);
     for (auto it=locks.begin(); it!=locks.end(); ++it) {
-        pomo.emplace((*it), po);
+        pomo.emplace((*it), polocks);
     }
     // delete po;
     // pomo.printPOMO();
@@ -711,7 +714,7 @@ void EnvironmentPOMO::performReleaseLock(string &lockVar, InstNum unlockInst) {
         unordered_set<InstNum> lastInPO;
         searchLockVar->second.getLasts(lastInPO);
         // last in PO for lockVar should be a lock instruction
-        assert(lastInPO.size()==1 && "Last if PO for lockVar has to be a single inst");
+        assert(lastInPO.size()==1 && "Last of PO for lockVar has to be a single inst");
 
         PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, unlockInst);
         tmpPomo.emplace(lockVar, tmpPO);
@@ -724,19 +727,19 @@ void EnvironmentPOMO::performAcquireLock(string &lockVar, InstNum lockInst) {
     unordered_map <POMO, ApDomain> newEnv;
     for (auto it=environment.begin(); it!=environment.end(); it++) {
         POMO tmpPomo=it->first;
-        fprintf(stderr, "tmpPomo:\n");
-        tmpPomo.printPOMO();
-        fprintf(stderr, "lockVar: %s", lockVar.c_str());
+        // fprintf(stderr, "tmpPomo:\n");
+        // tmpPomo.printPOMO();
+        // fprintf(stderr, "lockVar: %s\n", lockVar.c_str());
         auto searchLockVar = tmpPomo.find(lockVar);
-        assert(searchLockVar == tmpPomo.end() && "LockVar not found in POMO");
+        assert(searchLockVar != tmpPomo.end() && "LockVar not found in POMO");
 
-        fprintf(stderr, "calling toString\n");
-        fprintf(stderr, "PO before append: %s\n", searchLockVar->second.toString().c_str());
-        // PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, lockInst);
+        // fprintf(stderr, "calling toString\n");
+        // fprintf(stderr, "PO before append: %s\n", searchLockVar->second.toString().c_str());
+        PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, lockInst);
         // fprintf(stderr, "PO after append: %s\n", tmpPO.toString().c_str());
 
-        // tmpPomo.emplace(lockVar, tmpPO);
-        // newEnv[tmpPomo] = it->second;
+        tmpPomo.emplace(lockVar, tmpPO);
+        newEnv[tmpPomo] = it->second;
     }
     environment = newEnv;
 }
