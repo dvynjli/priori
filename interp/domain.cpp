@@ -921,7 +921,6 @@ void EnvironmentPOMO::applyInterference(
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
 
-    // We are assuming RA. Hence everything is RelAcqSync
     unordered_map <POMO, ApDomain> newenvironment;
     for (auto curIt:environment) {
         for (auto interfIt:interfEnv) {
@@ -937,15 +936,18 @@ void EnvironmentPOMO::applyInterference(
                     exit(0);
                 }
                 if (!varIt.second.isConsistent(searchInterfPomo->second)) {
+					// fprintf(stderr, "not consistent\n");
                     apply=false;
                     break;
                 }
                 // check domain-level feasibility 
                 if (!varIt.second.isFeasible(searchInterfPomo->second, interfInst, curInst)) {
+					// fprintf(stderr, "not feasible\n");
                     apply=false;
                     break;
                 }
                 if (!varIt.second.isConsistentRMW(searchInterfPomo->second)) {
+					// fprintf(stderr, "not consistent rmw\n");
                     apply=false;
                     break;
                 }
@@ -973,9 +975,9 @@ void EnvironmentPOMO::applyInterference(
                     
                     // join the two partial orders
                     // tmpPO.copy(varIt.second);
-                    // fprintf (stderr, "Joining:%s and %s\n", tmpPO->toString().c_str(), searchInterfPomo->second->toString().c_str());
+                    // fprintf (stderr, "Joining:%s and %s\n", varIt.second.toString().c_str(), searchInterfPomo->second.toString().c_str());
                     PartialOrder tmpPO = PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
-                    // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
+                    // fprintf(stderr, "POMO after join: %s\n", tmpPO.toString().c_str());
                     
                     // for interfVar, add the store intruction in the end
                     if (varIt.first == interfVar) {   
@@ -995,8 +997,25 @@ void EnvironmentPOMO::applyInterference(
                 ApDomain tmpDomain;
                 tmpDomain.copyApDomain(curIt.second);
                 tmpDomain.applyInterference(interfVar, interfIt.second, true, &varoptions);
-                if (!tmpDomain.isUnreachable()) newenvironment[newPomo] = tmpDomain;
-            }
+                if (!tmpDomain.isUnreachable()) {
+                	auto searchPomo = newenvironment.find(newPomo);
+                	if (searchPomo != newenvironment.end()) {
+                	    tmpDomain.joinApDomain(searchPomo->second);
+                	}
+					newenvironment[newPomo] = tmpDomain;
+					if (!isModified()) setModified();
+			    }
+			}
+			else {
+				newenvironment.insert(curIt); 
+                auto searchPomo = newenvironment.find(curIt.first);
+                if (searchPomo != newenvironment.end()) {
+                	curIt.second.joinApDomain(searchPomo->second);
+               	}
+               	else {
+					newenvironment.insert(curIt); 
+               	}
+			}
         }
     }
     environment = newenvironment;

@@ -25,31 +25,33 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 	// the order. If yes, remove the older one.
 	// OPT: The check is required only if 'from' or 'to' are not 
 	// in the order already.
-	for (auto it=order.begin(); it!=order.end(); ) {
-		InstNum inst = it->first; ++it;
-		// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
-		if (inst != to && inst != from) {
-			if (inst.isSeqBefore(to)) {
-				// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
-				addOrder(inst, to); 
-				if (deleteOlder) remove(inst);
-			}
-			else if (to.isSeqBefore(inst)) {
-				// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
-				addOrder(from, inst);
-				return;
-			}
-			if (inst.isSeqBefore(from)) {
-				// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
-				addOrder(inst, from); 
-				if (deleteOlder) remove(inst);
-			}
-			else if (from.isSeqBefore(inst)) {
-				makeTransitiveOrdering(from, to, toItr);
-				if (deleteOlder) remove(from);
-				// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
-				addInst(to);
-				return;
+	if (deleteOlder) {
+		for (auto it=order.begin(); it!=order.end(); ) {
+			InstNum inst = it->first; ++it;
+			// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
+			if (inst != to && inst != from) {
+				if (inst.isSeqBefore(to)) {
+					// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
+					addOrder(inst, to); 
+					remove(inst);
+				}
+				else if (to.isSeqBefore(inst)) {
+					// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
+					addOrder(from, inst);
+					return;
+				}
+				if (inst.isSeqBefore(from)) {
+					// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
+					addOrder(inst, from); 
+					remove(inst);
+				}
+				else if (from.isSeqBefore(inst)) {
+					makeTransitiveOrdering(from, to, toItr);
+					remove(from);
+					// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
+					addInst(to);
+					return;
+				}
 			}
 		}
 	}
@@ -76,7 +78,8 @@ void PartialOrder::append(const InstNum &newinst) {
 			it++; continue;
 		}
 		if (deleteOlder && it->first.isSeqBefore(newinst) && !isRMWInst(it->first)) {
-			auto ittmp = it++; remove((ittmp->first));
+			auto ittmp = it++; 
+			if (deleteOlder) remove((ittmp->first));
 		}
 		else {
 			// add newinst at in 'to' of it
@@ -115,7 +118,7 @@ void PartialOrder::join(const PartialOrder &other) {
 bool PartialOrder::isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const {
 	// if (!isExists(inst1)) return false;
 	if (inst1==inst2) return true;
-	if (inst1.isSeqBefore(inst2)) return true;
+	// if (inst1.isSeqBefore(inst2)) return true;
 	auto searchInst1 = order.find(inst1);
 	if (searchInst1 == order.end()) {
 		// search if some inst seqeunces after inst1 is in order
@@ -263,18 +266,20 @@ void PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &t
 }
 
 void PartialOrder::addInst(const InstNum &inst) {
-	for (auto it=order.begin(); it!=order.end(); ) {
-		InstNum instItr = it->first; ++it;
-		if (instItr != inst && inst.isSeqBefore(instItr)) {
-			// Nothing to add, a newer instruction is already there
-			return ;
-		}
-		else if (instItr != inst && instItr.isSeqBefore(inst)) {
-			// all the instructions ordered before instItr, should also
-			// be ordered before instItr
-			makeTransitiveOrdering(instItr, inst, order.end());
-			// remove older instruction
-			if (deleteOlder) remove(instItr);
+	if (deleteOlder) {
+		for (auto it=order.begin(); it!=order.end(); ) {
+			InstNum instItr = it->first; ++it;
+			if (instItr != inst && inst.isSeqBefore(instItr)) {
+				// Nothing to add, a newer instruction is already there
+				return ;
+			}
+			else if (instItr != inst && instItr.isSeqBefore(inst)) {
+				// all the instructions ordered before instItr, should also
+				// be ordered before instItr
+				makeTransitiveOrdering(instItr, inst, order.end());
+				// remove older instruction
+				if (deleteOlder) remove(instItr);
+			}
 		}
 	}
 	auto findInst = order.find(inst);
@@ -328,7 +333,7 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 
 string PartialOrder::toString() const {
 	std::stringstream ss;
-	fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
+	// fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
 	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
 	// 	fprintf(stderr, "in outer for\n");
 	// 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
@@ -339,6 +344,7 @@ string PartialOrder::toString() const {
 	 	}
 	 	ss << ";\t";
 	 }
+	ss << deleteOlder;
 	// ss << "\tRMWs: ";
 	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
 	// 	// fprintf(stderr, "in rmws loop\n");

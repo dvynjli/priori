@@ -65,8 +65,8 @@ class VerifierPass : public ModulePass {
     bool runOnModule (Module &M) {
         start_time = omp_get_wtime();
         getGlobalIntVars(M);
-        errs() << "#global vars:" << globalVars.size() << "\n";
-        errs() << "#lock vars:" << lockVars.size() << "\n";
+        // errs() << "#global vars:" << globalVars.size() << "\n";
+        // errs() << "#lock vars:" << lockVars.size() << "\n";
         // zHelper.initZ3(globalVars);
         // errs() << "init\n";
         if (noInterfComb) {
@@ -987,6 +987,7 @@ class VerifierPass : public ModulePass {
         // return curEnv;
     }
 
+	// TODO: no need to return env
     Environment checkNonInterfInsts (Instruction *inst, Environment &curEnv,
         map<Instruction*, pair<Environment, Environment>> &branchEnv,
         unordered_map <Instruction*, Environment> &curFuncEnv
@@ -1033,10 +1034,22 @@ class VerifierPass : public ModulePass {
 
             }
             else if (callInst->getCalledFunction()->getName().find("unlock")!=llvm::StringRef::npos) {
-                return checkReleaseLock(callInst, curEnv);
+                // errs() << "Lock: "; printValue(callInst);
+				// errs() << "Before call:\n"; curEnv.printEnvironment();
+				return checkReleaseLock(callInst, curEnv);
+                // checkReleaseLock(callInst, curEnv);
+				// errs() << "After call:\n";
+				// curEnv.printEnvironment();
+				// return curEnv;
             }
             else if (callInst->getCalledFunction()->getName().find("lock")!=llvm::StringRef::npos) {
+				// errs() << "Unlock: "; printValue(callInst);
+				// errs() << "Before call:\n"; curEnv.printEnvironment();
                 return checkAcquireLock(callInst, curEnv);
+                // checkAcquireLock(callInst, curEnv);
+				// errs() << "After call:\n"; curEnv.printEnvironment();
+				// return curEnv;
+
             }
         }
         // Other instructions don't need to be re-checked if modified flag is unset
@@ -1720,6 +1733,7 @@ class VerifierPass : public ModulePass {
             }
             curEnv = olderEnv;
         }
+		// TODO: check if we need to change the modified flag
         return curEnv;
     }
 
@@ -1728,43 +1742,47 @@ class VerifierPass : public ModulePass {
 		if (BitCastOperator *bcast=dyn_cast<BitCastOperator>(lockInst)) {
 			// errs() << "bitcast found\n"; //<< bcast->getNumOperand();
             string lockName = getNameFromValue(bcast->getOperand(0));
-            errs() << "Checking acquire lock of variable " << lockName << "\n";
+            // errs() << "Checking acquire lock of variable " << lockName << "\n";
 			// curEnv.printEnvironment();
             // apply interf from all unlock inst of this lock variable
             Environment tmpEnv = curEnv;
             for (auto it=lockVarToUnlocks[lockName].begin(); it!=lockVarToUnlocks[lockName].end(); it++) {
-            // errs() << "interf from unlock: ";
-            // printValue(*it);
-            auto searchInterfFunc = programState.find((*it)->getFunction());
-            if (searchInterfFunc != programState.end()) {
-                // errs() << "Interf env found\n";
-                auto searchInterfEnv = searchInterfFunc->second.find(*it);
-                if (searchInterfEnv != searchInterfFunc->second.end()) {
-                    // apply the interference
-                    // errs() << "Before Interf lock:\n";
-                    // curEnv.printEnvironment();
+            	// errs() << "interf from unlock: ";
+            	// printValue(*it);
+            	auto searchInterfFunc = programState.find((*it)->getFunction());
+            	if (searchInterfFunc != programState.end()) {
+            	    // errs() << "Interf env found\n";
+            	    auto searchInterfEnv = searchInterfFunc->second.find(*it);
+            	    if (searchInterfEnv != searchInterfFunc->second.end()) {
+            	        // apply the interference
+            	        // errs() << "Before Interf lock:\n";
+            	        // curEnv.printEnvironment();
 
-                    if (searchInterfEnv->second.isModified() || curEnv.isModified()) {
-                        errs () << "Modified. Applying interf\n";
-                        tmpEnv.applyInterference(lockName, searchInterfEnv->second, 
-                            getInstNumByInst(callInst), getInstNumByInst(*it));
-                    }
-                    else {
-                        // errs() << "MOD: not applying interf\n";
-                        tmpEnv.setNotModified();
-                    }
-                    curEnv.joinEnvironment(tmpEnv);
-                }
-            }
+            	        if (searchInterfEnv->second.isModified() || curEnv.isModified()) {
+            	            // errs () << "Modified. Applying interf from:\n";
+							// searchInterfEnv->second.printEnvironment();
+            	            tmpEnv.applyInterference(lockName, searchInterfEnv->second, 
+            	                getInstNumByInst(callInst), getInstNumByInst(*it));
+							// errs() << "After applying interf:\n";
+							// tmpEnv.printEnvironment();
+            	        }
+            	        else {
+            	            // errs() << "MOD: not applying interf\n";
+            	            tmpEnv.setNotModified();
+            	        }
+            	        curEnv.joinEnvironment(tmpEnv);
+            	    }
+            	}
             }
             // errs() << "After applying interf: \n";
             // curEnv.printEnvironment();
 
             curEnv.performAcquireLock(lockName, getInstNumByInst(callInst));
-			errs() << "After applying lock:\n";
-			curEnv.printEnvironment();
+			// errs() << "After applying lock:\n";
+			// curEnv.printEnvironment();
 		}
-		
+		// errs() << "Before return in acq lock fun:\n";
+		// curEnv.printEnvironment();
 		return curEnv;
     }
 
@@ -1773,10 +1791,10 @@ class VerifierPass : public ModulePass {
 		if (BitCastOperator *bcast=dyn_cast<BitCastOperator>(lockInst)) {
 			// errs() << "bitcast found\n"; //<< bcast->getNumOperand();
             string lockName = getNameFromValue(bcast->getOperand(0));
-            errs() << "Checking release lock of variable " << lockName << "\n";
+            // errs() << "Checking release lock of variable " << lockName << "\n";
 			// curEnv.printEnvironment();
     		curEnv.performReleaseLock(lockName, getInstNumByInst(callInst));
-			curEnv.printEnvironment();
+			// curEnv.printEnvironment();
 		}
 		return curEnv;
     }

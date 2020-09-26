@@ -5,6 +5,7 @@ build/*
 *.out
 *.json
 *.pdf
+*.swp
 .vscode/**
 out
 exec_mutiple_times.sh
