@@ -502,6 +502,11 @@ class VerifierPass : public ModulePass {
             allStores.emplace(func, varToStores);
             allLoads.emplace(func, varToLoads);
             
+			// errs() << "ValToName:\n";
+			// for (auto it=valueToName.begin(); it!=valueToName.end(); it++) {
+			// 	printValue(it->first); errs() << "\t:\t" << it->second << "\n";
+			// }
+
             // errs() << "Loads of function " << func->getName() << "\n";
             // for (auto it=varToLoads.begin(); it!=varToLoads.end(); ++it)
             //     printValue(it->first);
@@ -1240,9 +1245,14 @@ class VerifierPass : public ModulePass {
         else {
             string fromVar1Name = getNameFromValue(fromVar1);
             string fromVar2Name = getNameFromValue(fromVar2);
+			// errs() << "true branch:\n";
             trueBranchEnv.performCmpOp(operTrueBranch, fromVar1Name, fromVar2Name);
+			// errs() << "false branch:\n";
             falseBranchEnv.performCmpOp(operFalseBranch, fromVar1Name, fromVar2Name);
         }
+		
+		// errs() << "True Branch in cmpInst:\n"; trueBranchEnv.printEnvironment();
+		// errs() << "False Branch in cmpInst:\n"; falseBranchEnv.printEnvironment();
 
         // set the value of destination variable in Environment
         if (trueBranchEnv.isUnreachable()) {

@@ -348,11 +348,12 @@ void ApDomain::performCmpOp(operation oper, string &strOp1, string &strOp2) {
     ap_lincons1_set_list(&consExpr, AP_COEFF_S_INT, 1, strOp1.c_str(), AP_COEFF_S_INT, -1, strOp2.c_str(), AP_END);
     // fprintf(stderr, "ConsExpr: ");
     // ap_lincons1_fprint(stderr, &consExpr);
-    ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 2);
+    ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 1);
     // fprintf(stderr, "\nconsArray: ");
     ap_lincons1_array_set(&consArray, 0, &consExpr);
     // ap_lincons1_array_fprint(stderr, &consArray);
-    // printApDomain();
+    // fprintf(stderr, "apdom as of now:\n");
+	// printApDomain();
     // fprintf(stderr, "\nmeet:\n");
     absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
     // printApDomain();
