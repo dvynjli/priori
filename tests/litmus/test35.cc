@@ -8,14 +8,16 @@ atomic<int> x;
 
 void* fun1(void * arg){
 	mlock.lock();
-	x=1;
+	x.store(1,memory_order_release);
+	x.store(2,memory_order_release);
 	mlock.unlock();
     return NULL;
 }
 
 void* fun2(void * arg){
 	mlock.lock();
-	int rx=x;
+	int rx=x.load(memory_order_acquire);
+	assert(rx!=1);
 	mlock.unlock();
     return NULL;
 }

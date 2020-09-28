@@ -596,7 +596,7 @@ bool EnvironmentPOMO::operator== (const EnvironmentPOMO &other) const {
 
 void EnvironmentPOMO::init(vector<string> &globalVars, 
     vector<string> &functionVars, 
-    vector<string> &locks)
+    unordered_set<string> &locks)
 {
     POMO pomo;
     initPOMO(globalVars, locks, pomo);
@@ -609,7 +609,7 @@ void EnvironmentPOMO::init(vector<string> &globalVars,
     // printEnvironment();
 }
 
-void EnvironmentPOMO::initPOMO(vector<string> &globalVars, vector<string> &locks, POMO &pomo){
+void EnvironmentPOMO::initPOMO(vector<string> &globalVars, unordered_set<string> &locks, POMO &pomo){
     // fprintf(stderr, "decl pomo\n");
     // POMO pomo;
     PartialOrder po = PartialOrderWrapper::getEmptyPartialOrder(true);
@@ -951,6 +951,11 @@ void EnvironmentPOMO::applyInterference(
                     apply=false;
                     break;
                 }
+				auto searchIfLockVar = lockVars.find(varIt.first);
+				if (searchIfLockVar != lockVars.end() && !isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
+					apply = false;
+					break;
+				}
             }
 
             if (apply) {
@@ -1121,6 +1126,23 @@ bool EnvironmentPOMO::isUnreachable() {
         else {it = environment.erase(it);}
     }
     return isUnreach;
+}
+
+bool EnvironmentPOMO::isFeasibleLocks(PartialOrder &curPartialOrder, 
+	const PartialOrder &interfPartialOrder
+) {
+	unordered_set<InstNum> curPOLasts, interfPOLasts;
+	curPartialOrder.getLasts(curPOLasts);
+	assert (curPOLasts.size() <= 1 && "cur Lock PO should have only one element. isFeasibleLocks() called on non-lock variable");
+	interfPartialOrder.getLasts(interfPOLasts);
+	assert (interfPOLasts.size() <= 1 && "interf Lock PO should have only one element. isFeasibleLocks() called on non-lock variable");
+	// if either of POs are empty, the interf is feasible
+	if (curPOLasts.size() == 0 || interfPOLasts.size() == 0) return true;
+	InstNum curPOLock = *curPOLasts.begin();
+	InstNum interfPOLock = *interfPOLasts.begin();
+	// Interf is infeasible if both PO have lock over same variable
+	// i.e, they both end in lock instruction
+	return (!isLockInst(curPOLock) || !isLockInst(interfPOLock));
 }
 
 void EnvironmentPOMO::getVarOption (map<string, options> *varoptions, 

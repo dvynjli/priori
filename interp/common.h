@@ -1,6 +1,7 @@
 #ifndef __COMMON__
 #define __COMMON__
 
+#include <llvm/IR/Instruction.h>
 #include <string>
 #include <iostream>
 #include <stdlib.h>
@@ -100,6 +101,7 @@ struct hash<InstNum> {
 extern map<llvm::Instruction*, InstNum> instToNum;
 extern map<InstNum, llvm::Instruction*> numToInst;
 extern unordered_map <string, set<llvm::Instruction*>> lockVarToUnlocks;
+extern unordered_set<string> lockVars;
 
 inline llvm::Instruction* getInstByInstNum(const InstNum &instnum) {
 	auto searchInst = numToInst.find(instnum);
@@ -117,6 +119,34 @@ inline InstNum& getInstNumByInst(llvm::Instruction* inst) {
 	auto searchInstNum = instToNum.find(inst);
 	assert(searchInstNum != instToNum.end() && "ERROR: the searched instruction does not exist in map");
 	return searchInstNum->second;
+}
+
+inline bool isUnlockInst (llvm::Instruction *inst) {
+	if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(inst)) {
+		
+        if (call->getCalledFunction()->getName().find("unlock")!=
+		llvm::StringRef::npos ) { return true;}}
+	return false;
+}
+
+inline bool isUnlockInst (InstNum inst) {
+	llvm::Instruction *llvmInst = getInstByInstNum(inst);
+	return isUnlockInst(llvmInst);
+}
+
+inline bool isLockInst (llvm::Instruction *inst) {
+	if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(inst)) {
+		
+        if (call->getCalledFunction()->getName().find("lock")!=
+		llvm::StringRef::npos &&
+		call->getCalledFunction()->getName().find("unlock")==
+		llvm::StringRef::npos ) { return true;}}
+	return false;
+}
+
+inline bool isLockInst (InstNum inst) {
+	llvm::Instruction *llvmInst = getInstByInstNum(inst);
+	return isLockInst(llvmInst);
 }
 
 // inline bool isSeqBefore(llvm::Instruction* inst1, llvm::Instruction* inst2){

@@ -24,6 +24,7 @@ cl::opt<bool> noInterfComb   ("no-interf-comb", cl::desc("Use analysis without i
 map<llvm::Instruction*, InstNum> instToNum;
 map<InstNum, llvm::Instruction*> numToInst;
 unordered_map <string, set<llvm::Instruction*>> lockVarToUnlocks;
+unordered_set<string> lockVars;
 
 class VerifierPass : public ModulePass {
 
@@ -43,7 +44,6 @@ class VerifierPass : public ModulePass {
     map<Instruction*, map<string, Instruction*>> lastWrites; 
     
     vector<string> globalVars;
-    vector<string> lockVars;
     unordered_map<Instruction*, Instruction*> lockToUnlock;
 
     unsigned int iterations = 0;
@@ -151,7 +151,7 @@ class VerifierPass : public ModulePass {
                 else if  (StructType *substruct = dyn_cast<StructType>(structTy->getStructElementType(0))) {
                     if (substruct->getName()=="union.pthread_mutex_t") {
                         string varName = it->getName();
-                        lockVars.push_back(varName);
+                        lockVars.insert(varName);
                         Value * varInst = &(*it);
                         nameToValue.emplace(varName, varInst);
                         valueToName.emplace(varInst, varName);

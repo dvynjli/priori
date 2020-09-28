@@ -115,7 +115,7 @@ public:
     // map <REL_HEAD, ApDomain>::iterator end();
 
     virtual void init(vector<string> &globalVars, vector<string> &functionVars,
-                vector<string> &locks) = 0;
+                unordered_set<string> &locks) = 0;
     virtual void copyEnvironment(T &copyFrom) = 0;
 
     // Unary Operation
@@ -298,7 +298,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     // environment: POMO -> ApDomain
     unordered_map <POMO, ApDomain> environment;
     
-    void initPOMO(vector<string> &globalVars, vector<string> &locks, POMO &pomo);
+    void initPOMO(vector<string> &globalVars, unordered_set<string> &locks, POMO &pomo);
     // void initLockset(vector<string> &locks);
 
     // void printPOMO(const POMO &pomo);
@@ -307,6 +307,9 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     
     unordered_map<POMO, ApDomain>::iterator begin();
 	unordered_map<POMO, ApDomain>::iterator end();
+
+	bool isFeasibleLocks (PartialOrder &curPartialOrder,
+                const PartialOrder &interfPartialOrder);
 
     // void getVarOption (map<string, options> *varoptions, string varName,PartialOrderWrapper curPartialOrder,
     //             map<InstNum, map<string, InstNum>> *lastWrites, 
@@ -329,7 +332,7 @@ public:
     // map <REL_HEAD, ApDomain>::iterator end();
 
     virtual void init(vector<string> &globalVars, vector<string> &functionVars,
-                vector<string> &locks);
+                unordered_set<string> &locks);
     virtual void copyEnvironment(EnvironmentPOMO &copyFrom);
 
     // Unary Operation
