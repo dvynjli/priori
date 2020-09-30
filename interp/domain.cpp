@@ -921,7 +921,7 @@ void EnvironmentPOMO::applyInterference(
 ) {
     // fprintf(stderr, "Env before applying interf:\n");
     // printEnvironment();
-
+	
     unordered_map <POMO, ApDomain> newenvironment;
     for (auto curIt:environment) {
         for (auto interfIt:interfEnv) {
@@ -1132,11 +1132,13 @@ bool EnvironmentPOMO::isUnreachable() {
 bool EnvironmentPOMO::isFeasibleLocks(PartialOrder &curPartialOrder, 
 	const PartialOrder &interfPartialOrder
 ) {
+	// fprintf(stderr, "In isFeasibleLocks. curPartialOrder: %s\n", curPartialOrder.toString().c_str());
+	// fprintf(stderr, "interfPartialOrder: %s\n", interfPartialOrder.toString().c_str());
 	unordered_set<InstNum> curPOLasts, interfPOLasts;
 	curPartialOrder.getLasts(curPOLasts);
-	assert (curPOLasts.size() <= 1 && "cur Lock PO should have only one element. isFeasibleLocks() called on non-lock variable");
+	assert (curPOLasts.size() <= 1 && "cur Lock PO should have only one last element. isFeasibleLocks() called on non-lock variable");
 	interfPartialOrder.getLasts(interfPOLasts);
-	assert (interfPOLasts.size() <= 1 && "interf Lock PO should have only one element. isFeasibleLocks() called on non-lock variable");
+	assert (interfPOLasts.size() <= 1 && "interf Lock PO should have only one last element. isFeasibleLocks() called on non-lock variable");
 	// if either of POs are empty, the interf is feasible
 	if (curPOLasts.size() == 0 || interfPOLasts.size() == 0) return true;
 	InstNum curPOLock = *curPOLasts.begin();

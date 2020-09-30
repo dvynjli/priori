@@ -77,7 +77,8 @@ void PartialOrder::append(const InstNum &newinst) {
 		if (it->first == newinst) {
 			it++; continue;
 		}
-		if (deleteOlder && it->first.isSeqBefore(newinst) && !isRMWInst(it->first)) {
+		if (deleteOlder && it->first.isSeqBefore(newinst) && !isRMWInst(it->first) 
+			&& !isLockInst(it->first) && !isUnlockInst(it->first)) {
 			auto ittmp = it++; 
 			if (deleteOlder) remove((ittmp->first));
 		}
@@ -88,7 +89,7 @@ void PartialOrder::append(const InstNum &newinst) {
 		}
 	}
 	order.emplace(newinst, unordered_set<InstNum>());
-	if(isRMWInst(newinst)) {
+	if(isRMWInst(newinst) || isLockInst(newinst) || isUnlockInst(newinst)) {
 		rmws.insert(newinst);
 	}
 }
@@ -288,7 +289,7 @@ void PartialOrder::addInst(const InstNum &inst) {
 		unordered_set<InstNum> emptyset {};
 		order[inst] = emptyset;
 	}
-	if (isRMWInst(inst))
+	if (isRMWInst(inst) || isLockInst(inst) || isUnlockInst(inst))
 		rmws.insert(inst);
 }
 

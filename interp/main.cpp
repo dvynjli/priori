@@ -72,6 +72,7 @@ class VerifierPass : public ModulePass {
         if (noInterfComb) {
             unordered_map<Function*, vector<pair<Instruction*, vector<Instruction*>>>> feasibleInterfences;
             initThreadDetails(M, feasibleInterfences);
+			// errs() << "Init Done\n";
             // printInstMaps();
             // errs() << "Valriable to instName map:\n";
             // for (auto it: nameToValue) {
@@ -276,6 +277,10 @@ class VerifierPass : public ModulePass {
 
                 bool doAnalyze = true;
                 for (auto predBB: predecessors(BB)) {
+					if (predBB == BB) {
+						errs() << "ERROR: BB is predecessors of itself. Possibly there is a loop in program.\n";
+						exit(0);
+					}
                     auto searchPred = done.find(predBB);
                     if (searchPred == done.end()) {
                         doAnalyze = false;
@@ -318,8 +323,8 @@ class VerifierPass : public ModulePass {
                             }
                         }
                         else if (!call->getCalledFunction()->getName().compare("pthread_join")) {
-                            // TODO: need to add dominates rules
                             Function* joineeThread = findFunctionFromPthreadJoin(call);
+							// errs() << "joinee: " << joineeThread->getName() << " for inst: "; printValue(call); 
                             funcToTJoin.emplace(joineeThread, call);
                         }
                         else if (call->getCalledFunction()->getName().find("unlock")!=llvm::StringRef::npos) {
@@ -576,6 +581,7 @@ class VerifierPass : public ModulePass {
         map<Function*, Instruction*> funcToTJoin;
 
         initThreadDetailsHelper(M, allLoads, allStores, funcToTCreate, funcToTJoin);
+		// errs() << "Init Helper returned\n";
         // errs() << "\nAll Loads:\n";
         // for(auto it1=allLoads.begin(); it1!=allLoads.end(); ++it1) {
         //     errs() << "Function " << it1->first->getName() << "\n";
@@ -587,6 +593,7 @@ class VerifierPass : public ModulePass {
 
         // errs() << "getting feasible\n";
         getFeasibleInterferences(allLoads, allStores, funcToTCreate, funcToTJoin, feasibleInterfences);
+		// errs() << "feasible interfs found\n";
     }
 
     void analyzeProgram(Module &M,
@@ -2617,6 +2624,17 @@ class VerifierPass : public ModulePass {
         const map<Function*, Instruction*> &funcToTCreate,
         const map<Function*, Instruction*> &funcToTJoin
     ) {
+		// errs() << "SBTCreateTJoin called with ld: "; printValue(ld);
+		// errs() << "st: "; printValue(st);
+		// errs() << "funcToTCreate:\n";
+		// for (auto it=funcToTCreate.begin(); it!=funcToTCreate.end(); it++) {
+		// 	errs() << it->first->getName() << " : "; printValue(it->second);
+		// }
+		// errs() << "funcToTJoin:\n";
+		// for (auto it=funcToTJoin.begin(); it!=funcToTJoin.end(); it++) {
+		// 	errs() << it->first << " : "; printValue(it->second);
+		// }
+
         Function* ldFunc = ld->getFunction();
         // lab: tcreate(f) /\ l in f /\ s--sb-->lab ==> s--nrf-->l
         auto searchLdFuncTC = funcToTCreate.find(ldFunc);
@@ -2626,7 +2644,7 @@ class VerifierPass : public ModulePass {
         }
         else {
             // since no tcreate instruction is found, the function name must be main
-            assert(ldFunc->getName()=="main");
+            assert(ldFunc->getName()=="main" && "no tcreate of function of load inst found and load is not in main");
         }
 
         // lab: tjoin(f) /\ l in f /\ lab--sb-->s ==> s--nrf-->l
@@ -2637,7 +2655,7 @@ class VerifierPass : public ModulePass {
         }
         else {
             // since no tjoin instruction is found, the function name must be main
-            assert(ldFunc->getName()=="main");
+            assert(ldFunc->getName()=="main" && "no tjoin of function of load inst found and load is not in main");
         }
 
         Function* stFunc = st->getFunction();
@@ -2649,7 +2667,7 @@ class VerifierPass : public ModulePass {
         }
         else {
             // since no tcreate instruction is found, the function name must be main
-            assert(stFunc->getName()=="main");
+            assert(stFunc->getName()=="main" && "no tcreate of function of store inst found and store is not in main");
         }
 
         // lab: tjoin(f) /\ s in f /\ lab--sb-->l ==> s--nrf-->l
@@ -2660,7 +2678,7 @@ class VerifierPass : public ModulePass {
         }
         else {
             // since no tjoin instruction is found, the function name must be main
-            assert(stFunc->getName()=="main");
+            assert(stFunc->getName()=="main" && "no tjoin of function of store ist found and store is not in main");
         }
         return false;
     }
@@ -2948,7 +2966,9 @@ class VerifierPass : public ModulePass {
                 ! isGlobalStore(prevInst)   &&
                 ! isGlobalRMW(prevInst)     &&
                 ! isPthreadCreate(prevInst) &&
-                ! isPthreadJoin(prevInst)) {
+                ! isPthreadJoin(prevInst) 	&&
+				! isLockInst(prevInst)		&&
+				! isUnlockInst(prevInst)) {
             prevInst = prevInst->getPrevNode();
         } 
         return prevInst;
@@ -2980,7 +3000,9 @@ class VerifierPass : public ModulePass {
                 ! isGlobalStore(nextInst)   &&
                 ! isGlobalRMW(nextInst)     &&
                 ! isPthreadCreate(nextInst) &&
-                ! isPthreadJoin(nextInst)) {
+                ! isPthreadJoin(nextInst)	&&
+				! isLockInst(nextInst)		&&
+				! isUnlockInst(nextInst)) {
             nextInst = nextInst->getNextNode ();
         }
         return nextInst;
