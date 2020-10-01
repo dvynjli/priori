@@ -382,17 +382,22 @@ void ApDomain::applyInterference(string interfVar, ApDomain &fromApDomain, bool 
             map<string, options> *varoptions
 ) {
     ap_var_t apInterVar;
-
+	// fprintf(stderr, "Apply interf ApDom - interfVar: %s, isPOMO: %d\n",interfVar.c_str(), isPOMO);
+	// fprintf(stderr, "fromDom: "); fromApDomain.printApDomain();
+	// fprintf(stderr, "curDom: "); printApDomain();
     if(isPOMO) {
         // use varoptions to determine what to do for each variable
         for (auto it:(*varoptions)) {
+			if (lockVars.find(it.first) != lockVars.end()) continue;
             ap_var_t apVar = (ap_var_t) it.first.c_str();
             if (it.second == COPY || it.first == interfVar) {
                 // copy the variable from the fromApDomain
+				// fprintf(stderr, "copy for var %s\n",it.first.c_str());
                 copyVar(fromApDomain, apVar);
             }
             else if (it.second == MERGE) {
                 // merge the domain for this variable
+				// fprintf(stderr, "merge for var %s\n", it.first.c_str());
                 joinVar(fromApDomain, apVar);
             }
             // else DONOTHING 

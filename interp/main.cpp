@@ -620,7 +620,7 @@ class VerifierPass : public ModulePass {
             #pragma omp parallel num_threads(threads.size()) if (maxFeasibleInterfs > 200)
             #pragma omp single
             {
-            for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr){
+            for (auto funcItr=threads.begin(); funcItr!=threads.end(); ++funcItr) {
             // for(vector<Function*>::iterator funcItr = std::begin(threads); funcItr != std::end(threads); funcItr++) {
                 Function *curFunc = (*funcItr);
                 if (!noPrint) {
@@ -719,7 +719,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment>> programStateCurItr;
         bool isFixedPointReached = false;
 
-        while (!isFixedPointReached && iterations < 6) {
+        while (!isFixedPointReached ) {
             // programState.clear();
             programState = programStateCurItr;
             programStateCurItr.clear();
@@ -912,12 +912,13 @@ class VerifierPass : public ModulePass {
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
         // check type of inst, and performTrasformations
-        Environment curEnv;
+        // Environment curEnv;
         Environment predEnv = curFuncEnv[&(*(B->begin()))];
         // errs() << "MOD: predEnv modified:" << predEnv.isModified() << "\n";
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
+			Environment curEnv;
             curEnv.copyEnvironment(predEnv);
         
             if (!noPrint) {
@@ -945,7 +946,7 @@ class VerifierPass : public ModulePass {
             if (!noPrint) curEnv.printEnvironment();
         }
         
-        return curEnv;
+        return predEnv;
     }
 
     void analyzeBasicBlock (BasicBlock *B, 
@@ -955,7 +956,7 @@ class VerifierPass : public ModulePass {
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
         // check type of inst, and performTrasformations
-        Environment curEnv;
+        // Environment curEnv;
         Environment predEnv = curFuncEnv[&(*(B->begin()))];
         // errs() << "MOD: predEnv modified:" << predEnv.isModified() << "\n";
         // cmp instr will add the corresponding true and false branch environment to branchEnv. 
@@ -963,7 +964,8 @@ class VerifierPass : public ModulePass {
         
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
-            curEnv.copyEnvironment(predEnv);
+            Environment curEnv;
+			curEnv.copyEnvironment(predEnv);
         
             if (!noPrint) {
                 errs() << "DEBUG: Analyzing: ";
@@ -985,11 +987,23 @@ class VerifierPass : public ModulePass {
                 curEnv = checkRMWInst(rmwInst, curEnv, curInterfItr, endCurInterfItr);
                 // if (iterations >= 4) curEnv.printEnvironment();
             }
+        	else if (isLockInst(&(*instItr))) {
+				// errs() << "Unlock: "; printValue(callInst);
+				// errs() << "Before call:\n"; curEnv.printEnvironment();
+				if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(instItr)) {
+                	curEnv = checkAcquireLock(call, curEnv);
+				}
+				// checkAcquireLock(callInst, curEnv);
+				// errs() << "After call:\n"; curEnv.printEnvironment();
+				// return curEnv;
+			}
             else checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
 
-            curFuncEnv.emplace(currentInst, curEnv);
+			// errs() << "After call:\n"; curEnv.printEnvironment();
+            curFuncEnv[currentInst]= curEnv;
             predEnv.copyEnvironment(curEnv);
-            if (!noPrint) curEnv.printEnvironment();
+            if (!noPrint) predEnv.printEnvironment();
+			// printInstToEnvMap(curFuncEnv);
             // if (PHINode *phi = dyn_cast<PHINode>(currentInst)) {
             //     errs() << "Phi Inst: "; printValue(phi);
             //     curEnv.printEnvironment();
@@ -1051,17 +1065,8 @@ class VerifierPass : public ModulePass {
 				return checkReleaseLock(callInst, curEnv);
                 // checkReleaseLock(callInst, curEnv);
 				// errs() << "After call:\n";
-				// curEnv.printEnvironment();
+				//curEnv.printEnvironment();
 				// return curEnv;
-            }
-            else if (callInst->getCalledFunction()->getName().find("lock")!=llvm::StringRef::npos) {
-				// errs() << "Unlock: "; printValue(callInst);
-				// errs() << "Before call:\n"; curEnv.printEnvironment();
-                return checkAcquireLock(callInst, curEnv);
-                // checkAcquireLock(callInst, curEnv);
-				// errs() << "After call:\n"; curEnv.printEnvironment();
-				// return curEnv;
-
             }
         }
         // Other instructions don't need to be re-checked if modified flag is unset
@@ -1764,6 +1769,7 @@ class VerifierPass : public ModulePass {
             // apply interf from all unlock inst of this lock variable
             Environment tmpEnv = curEnv;
             for (auto it=lockVarToUnlocks[lockName].begin(); it!=lockVarToUnlocks[lockName].end(); it++) {
+				if ((*it)->getFunction() == callInst->getFunction()) continue;
             	// errs() << "interf from unlock: ";
             	// printValue(*it);
             	auto searchInterfFunc = programState.find((*it)->getFunction());
@@ -1803,7 +1809,7 @@ class VerifierPass : public ModulePass {
 		return curEnv;
     }
 
-    Environment checkReleaseLock(CallInst *callInst, Environment &curEnv) {
+    Environment checkReleaseLock(CallInst *callInst, Environment curEnv) {
 		auto lockInst = callInst->getArgOperand(0);
 		if (BitCastOperator *bcast=dyn_cast<BitCastOperator>(lockInst)) {
 			// errs() << "bitcast found\n"; //<< bcast->getNumOperand();
