@@ -97,6 +97,11 @@ void *p2(void *arg) {
 
 int main()
 {
+ level0.store(0, REL);
+ level1.store(0, REL);
+ level2.store(0, REL);
+ waiting0.store(0, REL);
+ waiting1.store(0, REL);
  pthread_t a, b, c;
 
  pthread_create(&a, NULL, p0, NULL);

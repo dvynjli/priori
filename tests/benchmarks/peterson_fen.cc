@@ -48,6 +48,10 @@ void *p1(void *arg)
 
 int main()
 {
+ flag0.store(0, memory_order_release);
+ flag1.store(0, memory_order_release);
+ __fence_var.store(0, memory_order_release);
+
  pthread_t a, b;
 
  pthread_create(&a, NULL, p0, NULL);

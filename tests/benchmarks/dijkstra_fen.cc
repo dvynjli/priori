@@ -124,6 +124,12 @@ void* t1(void *arg)
 
 int main()
 {
+	interested0.store(0, memory_order_release);
+	interested1.store(0, memory_order_release);
+	passed0.store(0, memory_order_release);
+	passed1.store(0, memory_order_release);
+	k.store(0, memory_order_release);
+	
   	pthread_t ts0, ts1;
 	  
 	pthread_create(&ts0, NULL, t0, NULL);

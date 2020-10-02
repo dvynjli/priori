@@ -43,6 +43,9 @@ int main()
 
 	//init
 	childnotready.store(1, memory_order_release);
+	parentsense.store(0, memory_order_release);
+	tdiff0.store(0, memory_order_release);
+	tdiff1.store(0, memory_order_release);
 
 	pthread_create(&a, NULL, t0, NULL);
 	pthread_create(&b, NULL, t1, NULL);

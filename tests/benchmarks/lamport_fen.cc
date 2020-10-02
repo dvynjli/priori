@@ -131,6 +131,7 @@ void *t1(void *arg)
 
 int main(int argc, char **argv)
 {
+	__fence_var.store(0, memory_order_release);
   	pthread_t ts0, ts1;
 	  
 	pthread_create(&ts0, NULL, t0, NULL);
