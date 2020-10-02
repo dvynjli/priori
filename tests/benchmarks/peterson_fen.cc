@@ -36,7 +36,7 @@ void *p1(void *arg)
 	int t1 = flag0.load(memory_order_acquire);
 	int t2 = turn.load(memory_order_acquire);
 
-	assume(t1!=1 || t2==0);
+	assume(t1!=1 || t2!=0);
 
 	var.store(1, memory_order_release);
 	int tmp = var.load(memory_order_acquire);

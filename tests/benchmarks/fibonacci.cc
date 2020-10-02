@@ -29,18 +29,18 @@ void* t1(void *arg)
 		_i = i.load(memory_order_acquire);
 		_j = j.load(memory_order_acquire);
 		i.store(_i+_j, memory_order_release);
-		// k=2
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		i.store(_i+_j, memory_order_release);
-		// k=3
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		i.store(_i+_j, memory_order_release);
-		// k=4
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		i.store(_i+_j, memory_order_release);
+		// // k=2
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// i.store(_i+_j, memory_order_release);
+		// // k=3
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// i.store(_i+_j, memory_order_release);
+		// // k=4
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// i.store(_i+_j, memory_order_release);
 	// }									// loop k: end
 	return NULL;
 }
@@ -53,22 +53,22 @@ void* t2(void *arg)
 		_i = i.load(memory_order_acquire);
 		_j = j.load(memory_order_acquire);
 		j.store(_i+_j, memory_order_release);
-		// k=1
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		j.store(_i+_j, memory_order_release);
-		// k=2
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		j.store(_i+_j, memory_order_release);
-		// k=3
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		j.store(_i+_j, memory_order_release);
-		// k=4
-		_i = i.load(memory_order_acquire);
-		_j = j.load(memory_order_acquire);
-		j.store(_i+_j, memory_order_release);
+		// // k=1
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// j.store(_i+_j, memory_order_release);
+		// // k=2
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// j.store(_i+_j, memory_order_release);
+		// // k=3
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// j.store(_i+_j, memory_order_release);
+		// // k=4
+		// _i = i.load(memory_order_acquire);
+		// _j = j.load(memory_order_acquire);
+		// j.store(_i+_j, memory_order_release);
 	// }									// loop k: end
 	return NULL;
 }

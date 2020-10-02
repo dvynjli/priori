@@ -21,7 +21,7 @@ void ApDomain::init(vector<string> &globalVars, vector<string> &functionVars){
     // fprintf(stderr, "var: %s\n", var);
     // DEBUG && fprintf(stderr, "creating top\n");
     absValue = ap_abstract1_top(man, env);
-    assignZerosToGlobals(globalVars);
+    //assignZerosToGlobals(globalVars);
     //initRelHead(globalVars);
     initHasChanged(globalVars);
     // printApDomain();
