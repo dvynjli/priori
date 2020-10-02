@@ -40,6 +40,8 @@ void* fun4(void * arg){
 } */
 
 int main () {
+	x.store(0, memory_order_release);
+
 	pthread_t t1,t2,t3,t4;
 	pthread_create(&t1, NULL, fun1, NULL);
 	pthread_create(&t2, NULL, fun2, NULL);

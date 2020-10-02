@@ -23,6 +23,11 @@ void* fun2(void * arg){
 
 
 int main () {
+	x.store(0, memory_order_release);
+	y.store(0, memory_order_release);
+	a.store(0, memory_order_release);
+	b.store(0, memory_order_release);
+
 	pthread_t t1,t2;
 	pthread_create(&t1, NULL, fun1, NULL);
 	pthread_create(&t2, NULL, fun2, NULL);

@@ -57,6 +57,12 @@ void *t1(void *arg) {
 
 int main()
 {
+ c1.store(0, memory_order_release);
+ c2.store(0, memory_order_release);
+ n1.store(0, memory_order_release);
+ n2.store(0, memory_order_release);
+ __fence_var.store(0, memory_order_release);
+
  pthread_t a, b;
 
  pthread_create(&a, NULL, t0, NULL);
