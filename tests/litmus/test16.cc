@@ -9,14 +9,14 @@ atomic<int> x,y,a,b;
 
 void* fun1(void * arg){
 	int tmp = x.load(memory_order_acquire);
-	a.store(tmp, memory_order_release);
+	if (tmp) a.store(tmp, memory_order_release);
 	y.store(1, memory_order_release);
 	return NULL;
 }
 
 void* fun2(void * arg){
 	int tmp = y.load(memory_order_acquire);
-	b.store(tmp, memory_order_release);
+	if (tmp) b.store(tmp, memory_order_release);
 	x.store(1, memory_order_release);
 	return NULL;
 }
