@@ -22,7 +22,7 @@ num_missed_asserts = 0
 # testsRA = [16, 30, 31, 32, 33, 34, 35]
 
 for test_id in range(1, num_tests+1):
-	command = ['opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
+	command = ['/usr/bin/opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
 				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/litmus/test' + str(test_id) + '.ll']
 	if not interfcomb:
 		command.append('-no-interf-comb')
@@ -50,6 +50,6 @@ if (num_missed_asserts != 0):
 else:
 	print('Tests with MISSED ASSERT:', num_missed_asserts)
 
-duration = .05  # seconds
-freq = 440  # Hz
-os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
+# duration = .05  # seconds
+# freq = 440  # Hz
+# os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))

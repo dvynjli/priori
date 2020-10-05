@@ -6,7 +6,7 @@ import os
 import sys
 import datetime
 
-domain = 'interval' 	# options are interval, octagon
+domain = 'octagon' 	# options are interval, octagon
 num_runs = 4
 interfcomb = False
 
@@ -14,7 +14,9 @@ buggy = ['dijkstra', 'bakery', 'burns', 'dekker', 'dekker_sim',
 				'lamport', 'peterson', 'peterson3']
 non_buggy = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 
 				'dijkstra_fen', 'bakery_fen', 'burns_fen',  
-				'lamport_fen','peterson_fen', 'tbar_fen'] # 'dekker_fen', 'tbar_fenced_2'] 
+				'lamport_fen','peterson_fen', 'tbar_fen' # 'dekker_fen', 'tbar_fenced_2'] 
+				'gcd', 'pthread_demo', 'exponential_bug_6',
+				'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
 benchmarks = []
 
 if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
@@ -31,7 +33,7 @@ print('Results generated at ', str(datetime.datetime.now()))
 print('Name & Time & Iterations & Time & Iterations \\\\')
 
 for benchmark in benchmarks:
-	command = ['opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
+	command = ['/usr/bin/opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
 				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/benchmarks/' + benchmark + '.ll']
 	if (not interfcomb):
 		command.append('-no-interf-comb')
@@ -57,8 +59,8 @@ for benchmark in benchmarks:
 		end_index_of_iter = start_index_of_iter + str(err)[start_index_of_iter: ].find(r'\n')
 		print(benchmark, '&', time/runs, '&', str(err)[start_index_of_iter : end_index_of_iter], '\\\\')
 		
-duration = .1  # seconds
-freq = 440  # Hz
-os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
+# duration = .1  # seconds
+# freq = 440  # Hz
+# os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
 
 
