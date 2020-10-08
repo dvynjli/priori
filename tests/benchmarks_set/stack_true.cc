@@ -128,8 +128,9 @@ void* pushthread(void *arg)
       }
       else {
         _top = top.load(memory_order_acquire);
+		int useless;
         if (_top == 0) stack0.store(tid, memory_order_release);
-        if (_top == 1) stack1.store(tid, memory_order_release);
+		if (_top == 1) stack1.store(tid, memory_order_release);
         if (_top == 2) stack2.store(tid, memory_order_release);
         if (_top == 3) stack3.store(tid, memory_order_release);
         if (_top == 4) stack4.store(tid, memory_order_release);
@@ -196,6 +197,20 @@ void* popthread(void *arg)
 int main()
 {
 	// int i, arg[NUM_PUSH_THREADS];
+	top.store(0, memory_order_release);
+	stack0.store(0, memory_order_release);
+	stack1.store(0, memory_order_release);
+	stack2.store(0, memory_order_release);
+	stack3.store(0, memory_order_release);
+	stack4.store(0, memory_order_release);
+	stack5.store(0, memory_order_release);
+	stack6.store(0, memory_order_release);
+	stack7.store(0, memory_order_release);
+	stack8.store(0, memory_order_release);
+	stack9.store(0, memory_order_release);
+	stack10.store(0, memory_order_release);
+	stack11.store(0, memory_order_release);
+
 	pthread_t t1s, t2s;
 
     pthread_create(&t1s, NULL, pushthread, NULL);
