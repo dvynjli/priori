@@ -23,14 +23,17 @@ using namespace std;
 #define LOOP 2		
 #define N 3
 
-enum State { UNLOCKED, WAITING, LOCKED };
+#define UNLOCKED 0
+#define WAITING 1
+#define LOCKED 2
+//enum State { UNLOCKED, WAITING, LOCKED };
 
 #define CACHE_LINE  64
 #define PADRATIO    (CACHE_LINE/sizeof(atomic_int))
 
 // shared variables
-atomic_int states[N*PADRATIO]; 
-// atomic<int> states1, states2, states3, states4;
+// atomic_int states[N*PADRATIO]; 
+atomic<int> states0, states1, states2, states3, states4, states5;
 atomic_int turn;
 atomic_int var;
 
@@ -70,7 +73,67 @@ inline static int validate_right(int id, int lturn) {
     return 1;
 }
 
-void* Worker(void *arg)
+void* Worker0(void *arg)
+{
+  	int id = 0;
+	int ok;
+
+    states0.store(LOCKED,  memory_order_release);
+
+   	//atomic_fetch_add_explicit(&__fence_var, 0, memory_order_acq_rel);
+
+    for (int j=0; j<LOOP; j++) {
+        ok = 0;
+        int lturn = turn.load(memory_order_acquire);
+        if (validate_left(id, lturn)==0) {
+            atomic_store_explicit(&states[id*PADRATIO], WAITING, memory_order_release);
+            for (int jj=0; jj<LOOP; jj++) {
+                if (validate_left(id, lturn)==1 && lturn == atomic_load_explicit(&turn, memory_order_acquire)) {
+   					ok = 1;
+                	break;
+                }
+                lturn = atomic_load_explicit(&turn, memory_order_acquire);
+            }
+            if (ok==0) return NULL;
+            atomic_store_explicit(&states[id*PADRATIO], LOCKED, memory_order_release);
+            continue;
+        }
+
+       	//atomic_fetch_add_explicit(&__fence_var, 0, memory_order_acq_rel);
+
+        ok = 0;
+        for (int jj=0; jj<LOOP; jj++) {
+        	if (lturn != atomic_load_explicit(&turn, memory_order_acquire) ||
+        		validate_right(id, lturn)==1) {
+        		ok = 1;
+        		break; 
+        	}
+        }
+
+        if (ok==0) return NULL;
+		ok = 0;
+        if (lturn == atomic_load_explicit(&turn, memory_order_acquire)) 
+		{
+			ok = 1;	
+			break;
+		}
+    }
+
+	if (ok==1) {
+		// critical section
+		atomic_store_explicit(&var, id, memory_order_release);
+		assert(atomic_load_explicit(&var, memory_order_acquire) == id);
+
+		int lturn = (atomic_load_explicit(&turn, memory_order_acquire)+1) % N;
+		atomic_store_explicit(&turn, lturn, memory_order_release);
+		atomic_store_explicit(&states[id*PADRATIO], UNLOCKED, memory_order_release); // exit protocol
+	}
+	
+	return NULL;
+
+} // Worker
+
+void* Worker1(void *arg)
 {
   	int id = *((int *)arg);
 	int ok;
@@ -130,6 +193,66 @@ void* Worker(void *arg)
 
 } // Worker
 
+
+void* Worker2(void *arg)
+{
+  	int id = *((int *)arg);
+	int ok;
+
+    atomic_store_explicit(&states[id*PADRATIO], LOCKED,  memory_order_release);
+
+   	//atomic_fetch_add_explicit(&__fence_var, 0, memory_order_acq_rel);
+
+    for (int j=0; j<LOOP; j++) {
+        ok = 0;
+        int lturn = atomic_load_explicit(&turn, memory_order_acquire);
+        if (validate_left(id, lturn)==0) {
+            atomic_store_explicit(&states[id*PADRATIO], WAITING, memory_order_release);
+            for (int jj=0; jj<LOOP; jj++) {
+                if (validate_left(id, lturn)==1 && lturn == atomic_load_explicit(&turn, memory_order_acquire)) {
+   					ok = 1;
+                	break;
+                }
+                lturn = atomic_load_explicit(&turn, memory_order_acquire);
+            }
+            if (ok==0) return NULL;
+            atomic_store_explicit(&states[id*PADRATIO], LOCKED, memory_order_release);
+            continue;
+        }
+
+       	//atomic_fetch_add_explicit(&__fence_var, 0, memory_order_acq_rel);
+
+        ok = 0;
+        for (int jj=0; jj<LOOP; jj++) {
+        	if (lturn != atomic_load_explicit(&turn, memory_order_acquire) ||
+        		validate_right(id, lturn)==1) {
+        		ok = 1;
+        		break; 
+        	}
+        }
+
+        if (ok==0) return NULL;
+		ok = 0;
+        if (lturn == atomic_load_explicit(&turn, memory_order_acquire)) 
+		{
+			ok = 1;	
+			break;
+		}
+    }
+
+	if (ok==1) {
+		// critical section
+		atomic_store_explicit(&var, id, memory_order_release);
+		assert(atomic_load_explicit(&var, memory_order_acquire) == id);
+
+		int lturn = (atomic_load_explicit(&turn, memory_order_acquire)+1) % N;
+		atomic_store_explicit(&turn, lturn, memory_order_release);
+		atomic_store_explicit(&states[id*PADRATIO], UNLOCKED, memory_order_release); // exit protocol
+	}
+	
+	return NULL;
+
+} // Worker
 
 int main()
 {
