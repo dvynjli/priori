@@ -1152,6 +1152,33 @@ class VerifierPass : public ModulePass {
                 curFuncEnv[successors].joinEnvironment(curEnv);
             }
         } 
+		else if (SwitchInst *switchInst = dyn_cast<SwitchInst>(inst)) {
+			// errs() << "SwitchInst: "; printValue(switchInst);
+			// errs() << "#cases: " << switchInst->getNumCases() << "\n";
+			// errs() << "Codition: "; printValue(switchInst->getCondition());
+			string condVar = getNameFromValue(switchInst->getCondition());
+			// errs() << "Condition Var: " << condVar << "\n";
+			Environment tmpEnv;
+			tmpEnv.copyEnvironment(curEnv);
+			// errs() << "curEnv before switch:\n";
+			// curEnv.printEnvironment();
+			for (auto caseItr=switchInst->case_begin(); caseItr!=switchInst->case_end(); caseItr++) {
+				// errs() << "Case " << caseItr->getCaseIndex() << ": "; 
+				// printValue(caseItr->getCaseValue());
+				// printValue(caseItr->getCaseSuccessor());
+            	int compConst= caseItr->getCaseValue()->getSExtValue();
+				curEnv.copyEnvironment(tmpEnv);
+				curEnv.performCmpOp(operation::EQ, condVar, compConst);
+				// errs() << "curEnv after cmp:\n"; 
+				// curEnv.printEnvironment();
+				Instruction *caseSuccessor = &(*(caseItr->getCaseSuccessor()->begin()));
+				// errs() << "Successor env before join: \n";
+				// curFuncEnv[caseSuccessor].printEnvironment();
+				curFuncEnv[caseSuccessor].joinEnvironment(curEnv);
+				// errs() << "Successor env after join:\n";
+				// curFuncEnv[caseSuccessor].printEnvironment();
+			}
+		}
         // CMPXCHG
         else {
             
