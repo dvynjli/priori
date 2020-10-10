@@ -2,6 +2,7 @@
 #include "domain.h"
 #include "analyzer.h"
 #include <iterator>
+#include <llvm/Support/CommandLine.h>
 // #include "interfernce.h"
 
 
@@ -12,6 +13,13 @@ cl::opt<DomainTypes> AbsDomType(cl::desc("Choose abstract domain to be used"),
     cl::values(
         clEnumVal(interval , "use interval domain"),
         clEnumVal(octagon, "use octagon domain")));
+cl::opt<PrecisionLevel> Precision(cl::desc("Choose precision level for analysis"),
+	cl::values(
+		clEnumVal(P0, "level 0: RMW's are treated as any other store operation"),
+		clEnumVal(P1, "keep at max K=?? RMW for each therad in PO"),
+		clEnumVal(P2, "keep all RMW in PO, consistency check of RMW is limited	to checking that combining them maintains TO among RMW"),
+		clEnumVal(P3, "P2 + conssistency check makes sure that interf PO of RMW is ordered after curPO of RMW")
+	));
 cl::opt<bool> noPrint   ("no-print", cl::desc("Do not print debug output"));
 // cl::opt<bool> useMOHead ("useMOHead", cl::desc("Enable interference pruning using Z3 using modification order head based analysis"));
 // cl::opt<bool> useMOPO ("useMOPO", cl::desc("Enable interference pruning using Z3 using partial order over modification order based analysis"));
@@ -1002,7 +1010,8 @@ class VerifierPass : public ModulePass {
 			// errs() << "After call:\n"; curEnv.printEnvironment();
             curFuncEnv[currentInst]= curEnv;
             predEnv.copyEnvironment(curEnv);
-            if (!noPrint) predEnv.printEnvironment();
+			if (!noPrint) {predEnv.printEnvironment();}
+            // if (!noPrint) errs() << "size: " << predEnv.size() << "\n";
 			// printInstToEnvMap(curFuncEnv);
             // if (PHINode *phi = dyn_cast<PHINode>(currentInst)) {
             //     errs() << "Phi Inst: "; printValue(phi);
@@ -1311,7 +1320,8 @@ class VerifierPass : public ModulePass {
         Environment &curEnv, 
         map<Instruction*, pair<Environment, Environment>> &branchEnv
     ) {
-        string destVarName = getNameFromValue(logicalOp);
+        // errs() << "Logical Op. Size of curEnv: " << curEnv.size() << "\n";
+		string destVarName = getNameFromValue(logicalOp);
         Value* fromVar1 = logicalOp->getOperand(0);
         Value* fromVar2 = logicalOp->getOperand(1);
         
@@ -1378,10 +1388,13 @@ class VerifierPass : public ModulePass {
         trueBranchEnv.copyEnvironment(fromVar1TrueEnv);
         falseBranchEnv.copyEnvironment(fromVar1FalseEnv);
         if (oper == Instruction::And) {
-            // errs() << "taking meet\n";
+            // errs() << "taking meet of - trueBranch\n";
+			// trueBranchEnv.printEnvironment(); fromVar2TrueEnv.printEnvironment();
+			// errs() << "fromVar2True: \n";
             trueBranchEnv.meetEnvironment(fromVar2TrueEnv);
             // errs() << "taking join\n";
             falseBranchEnv.joinEnvironment(fromVar2FalseEnv);
+			// errs() << "join done\n";
         }
 
         else if (oper == Instruction::Or) {
@@ -1432,6 +1445,7 @@ class VerifierPass : public ModulePass {
         falseBranchEnv.unsetVar(destVarName);
 
         branchEnv[logicalOp] = make_pair(trueBranchEnv, falseBranchEnv);
+		// curEnv.printEnvironment();
         return curEnv;
     }
 

@@ -5,6 +5,8 @@
 #include <functional>
 // #include "z3_handler.h"
 
+extern llvm::cl::opt<PrecisionLevel> Precision;
+
 class PartialOrder {
 	friend class PartialOrderWrapper;
 	// all the instructions ordered after a in partial order are given 

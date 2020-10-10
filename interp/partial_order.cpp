@@ -25,30 +25,34 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 	// the order. If yes, remove the older one.
 	// OPT: The check is required only if 'from' or 'to' are not 
 	// in the order already.
-	if (deleteOlder) {
+	if (deleteOlder && (Precision == P0 || (!isRMWInst(from) && !isRMWInst(to)))) {
+	// if (deleteOlder) {
 		for (auto it=order.begin(); it!=order.end(); ) {
 			InstNum inst = it->first; ++it;
 			// fprintf(stderr, "Checking SB %p-->%p, %p-->%p\n", inst,to,inst,from);
 			if (inst != to && inst != from) {
 				if (inst.isSeqBefore(to)) {
-					// fprintf(stderr, "isseqbefore inst %p to %p\n", inst, to);
+					// fprintf(stderr, "isseqbefore inst %s to %s\n", inst.toString().c_str(), to.toString().c_str());
 					addOrder(inst, to); 
-					remove(inst);
+					/* if (!isRMWInst(inst)) */ remove(inst);
 				}
 				else if (to.isSeqBefore(inst)) {
 					// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
+					// fprintf(stderr, "isseqbefore to %s inst %s\n", to.toString().c_str(), inst.toString().c_str());
 					addOrder(from, inst);
 					return;
 				}
 				if (inst.isSeqBefore(from)) {
 					// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
+					// fprintf(stderr, "isseqbefore inst %s from %s\n", inst.toString().c_str(), from.toString().c_str());
 					addOrder(inst, from); 
-					remove(inst);
+					/* if (!isRMWInst(inst))*/ remove(inst);
 				}
 				else if (from.isSeqBefore(inst)) {
 					makeTransitiveOrdering(from, to, toItr);
-					remove(from);
+					/* if (!isRMWInst(from))*/ remove(from);
 					// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
+					// fprintf(stderr, "isseqbefore from %s inst %s\n", from.toString().c_str(), inst.toString().c_str());
 					addInst(to);
 					return;
 				}
@@ -77,10 +81,10 @@ void PartialOrder::append(const InstNum &newinst) {
 		if (it->first == newinst) {
 			it++; continue;
 		}
-		if (deleteOlder && it->first.isSeqBefore(newinst) && !isRMWInst(it->first) 
-			&& !isLockInst(it->first) && !isUnlockInst(it->first)) {
+		if (deleteOlder && it->first.isSeqBefore(newinst) && (Precision==P0 || (!isRMWInst(it->first)
+			&& !isLockInst(it->first) && !isUnlockInst(it->first)))) {
 			auto ittmp = it++; 
-			if (deleteOlder) remove((ittmp->first));
+			remove((ittmp->first));
 		}
 		else {
 			// add newinst at in 'to' of it
@@ -89,7 +93,7 @@ void PartialOrder::append(const InstNum &newinst) {
 		}
 	}
 	order.emplace(newinst, unordered_set<InstNum>());
-	if(isRMWInst(newinst) || isLockInst(newinst) || isUnlockInst(newinst)) {
+	if(Precision>P0 && (isRMWInst(newinst) || isLockInst(newinst) || isUnlockInst(newinst))) {
 		rmws.insert(newinst);
 	}
 }
@@ -112,7 +116,7 @@ void PartialOrder::join(const PartialOrder &other) {
 		// 	rmws.insert(fromItr->first);
 	}
 	// fprintf(stderr, "after join %s\n", toString().c_str());
-	rmws.insert(other.rmws.begin(), other.rmws.end());
+	if (Precision>P0) rmws.insert(other.rmws.begin(), other.rmws.end());
 }
 
 // checks if (inst1, inst2) \in order
@@ -163,35 +167,31 @@ bool PartialOrder::isConsistent(const PartialOrder &other) {
 }
 
 bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
-	// fprintf(stderr, "checking consistent rmw:\n");
-	// fprintf(stderr, "this: %s", toString().c_str());
-	// fprintf(stderr, "other: %s\n", other.toString().c_str());
-	// fprintf(stderr, "This rmws: ");
-	// for(auto it:rmws) {
-	// 	fprintf(stderr, "%p,", it);
-	// }
-	// fprintf(stderr, "\nOther rmws: ");
-	// for(auto it:other.rmws) {
-	// 	fprintf(stderr, "%p,", it);
-	// }
-	// fprintf(stderr, "\n");
-	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
-		for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
-			if (itCur == itOther) continue;
-			if (!(isExists(*itOther) || other.isExists(*itCur))) {
-				// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
-					// itOther,isExists(itOther),itCur,other.isExists(itCur));
-				return false;
+	if (Precision == P0) {return true;}
+	else if (Precision == P1) {return true;}
+	else if (Precision == P2) {
+		for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
+			for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
+				if (itCur == itOther) continue;
+				if (!(isExists(*itOther) || other.isExists(*itCur))) {
+					// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
+						// itOther,isExists(itOther),itCur,other.isExists(itCur));
+					return false;
+				}
+				else if (!(isOrderedBefore(*itCur, *itOther) || 
+					isOrderedBefore(*itOther, *itCur) ||
+					other.isOrderedBefore(*itCur, *itOther) ||
+					other.isOrderedBefore(*itOther, *itCur)))
+					return false;
 			}
-			else if (!(isOrderedBefore(*itCur, *itOther) || 
-				isOrderedBefore(*itOther, *itCur) ||
-				other.isOrderedBefore(*itCur, *itOther) ||
-				other.isOrderedBefore(*itOther, *itCur)))
-				return false;
 		}
+		// fprintf(stderr, "consistent\n");
+		return true;
 	}
-	// fprintf(stderr, "consistent\n");
-	return true;
+	else if (Precision == P3) {
+		//TODO:
+		return false;
+	}
 }
 
 
@@ -213,14 +213,17 @@ bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, In
 // values of x
 void PartialOrder::remove(const InstNum &inst) {
 	assert(deleteOlder && "Removing inst from PO for which deleteOlder is unset");
-	// if (isRMWInst(inst)) return true;
+	if (Precision >= P3 && isRMWInst(inst)) return ;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
 	order[inst].clear();
 	order.erase(inst);
-	// if (isRMWInst(inst))
-	// 	rmws.erase(inst);
+	if (Precision == P0 && isRMWInst(inst))
+		rmws.erase(inst);
+	else if (Precision == P1) {
+		//TODO
+	}
 }
 
 // get the last instructions in Partial Order
@@ -289,7 +292,7 @@ void PartialOrder::addInst(const InstNum &inst) {
 		unordered_set<InstNum> emptyset {};
 		order[inst] = emptyset;
 	}
-	if (isRMWInst(inst) || isLockInst(inst) || isUnlockInst(inst))
+	if (Precision>P0 && (isRMWInst(inst) || isLockInst(inst) || isUnlockInst(inst)))
 		rmws.insert(inst);
 }
 
@@ -302,12 +305,17 @@ bool PartialOrder::isRMWInst(const InstNum &inst) {
 }
 
 bool PartialOrder::lessThan(const PartialOrder &other) const {
-	for (auto curIt=rmws.begin(); curIt!=rmws.end(); curIt++) {
-		auto searchRmw = other.rmws.find(*curIt);
-		if (searchRmw == other.rmws.end()) {
-			return false;
+	if (Precision == P0) {}
+	else if (Precision == P1) {}
+	else if (Precision == P2) {
+		for (auto curIt=rmws.begin(); curIt!=rmws.end(); curIt++) {
+			auto searchRmw = other.rmws.find(*curIt);
+			if (searchRmw == other.rmws.end()) {
+				return false;
+			}
 		}
 	}
+	else if (Precision == P3) {}
 	for (auto curIt=order.begin(); curIt!=order.end(); curIt++) {
 		bool foundBiggerInst = false;
 		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
@@ -464,6 +472,7 @@ PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &
 }
 
 PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &other) {
+	// fprintf(stderr, "taking meet of %s and %s\n",curPO.toString().c_str(), other.toString().c_str());
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
 	for (auto curIt=curPO.begin(); curIt!=curPO.end(); curIt++) {
 		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
@@ -474,10 +483,14 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 				for (auto curItTo=curIt->second.begin(); curItTo!=curIt->second.end(); curItTo++) {
 					for (auto otherItTo=otherIt->second.begin(); otherItTo!=otherIt->second.end(); otherItTo++) {
 						if (curItTo->isSeqBefore(*otherItTo)) {
+							// fprintf(stderr, "calling addOrder %s to %s\n",curIt->first.toString().c_str(), curItTo->toString().c_str());
 							tmpPO->addOrder(curIt->first, *curItTo);
+							// fprintf(stderr, "added\n");
 						}
 						else if (otherItTo->isSeqBefore(*curItTo)) {
+							// fprintf(stderr, "calling addOrder %s to %s\n",curIt->first.toString().c_str(), otherItTo->toString().c_str());
 							tmpPO->addOrder(curIt->first, *otherItTo);
+							// fprintf(stderr, "added\n");
 						}
 					}
 				}
@@ -489,10 +502,16 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 				for (auto curItTo=curIt->second.begin(); curItTo!=curIt->second.end(); curItTo++) {
 					for (auto otherItTo=otherIt->second.begin(); otherItTo!=otherIt->second.end(); otherItTo++) {
 						if (curItTo->isSeqBefore(*otherItTo)) {
+							// fprintf(stderr, "calling addOrder %s to %s\n",otherIt->first.toString().c_str(), curItTo->toString().c_str());
+							// fprintf(stderr, "PO so far: %s\n", tmpPO->toString().c_str());
 							tmpPO->addOrder(otherIt->first, *curItTo);
+							// fprintf(stderr, "added\n");
 						}
 						else if (otherItTo->isSeqBefore(*curItTo)) {
+							// fprintf(stderr, "calling addOrder %s to %s\n",otherIt->first.toString().c_str(), otherItTo->toString().c_str());
+							// fprintf(stderr, "PO so far: %s\n", tmpPO->toString().c_str());
 							tmpPO->addOrder(otherIt->first, *otherItTo);
+							// fprintf(stderr, "added\n");
 						}
 					}
 				}
@@ -517,6 +536,7 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 	if (isAlreadyExist) {
 		delete tmpPO;
 	}
+	// fprintf(stderr, "meet is: %s\n",po.toString().c_str());
 	return po;
 }
 

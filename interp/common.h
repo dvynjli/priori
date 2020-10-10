@@ -32,6 +32,11 @@ enum operation { ADD, SUB, MUL, DIV, MOD,       // Arithemetic opertions
 enum DomainTypes {
   interval, octagon
 };
+
+enum PrecisionLevel {
+	P0, P1, P2, P3
+};
+
 using namespace std;
 
 class InstNum {

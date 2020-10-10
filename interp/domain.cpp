@@ -965,8 +965,10 @@ void EnvironmentPOMO::applyInterference(
             }
 
             if (apply) {
-                // fprintf(stderr, "Join interf with: ");
-                // printPOMO(interfpomo);
+                // fprintf(stderr, "Join curPOMO:\n");
+				// curPomo.printPOMO();
+				// fprintf(stderr, "interfPOMO:\n");
+				//interfpomo.printPOMO();
                 
                 // merge the two partial orders
                 POMO newPomo;
@@ -992,7 +994,7 @@ void EnvironmentPOMO::applyInterference(
                     
                     // for interfVar, add the store intruction in the end
                     if (varIt.first == interfVar) {   
-                        PartialOrderWrapper::append(tmpPO, interfInst);
+                        tmpPO = PartialOrderWrapper::append(tmpPO, interfInst);
                     }
 
                     // check what to do for each variable
@@ -1008,6 +1010,8 @@ void EnvironmentPOMO::applyInterference(
                 ApDomain tmpDomain;
                 tmpDomain.copyApDomain(curIt.second);
                 tmpDomain.applyInterference(interfVar, interfIt.second, true, &varoptions);
+				// fprintf(stderr, "after join:\n");
+				// newPomo.printPOMO();
                 if (!tmpDomain.isUnreachable()) {
                 	auto searchPomo = newenvironment.find(newPomo);
                 	if (searchPomo != newenvironment.end()) {
@@ -1058,7 +1062,12 @@ void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
     
     for (auto curIt=environment.begin(); curIt!=environment.end(); curIt++) {
         for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
-            // meet of ApDomain
+			// fprintf(stderr, "curIt: \n");
+			// curIt->first.printPOMO();
+			// fprintf(stderr, "otherIt:\n");
+			// otherIt->first.printPOMO();
+            
+			// meet of ApDomain
             ApDomain newDomain;
             newDomain.copyApDomain(curIt->second);
             newDomain.meetApDomain(otherIt->second);
@@ -1081,7 +1090,11 @@ void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
             }
             else {
                 POMO newPomo;
+				// fprintf(stderr, "Taking meet POMO of:\n");
+				// curIt->first.printPOMO(); otherIt->first.printPOMO();
                 meetPOMO(curIt->first, otherIt->first, newPomo);
+				// fprintf(stderr, "meet POMO is:\n");
+				// newPomo.printPOMO();
                 // if curPomo alread exist join the newDomain with existing one
                 auto searchPomo = newenvironment.find(newPomo);
                 if (searchPomo != newenvironment.end()) {
@@ -1224,7 +1237,7 @@ void EnvironmentPOMO::meetPOMO (const POMO &pomo1, const POMO &pomo2, POMO &meet
     // fprintf(stderr, "joining:\n");
     // printPOMO(pomo1);
     // printPOMO(pomo2);
-    meetPOMO = pomo1;
+    // meetPOMO = pomo1;
     if (pomo2.empty())
         return;
     for (auto it:pomo1) {

@@ -320,7 +320,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
                 const PartialOrder &interfPartialOrder);
 
 public:
-
+	int size() {return environment.size();}
     // void changeRelHeadToNull(string var, InstNum inst);
     // void changeRelHeadIfNull(string var, InstNum head);
     
