@@ -37,12 +37,12 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 			if (inst != to && inst != from) {
 				if (inst.isSeqBefore(to)) {
 					// fprintf(stderr, "isseqbefore inst %s to %s\n", inst.toString().c_str(), to.toString().c_str());
-					if (isDeletableInst(inst)) { 
+					if (isDeletableInst(inst) || Precision==P0) { 
 						addOrder(inst, to); 
 						remove(inst);
 					}
 				}
-				else if (isDeletableInst(to) && to.isSeqBefore(inst)) {
+				else if ((isDeletableInst(to) || Precision==P0) && to.isSeqBefore(inst)) {
 					// fprintf(stderr, "isseqbefore to %p inst %p\n",to, inst);
 					// fprintf(stderr, "isseqbefore to %s inst %s\n", to.toString().c_str(), inst.toString().c_str());
 					addOrder(from, inst);
@@ -51,12 +51,12 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 				if (inst.isSeqBefore(from)) {
 					// fprintf(stderr, "isseqbefore inst %p from %p\n", inst, from);
 					// fprintf(stderr, "isseqbefore inst %s from %s\n", inst.toString().c_str(), from.toString().c_str());
-					if (isDeletableInst(inst)) {
+					if (isDeletableInst(inst) || Precision==P0) {
 						addOrder(inst, from); 
 						remove(inst);
 					}
 				}
-				else if (isDeletableInst(from) && from.isSeqBefore(inst)) {
+				else if ((isDeletableInst(from) || Precision==P0) && from.isSeqBefore(inst)) {
 					makeTransitiveOrdering(from, to, toItr);
 					/* if (!isRMWInst(from))*/ remove(from);
 					// fprintf(stderr, "isseqbefore from %p inst %p\n ", from, inst);
@@ -219,7 +219,7 @@ bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, In
 // all (x, inst) and (inst, x) pair from order for all possible 
 // values of x
 void PartialOrder::remove(const InstNum &inst) {
-	assert(deleteOlder && "Removing inst from PO for which deleteOlder is unset");
+	assert((isDeletableInst(inst) || Precision==P0) && "Removing inst rmw/lock/unlock from PO");
 	if (Precision >= P3 && isDeletableInst(inst)) return ;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
@@ -282,10 +282,10 @@ void PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &t
 }
 
 void PartialOrder::addInst(const InstNum &inst) {
-	if (deleteOlder) {
+	// if (deleteOlder) {
 		for (auto it=order.begin(); it!=order.end(); ) {
 			InstNum instItr = it->first; ++it;
-			if (instItr != inst && inst.isSeqBefore(instItr)) {
+			if ((isDeletableInst(inst) || Precision==P0) && instItr != inst && inst.isSeqBefore(instItr)) {
 				// Nothing to add, a newer instruction is already there
 				return ;
 			}
@@ -294,10 +294,10 @@ void PartialOrder::addInst(const InstNum &inst) {
 				// be ordered before instItr
 				makeTransitiveOrdering(instItr, inst, order.end());
 				// remove older instruction
-				if (isDeletableInst(instItr)) remove(instItr);
+				if (isDeletableInst(instItr) || Precision==P0) remove(instItr);
 			}
 		}
-	}
+	// }
 	auto findInst = order.find(inst);
 	// add (inst,<empty>) in order 
 	if (findInst == order.end()) {
@@ -547,7 +547,7 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 PartialOrder& PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
-    if (tmpPO->isDeletableInst(inst)) 
+    if (tmpPO->isDeletableInst(inst) || Precision==P0) 
 		tmpPO->remove(inst);
     // fprintf(stderr, "after remove: %s\n", tmpPO->toString().c_str());
     bool isAlreadyExist;

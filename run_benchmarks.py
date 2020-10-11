@@ -9,14 +9,15 @@ import datetime
 domain = 'interval'		 # options are interval, octagon
 num_runs = 1 
 interfcomb = False
+precision = 'P2' 
 
 buggy = ['dijkstra', 'bakery', 'burns', 'dekker', 'dekker_sim', 
-								'lamport', 'peterson', 'peterson3']
+			'lamport', 'peterson', 'peterson3']
 non_buggy = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 
-								'dijkstra_fen', 'bakery_fen', 'burns_fen',  
-								'lamport_fen','peterson_fen', 'tbar_fen', # 'dekker_fen', 'tbar_fenced_2'] 
-								'gcd', 'pthread_demo', 'exponential_bug_6',
-								'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
+			'dijkstra_fen', 'bakery_fen', 'burns_fen',  
+			'lamport_fen','peterson_fen', 'tbar_fen', # 'dekker_fen', 'tbar_fenced_2'] 
+			'gcd', 'pthread_demo', 'exponential_bug_6',
+			'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
 #if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
 #		benchmarks = buggy + non_buggy
 #elif sys.argv[1] == '-buggy':
@@ -49,8 +50,8 @@ def find_num_iter(err):
 def run_benchmarks(benchmark_list, isBuggy):
 	for benchmark in benchmark_list:
 		command = ['/usr/bin/opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-							'-no-print', '-stop-on-fail', '-eager-pruning', '-P2',
-							'tests/benchmarks/' + benchmark + '.ll']
+					    '-no-print', '-stop-on-fail', '-eager-pruning', '-'+precision,
+                                            'tests/benchmarks/' + benchmark + '.ll']
 		if (not interfcomb):
 				command.append('-no-interf-comb')
 		time = 0
@@ -71,6 +72,7 @@ def run_benchmarks(benchmark_list, isBuggy):
 
 
 print('Results generated at ', str(datetime.datetime.now()))
+print('Precision:', precision, '\tDomain:',domain)
 print('Name & Time & Iterations & Time & Iterations \\\\')
 if len(sys.argv) == 1 or sys.argv[1] == '-all':
 	run_benchmarks(buggy, True)
