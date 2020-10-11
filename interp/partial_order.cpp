@@ -75,7 +75,7 @@ void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 // Adds inst such that Va \in order, (a, inst) \in order.
 // Returns false if inst already exists in order
 void PartialOrder::append(const InstNum &newinst) {
-	// cout << "appending Partial order " << newinst << "\n";
+	// fprintf(stderr, "appedning %s to PO: %s\n",newinst.toString().c_str(), toString().c_str());
 	// If the 'newinst' is already in the order, there should 
 	// not be any instruction ordered after it. Otherwise, 
 	// it cannot be appended.
@@ -86,15 +86,18 @@ void PartialOrder::append(const InstNum &newinst) {
 	// Check if some inst sequenced before 'inst' in order. 
 	// If yes, remove the older one.
 	for (auto it=order.begin(); it!=order.end(); ) {
+		// fprintf(stderr,"checking for %s\n",it->first.toString().c_str());
 		if (it->first == newinst) {
 			it++; continue;
 		}
 		if (it->first.isSeqBefore(newinst) && (Precision==P0 || isDeletableInst(it->first))) {
+			// fprintf(stderr, "seqbefore new inst. deleting\n");
 			auto ittmp = it++; 
 			remove((ittmp->first));
 		}
 		else {
 			// add newinst at in 'to' of it
+			// fprintf(stderr,"not seq before new inst. appending\n");
 			it->second.insert(newinst);
 			it++;
 		}
@@ -103,6 +106,7 @@ void PartialOrder::append(const InstNum &newinst) {
 	if(Precision>P0 && (isRMWInst(newinst) || isLockInst(newinst) || isUnlockInst(newinst))) {
 		rmws.insert(newinst);
 	}
+	// fprintf(stderr, "after append: %s\n", toString().c_str());
 }
 
 // Joins two partial orders maintaing the ordering relation in both
@@ -281,7 +285,7 @@ bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, In
 // values of x
 void PartialOrder::remove(const InstNum &inst) {
 	assert((isDeletableInst(inst) || Precision==P0) && "Removing inst rmw/lock/unlock from PO");
-	if (Precision >= P3 && isDeletableInst(inst)) return ;
+	if (Precision >= P3 && !isDeletableInst(inst)) return ;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
 	}
