@@ -968,7 +968,7 @@ void EnvironmentPOMO::applyInterference(
                 // fprintf(stderr, "Join curPOMO:\n");
 				// curPomo.printPOMO();
 				// fprintf(stderr, "interfPOMO:\n");
-				//interfpomo.printPOMO();
+				// interfpomo.printPOMO();
                 
                 // merge the two partial orders
                 POMO newPomo;

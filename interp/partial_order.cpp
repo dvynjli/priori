@@ -173,31 +173,92 @@ bool PartialOrder::isConsistent(const PartialOrder &other) {
 	return true;
 }
 
+bool PartialOrder::isConsRMWP2(const PartialOrder &other){
+	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
+		for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
+			if (itCur == itOther) continue;
+			if (!(isExists(*itOther) || other.isExists(*itCur))) {
+				// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
+					// itOther,isExists(itOther),itCur,other.isExists(itCur));
+				return false;
+			}
+			else if (!(isOrderedBefore(*itCur, *itOther) || 
+				isOrderedBefore(*itOther, *itCur) ||
+				other.isOrderedBefore(*itCur, *itOther) ||
+				other.isOrderedBefore(*itOther, *itCur)))
+				return false;
+		}
+	}
+	// fprintf(stderr, "consistent\n");
+	return true;
+}
+
+bool PartialOrder::isConsRMWP3(const PartialOrder &other){
+	// P3: cur should be less than other
+	// for (auto curFromIt=order.begin(); curFromIt!=order.end(); curFromIt++) {
+	// 	if (!isDeletableInst(curFromIt->first)) {	// need to check only for RMWs
+	// 		auto searchFromInstOther = other.order.find(curFromIt->first);
+	// 		if (searchFromInstOther == other.order.end()) {
+	// 			// inst not found in other. Not less than
+	// 			return false;
+	// 		}
+	// 		else {
+	// 			for (auto curToIt=curFromIt->second.begin(); curToIt!=curFromIt->second.end(); curToIt++) {
+	// 				auto searchToInst = searchFromInstOther->second.find(*curToIt);
+	// 				if (searchToInst == searchFromInstOther->second.end()) {
+	// 					return false;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	unordered_set<InstNum> otherLasts;
+	other.getLasts(otherLasts);
+	// fprintf(stderr, "checking cons P3\n");
+	for (auto otherFromIt=other.order.begin(); otherFromIt!=other.order.end(); otherFromIt++) {
+		if (!isDeletableInst(otherFromIt->first)) {
+			// fprintf(stderr, "from: %s -->", otherFromIt->first.toString().c_str());
+			auto searchFromCur = order.find(otherFromIt->first);
+			if (searchFromCur == order.end() && otherLasts.find(otherFromIt->first)==otherLasts.end() ) {
+				// fprintf(stderr, "from not found in cur and not last\n");
+				// inst from other not found in cur and not last in other
+				return false;
+			}
+			for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
+				// fprintf(stderr, "--> %s\n", otherToIt->toString().c_str());
+				auto searchToCur = searchFromCur->second.find(*otherToIt);
+				if (searchToCur==searchFromCur->second.end() && otherLasts.find(*otherToIt)==otherLasts.end()) {
+					// fprintf(stderr, "To not found in cur\n");
+					// ordering from other not found in cur and not last in other
+					return false;
+				}
+			}
+		}
+	}
+	for (auto curFromIt=order.begin(); curFromIt!=order.end(); curFromIt++) {
+	 	if (!isDeletableInst(curFromIt->first)) {	// need to check only for RMWs
+			auto searchFromOther = other.order.find(curFromIt->first);
+			if (searchFromOther == order.end()) {
+				return false;
+			}
+			for (auto curToIt=curFromIt->second.begin(); curToIt!=curFromIt->second.end(); curToIt++) {
+				auto searchToOther = searchFromOther->second.find(*curToIt);
+				if (searchToOther==searchFromOther->second.end())
+					return false;
+			}
+		}			
+	}	
+	return true;
+}
+
 bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 	if (Precision == P0) {return true;}
 	else if (Precision == P1) {return true;}
 	else if (Precision == P2) {
-		for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
-			for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
-				if (itCur == itOther) continue;
-				if (!(isExists(*itOther) || other.isExists(*itCur))) {
-					// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
-						// itOther,isExists(itOther),itCur,other.isExists(itCur));
-					return false;
-				}
-				else if (!(isOrderedBefore(*itCur, *itOther) || 
-					isOrderedBefore(*itOther, *itCur) ||
-					other.isOrderedBefore(*itCur, *itOther) ||
-					other.isOrderedBefore(*itOther, *itCur)))
-					return false;
-			}
-		}
-		// fprintf(stderr, "consistent\n");
-		return true;
+		return isConsRMWP2(other);
 	}
 	else {
-		//TODO:
-		return false;
+		return isConsRMWP2(other) && isConsRMWP3(other);
 	}
 }
 
@@ -311,7 +372,7 @@ void PartialOrder::addInst(const InstNum &inst) {
 bool PartialOrder::lessThan(const PartialOrder &other) const {
 	if (Precision == P0) {}
 	else if (Precision == P1) {}
-	else if (Precision == P2) {
+	else /*if (Precision == P2)*/ {
 		for (auto curIt=rmws.begin(); curIt!=rmws.end(); curIt++) {
 			auto searchRmw = other.rmws.find(*curIt);
 			if (searchRmw == other.rmws.end()) {
@@ -319,7 +380,7 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 			}
 		}
 	}
-	else if (Precision == P3) {}
+	// else if (Precision == P3) {}
 	for (auto curIt=order.begin(); curIt!=order.end(); curIt++) {
 		bool foundBiggerInst = false;
 		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {

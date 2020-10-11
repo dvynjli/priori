@@ -50,6 +50,8 @@ class PartialOrder {
 	void remove(const InstNum &inst);
 	
 	bool isDeletableInst (const InstNum &inst);
+	bool isConsRMWP2(const PartialOrder & other);
+	bool isConsRMWP3(const PartialOrder & other);
 	
 public:
 	// PartialOrder() :

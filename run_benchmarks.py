@@ -9,7 +9,7 @@ import datetime
 domain = 'interval'		 # options are interval, octagon
 num_runs = 1 
 interfcomb = False
-precision = 'P2' 
+precision = 'P3' 
 
 buggy = ['dijkstra', 'bakery', 'burns', 'dekker', 'dekker_sim', 
 			'lamport', 'peterson', 'peterson3']
