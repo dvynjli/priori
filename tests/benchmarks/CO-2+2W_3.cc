@@ -41,6 +41,7 @@ void *t4(void *arg){
 
 
 int main(){
+  vars.store(0, memory_order_release);
   pthread_t ts1, ts2, ts3;
   
   pthread_create(&ts1, NULL, t1, NULL);

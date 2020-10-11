@@ -119,6 +119,7 @@ void *t15(void *arg){
 
 
 int main(){
+  vars.store(0, memory_order_release);
   pthread_t ts1, ts2, ts3, ts4, ts5,
         ts6, ts7, ts8, ts9, ts10,
         ts11, ts12, ts13, ts14, ts15;
