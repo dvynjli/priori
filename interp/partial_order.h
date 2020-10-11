@@ -26,7 +26,6 @@ class PartialOrder {
 	// adds an instruction with nothing ordered after it ib the order,
 	// while deleting the older instructions from the same thread
 	void addInst(const InstNum &inst);
-	bool isRMWInst(const InstNum &inst);
 
 	// Adds (from, to) to order if not already. 
 	// Since partial order can't be cyclic, if (to, from) are already
@@ -49,6 +48,8 @@ class PartialOrder {
 	// all (x, inst) and (inst, x) pair from order for all possible 
 	// values of x
 	void remove(const InstNum &inst);
+	
+	bool isDeletableInst (const InstNum &inst);
 	
 public:
 	// PartialOrder() :

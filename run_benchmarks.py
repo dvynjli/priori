@@ -6,61 +6,85 @@ import os
 import sys
 import datetime
 
-domain = 'octagon' 	# options are interval, octagon
-num_runs = 4
+domain = 'interval'		 # options are interval, octagon
+num_runs = 1 
 interfcomb = False
 
 buggy = ['dijkstra', 'bakery', 'burns', 'dekker', 'dekker_sim', 
-				'lamport', 'peterson', 'peterson3']
+								'lamport', 'peterson', 'peterson3']
 non_buggy = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 
-				'dijkstra_fen', 'bakery_fen', 'burns_fen',  
-				'lamport_fen','peterson_fen', 'tbar_fen' # 'dekker_fen', 'tbar_fenced_2'] 
-				'gcd', 'pthread_demo', 'exponential_bug_6',
-				'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
-benchmarks = []
+								'dijkstra_fen', 'bakery_fen', 'burns_fen',  
+								'lamport_fen','peterson_fen', 'tbar_fen', # 'dekker_fen', 'tbar_fenced_2'] 
+								'gcd', 'pthread_demo', 'exponential_bug_6',
+								'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
+#if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
+#		benchmarks = buggy + non_buggy
+#elif sys.argv[1] == '-buggy':
+#		benchmarks = buggy
+#elif sys.argv[1] == '-non-buggy':
+#		benchmarks = non_buggy
+#else:
+#		print('Flags: ""/-vuf/-vf/-tnb/-a')
+#		exit(0)
 
-if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
-	benchmarks = buggy + non_buggy
-elif sys.argv[1] == '-buggy':
-	benchmarks = buggy
-elif sys.argv[1] == '-non-buggy':
-	benchmarks = non_buggy
-else:
-	print('Flags: ""/-vuf/-vf/-tnb/-a')
-	exit(0)
+
+def bug_found(err):
+	return 'Assertion failed' in err
+
+def find_time(benchmark, out, err):
+	if ('ERROR:' in err or 'core dumped' in err):
+		print('\033[91m'+benchmark,', Something went Wrong\033[0m')
+	else:
+		start_index_of_time = err.find('Time elapsed: ') + len('Time elapsed: ')
+		end_index_of_time = start_index_of_time + err[start_index_of_time: ].find(r'\n')
+		time = float(err[start_index_of_time: end_index_of_time])
+		return time
+
+def find_num_iter(err):
+	start_index_of_iter = err.rfind('#iterations: ') + len('#iterations: ')
+	end_index_of_iter = start_index_of_iter + err[start_index_of_iter: ].find(r'\n')
+	return err[start_index_of_iter : end_index_of_iter]
+
+
+def run_benchmarks(benchmark_list, isBuggy):
+	for benchmark in benchmark_list:
+		command = ['/usr/bin/opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
+							'-no-print', '-stop-on-fail', '-eager-pruning', '-P2',
+							'tests/benchmarks/' + benchmark + '.ll']
+		if (not interfcomb):
+				command.append('-no-interf-comb')
+		time = 0
+		for i in range(num_runs):
+			process = Popen(command, stdout=PIPE, stderr=PIPE)
+			out, err = process.communicate()
+			cur_buggy = bug_found(str(err))
+			if i==0:
+				if cur_buggy and not isBuggy:
+					print(benchmark, '&', 'False positive' , '\\\\')
+					break
+				elif not cur_buggy and isBuggy:
+					print(benchmark, '&', 'Assertion missed' , '\\\\')
+					break
+			time = time + find_time(benchmark, str(out), str(err))
+		iterations = find_num_iter(str(err))
+		print(benchmark, '&', time/num_runs, '&', iterations, '\\\\')
+
 
 print('Results generated at ', str(datetime.datetime.now()))
 print('Name & Time & Iterations & Time & Iterations \\\\')
+if len(sys.argv) == 1 or sys.argv[1] == '-all':
+	run_benchmarks(buggy, True)
+	run_benchmarks(non_buggy, False)
+elif sys.argv[1] == '-buggy':
+	run_benchmarks(buggy, True)
+elif sys.argv[1] == '-non-buggy':
+	run_benchmarks(non_buggy, False)
+else:
+	print('Flags: "/-buggy/-non-buggy/-all or nothing"')
+	exit(0)
 
-for benchmark in benchmarks:
-	command = ['/usr/bin/opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/benchmarks/' + benchmark + '.ll']
-	if (not interfcomb):
-		command.append('-no-interf-comb')
-	process = Popen(command, stdout=PIPE, stderr=PIPE)
-	out, err = process.communicate()
-	if ('ERROR:' in str(err) or 'core dumped' in str(err)):
-		print('\033[91m'+benchmark,', Something went Wrong\033[0m')
-	else:
-		start_index_of_time = str(err).find('Time elapsed: ') + len('Time elapsed: ')
-		end_index_of_time = start_index_of_time + str(err)[start_index_of_time: ].find(r'\n')
-		time = float(str(err)[start_index_of_time: end_index_of_time])
-		runs = 1
-		for i in range(num_runs-1):
-			process = Popen(command, stdout=PIPE, stderr=PIPE)
-			out, err = process.communicate()
-			start_index_of_time = str(err).find('Time elapsed: ') + len('Time elapsed: ')
-			end_index_of_time = start_index_of_time + str(err)[start_index_of_time: ].find(r'\n')
-			time = time + float(str(err)[start_index_of_time: end_index_of_time])
-			runs = runs + 1
-		# print(benchmark, ',', time/runs)
-		
-		start_index_of_iter = end_index_of_time + str(err)[end_index_of_time: ].find('#iterations: ') + len('#iterations: ')
-		end_index_of_iter = start_index_of_iter + str(err)[start_index_of_iter: ].find(r'\n')
-		print(benchmark, '&', time/runs, '&', str(err)[start_index_of_iter : end_index_of_iter], '\\\\')
-		
+
 # duration = .1  # seconds
 # freq = 440  # Hz
 # os.system('play -nq -t alsa synth {} sine {}'.format(duration, freq))
-
 

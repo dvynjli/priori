@@ -1092,19 +1092,44 @@ void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
                 POMO newPomo;
 				// fprintf(stderr, "Taking meet POMO of:\n");
 				// curIt->first.printPOMO(); otherIt->first.printPOMO();
-                meetPOMO(curIt->first, otherIt->first, newPomo);
-				// fprintf(stderr, "meet POMO is:\n");
-				// newPomo.printPOMO();
-                // if curPomo alread exist join the newDomain with existing one
-                auto searchPomo = newenvironment.find(newPomo);
-                if (searchPomo != newenvironment.end()) {
-                    newDomain.joinApDomain(searchPomo->second);
-                }
-                else if(!newDomain.isUnreachable())
-                    newenvironment[newPomo] = newDomain;
-                }
-        }
-    }
+				bool apply = true;
+				for (auto varIt:curIt->first) {
+	                auto searchInterfPomo = otherIt->first.find(varIt.first);
+	                if (searchInterfPomo == otherIt->first.end()) {
+	                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in applyinterf\n", varIt.first.c_str());
+	                    exit(0);
+	                }
+	                if (!varIt.second.isConsistent(searchInterfPomo->second)) {
+						// fprintf(stderr, "not consistent\n");
+	                    apply=false;
+	                    break;
+	                }
+	                if (!varIt.second.isConsistentRMW(searchInterfPomo->second)) {
+						// fprintf(stderr, "not consistent rmw\n");
+	                    apply=false;
+	                    break;
+	                }
+					auto searchIfLockVar = lockVars.find(varIt.first);
+					if (searchIfLockVar != lockVars.end() && !isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
+						apply = false;
+						break;
+					}
+	            }
+	
+				if (apply) {
+                	meetPOMO(curIt->first, otherIt->first, newPomo); // fprintf(stderr, "meet POMO is:\n");
+					// newPomo.printPOMO();
+                	// if curPomo alread exist join the newDomain with existing one
+                	auto searchPomo = newenvironment.find(newPomo);
+                	if (searchPomo != newenvironment.end()) {
+                	    newDomain.joinApDomain(searchPomo->second);
+                	}
+                	else if(!newDomain.isUnreachable())
+                	    newenvironment[newPomo] = newDomain;
+                }			
+        	}
+		}
+	}
     environment = newenvironment;
     if (other.isModified() && !isModified()) setModified();
     // fprintf(stderr, "Env after meet:\n");

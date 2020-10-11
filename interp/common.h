@@ -154,6 +154,14 @@ inline bool isLockInst (InstNum inst) {
 	return isLockInst(llvmInst);
 }
 
+inline bool isRMWInst(const InstNum &inst) {
+	if (llvm::dyn_cast<llvm::AtomicRMWInst>(getInstByInstNum(inst))) {
+		// fprintf(stderr, "rmw inst\n");
+		return true;
+	}
+	else return false;
+}
+
 // inline bool isSeqBefore(llvm::Instruction* inst1, llvm::Instruction* inst2){
 // 	// fprintf(stderr, "%p --sb--> %p\n", inst1, inst2);
 // 	if (!inst1 || !inst2) return false;
