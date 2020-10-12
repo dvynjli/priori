@@ -7,16 +7,17 @@ import sys
 import datetime
 
 domain = 'interval'		 # options are interval, octagon
-num_runs = 1 
+num_runs = 4 
 interfcomb = False
 precision = 'P3' 
 
 buggy = ['dijkstra', 'bakery', 'burns', 'dekker', 'dekker_sim', 
-			'lamport', 'peterson', 'peterson3']
-non_buggy = ['CO-2+2W_2', 'CO-2+2W_3', 'CO-2+2W_5', 'fibonacci', 
+			'lamport', 'peterson', 'peterson3', 
+                        '10R1W', '15R1W', 'szymanski_7_buggy']
+non_buggy = ['CO-2+2W_5', 'CO-2+2W_10', 'CO-2+2W_15', 'fibonacci', 
 			'dijkstra_fen', 'bakery_fen', 'burns_fen',  
 			'lamport_fen','peterson_fen', 'tbar_fen', # 'dekker_fen', 'tbar_fenced_2'] 
-			'gcd', 'pthread_demo', 'exponential_bug_6',
+			'peterson3_fen','redundant_co' , 'gcd', 'pthread_demo', 'exponential_bug_6',
 			'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
 #if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
 #		benchmarks = buggy + non_buggy
