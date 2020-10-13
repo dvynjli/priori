@@ -162,7 +162,7 @@ bool PartialOrder::isExists(const InstNum &inst) const {
 // checks if the partial order other is consistent with this partial order
 // Two parial orders are consistent only if  Va.Vb (a,b) \in order 
 // (c,d) \notin other.order such that b--sb-->c and d--sb-->a
-bool PartialOrder::isConsistent(const PartialOrder &other) {
+bool PartialOrder::isConsistent(const PartialOrder &other) const {
 	for (auto itFrom=order.begin(); itFrom!=order.end(); itFrom++) {	// a
 		for (auto itTo=itFrom->second.begin(); itTo!=itFrom->second.end(); itTo++) { // b
 			for (auto itOtherFrom=other.begin(); itOtherFrom!=other.end(); itOtherFrom++) { // c
@@ -177,7 +177,7 @@ bool PartialOrder::isConsistent(const PartialOrder &other) {
 	return true;
 }
 
-bool PartialOrder::isConsRMWP2(const PartialOrder &other){
+bool PartialOrder::isConsRMWP2(const PartialOrder &other) const {
 	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
 		for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
 			if (itCur == itOther) continue;
@@ -197,7 +197,7 @@ bool PartialOrder::isConsRMWP2(const PartialOrder &other){
 	return true;
 }
 
-bool PartialOrder::isConsRMWP3(const PartialOrder &other){
+bool PartialOrder::isConsRMWP3(const PartialOrder &other) const {
 	// unordered_set<InstNum> otherLasts;
 	// other.getLasts(otherLasts);
 	// fprintf(stderr, "checking cons P3\n");
@@ -245,7 +245,7 @@ bool PartialOrder::isConsRMWP3(const PartialOrder &other){
 	return true;
 }
 
-bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
+bool PartialOrder::isConsistentRMW(const PartialOrder &other) const {
 	if (Precision == P0) {return true;}
 	else if (Precision == P1) {return true;}
 	else if (Precision == P2) {
@@ -258,7 +258,7 @@ bool PartialOrder::isConsistentRMW(const PartialOrder &other) {
 
 
 // domain-level feasibility checking
-bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, InstNum &curInst) {
+bool PartialOrder::isFeasible(const PartialOrder &other, InstNum &interfInst, InstNum &curInst) const {
 	// curInst should not be ordered before any inst in interferring domain
 	for (auto it=other.begin(); it!=other.end(); it++) {
 		if (curInst.isSeqBefore(it->first)) return false;
@@ -288,7 +288,7 @@ void PartialOrder::remove(const InstNum &inst) {
 	}
 }
 
-bool PartialOrder::isDeletableInst(const InstNum &inst) {
+bool PartialOrder::isDeletableInst(const InstNum &inst) const {
 	if (isRMWInst(inst) || isLockInst(inst) || isUnlockInst(inst)) return false;
 	else return true;
 }
@@ -412,7 +412,7 @@ string PartialOrder::toString() const {
 	 	}
 	 	ss << ";\t";
 	 }
-	ss << deleteOlder;
+	ss << "del: " << deleteOlder;
 	// ss << "\tRMWs: ";
 	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
 	// 	// fprintf(stderr, "in rmws loop\n");
@@ -465,10 +465,11 @@ unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::end
 //      class PartialOrderWrapper       //
 //////////////////////////////////////////
 
-unordered_set<PartialOrder*> PartialOrderWrapper::allPO;
-unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> PartialOrderWrapper::cachedJoin;
-unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> PartialOrderWrapper::cachedMeet;
-unordered_map<pair<const PartialOrder*, const InstNum*>, PartialOrder*> PartialOrderWrapper::cachedAppend;
+unordered_set<PartialOrder*, hashPOPointer, comparePOPointer> PartialOrderWrapper::allPO;
+// unordered_set<PartialOrder*> PartialOrderWrapper::allPO;
+// unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> PartialOrderWrapper::cachedJoin;
+// unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> PartialOrderWrapper::cachedMeet;
+// unordered_map<pair<const PartialOrder*, const InstNum*>, PartialOrder*> PartialOrderWrapper::cachedAppend;
 
 const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po, bool &isAlreadyExist) {
 	// auto searchPO = allPO.find(*po);
@@ -477,81 +478,97 @@ const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po, bool &isAlre
 	// 	return **searchPO;
 	// }
 	// else {
+	// fprintf(stderr, "in addToSet:%p:::%s\n", po, po->toString().c_str());
+	// printAllPO();
 	auto inserted = allPO.insert(po);
-	isAlreadyExist = inserted.second;
+	isAlreadyExist = !inserted.second;
+	// fprintf(stderr, "found in allPO:%d\n",isAlreadyExist);
+	/// printAllPO();
 	return **(inserted.first);
 	// }
 	// fprintf(stderr, "done. returning\n");
 }
 
-PartialOrder PartialOrderWrapper::getEmptyPartialOrder(bool delOlder) {
+PartialOrder& PartialOrderWrapper::getEmptyPartialOrder(bool delOlder) {
+	// fprintf(stderr, "called getEmptyPO with del=%d\n",delOlder);
+	// printAllPO();
 	PartialOrder *tmpPO = new PartialOrder(delOlder);
 	bool isAlreadyExist;
-	auto po = addToSet(tmpPO, isAlreadyExist);
+	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	return po;
+	// fprintf(stderr, "added in allPO:%p %s", &po, po.toString().c_str());
+	// printAllPO();
+	return (PartialOrder&) po;
 }
 
-PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
-	const pair<const PartialOrder*, const InstNum*> poInstNumPair = make_pair(&curPO, &inst);
-	auto searchInCached = cachedAppend.find(poInstNumPair);
-	if (searchInCached != cachedAppend.end()) {
-		return searchInCached->second;
-	}
+PartialOrder& PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
+	// fprintf(stderr, "appending: %s <| %s\n",curPO.toString().c_str(), inst.toString().c_str());
+	// printAllPO();
+	// printAppendCache();
+	// const pair<const PartialOrder*, const InstNum*> poInstNumPair = make_pair(&curPO, &inst);
+	// auto searchInCached = cachedAppend.find(poInstNumPair);
+	// if (searchInCached != cachedAppend.end()) {
+	// 	fprintf(stderr, "found in cache. Returning %p\n",searchInCached->second);
+	// 	fprintf(stderr, "value: %s\n", searchInCached->second->toString().c_str());
+	// 	return searchInCached->second;
+	// }
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->append(inst);
     // fprintf(stderr, "after append: %s\n", tmpPO->toString().c_str());
 	bool isAlreadyExist;
-	auto po = addToSet(tmpPO, isAlreadyExist);
+	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	cachedAppend[poInstNumPair] = &po;
-	return po;
+	// cachedAppend[poInstNumPair] = &po;
+	// fprintf(stderr, "after append %p:   %s\n",&po, po.toString().c_str());
+	// printAllPO();
+	// printAppendCache();
+	return (PartialOrder&) po;
 }
 
-PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, InstNum &to) {
+PartialOrder& PartialOrderWrapper::addOrder(const PartialOrder &curPO, InstNum &from, InstNum &to) {
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->addOrder(from, to);
     // fprintf(stderr, "after addOrder: %s\n", tmpPO->toString().c_str());
     bool isAlreadyExist;
-	auto po = addToSet(tmpPO, isAlreadyExist);
+	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	return po;
+	return (PartialOrder&)po;
 }
 
-PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &other) {
-	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
-	auto searchInCached = cachedJoin.find(poPair);
-	if (searchInCached != cachedJoin.end()) {
-		return searchInCached->second;
-	}
+PartialOrder& PartialOrderWrapper::join(const PartialOrder &curPO, const PartialOrder &other) {
+	// const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
+	// auto searchInCached = cachedJoin.find(poPair);
+	// if (searchInCached != cachedJoin.end()) {
+	// 	return searchInCached->second;
+	// }
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->join(other);
     // fprintf(stderr, "after join: %s\n", tmpPO->toString().c_str());
     bool isAlreadyExist;
-	auto po = addToSet(tmpPO, isAlreadyExist);
+	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
-	cachedJoin[poPair] = &po;
-	return po;
+	// cachedJoin[poPair] = &po;
+	return (PartialOrder&)po;
 }
 
-PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &other) {
+PartialOrder& PartialOrderWrapper::meet(const PartialOrder &curPO, const PartialOrder &other) {
 	// fprintf(stderr, "taking meet of %s and %s\n",curPO.toString().c_str(), other.toString().c_str());
-	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
-	auto searchInCached = cachedMeet.find(poPair);
-	if (searchInCached != cachedMeet.end()) {
-		return searchInCached->second;
-	}
+	// const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
+	// auto searchInCached = cachedMeet.find(poPair);
+	// if (searchInCached != cachedMeet.end()) {
+	// 	return searchInCached->second;
+	// }
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
 	for (auto curIt=curPO.begin(); curIt!=curPO.end(); curIt++) {
 		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
@@ -611,28 +628,28 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 	// add to the set of all POs
 	// fprintf(stderr, "after join: %s\n", tmpPO->toString().c_str());
 	bool isAlreadyExist;
-	auto po = addToSet(tmpPO, isAlreadyExist);
+	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
 	if (isAlreadyExist) {
 		delete tmpPO;
 	}
 	// fprintf(stderr, "meet is: %s\n",po.toString().c_str());
-	cachedMeet[poPair] = &po;
-	return po;
+	// cachedMeet[poPair] = &po;
+	return (PartialOrder&)po;
 }
 
-PartialOrder& PartialOrderWrapper::remove(PartialOrder &curPO, InstNum &inst) {
-	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
-    tmpPO->copy(curPO);
-    if (tmpPO->isDeletableInst(inst) || Precision==P0) 
-		tmpPO->remove(inst);
-    // fprintf(stderr, "after remove: %s\n", tmpPO->toString().c_str());
-    bool isAlreadyExist;
-	auto po = addToSet(tmpPO, isAlreadyExist);
-    if (isAlreadyExist) {
-		delete tmpPO;
-	}
-	return po;
-}
+// PartialOrder& PartialOrderWrapper::remove(const PartialOrder &curPO, InstNum &inst) {
+// 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
+//     tmpPO->copy(curPO);
+//     if (tmpPO->isDeletableInst(inst) || Precision==P0) 
+// 		tmpPO->remove(inst);
+//     // fprintf(stderr, "after remove: %s\n", tmpPO->toString().c_str());
+//     bool isAlreadyExist;
+// 	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
+//     if (isAlreadyExist) {
+// 		delete tmpPO;
+// 	}
+// 	return (PartialOrder&) po;
+// }
 
 bool PartialOrderWrapper::hasInstance (PartialOrder &po) {
 	auto searchPO = allPO.find(&po);
@@ -645,7 +662,7 @@ bool PartialOrderWrapper::hasInstance (PartialOrder &po) {
 }
 
 void PartialOrderWrapper::printAllPO() {
-	fprintf(stderr, "AllPO:\n");
+	fprintf(stderr, "AllPO:%u\n",allPO.size());
 	int i=0;
 	for (auto it: allPO) {
 		fprintf(stderr, "%d: %s\n",i , it->toString().c_str());

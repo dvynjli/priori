@@ -166,14 +166,14 @@ public:
 
 class POMO {
 public:
-    unordered_map <string, PartialOrder> pomo;
-    unordered_map <string, PartialOrder>::const_iterator begin() const {
+    unordered_map <string, const PartialOrder&> pomo;
+    unordered_map <string, const PartialOrder&>::const_iterator begin() const {
         return pomo.begin();
     }
-	unordered_map <string, PartialOrder>::const_iterator end() const {
+	unordered_map <string, const PartialOrder&>::const_iterator end() const {
         return pomo.end();
     }
-    unordered_map <string, PartialOrder>::const_iterator find(string var) const {
+    unordered_map <string, const PartialOrder&>::const_iterator find(string var) const {
         return pomo.find(var);
     }
     bool empty() const {
@@ -241,22 +241,23 @@ public:
         // fprintf(stderr, "printing done\n");
     }
 
-    void clear() {
-        for (auto it: pomo) {
-            it.second.clear();
-        }
-        pomo.clear();
-    }
+    // void clear() {
+    //     for (auto it: pomo) {
+    //         it.second.clear();
+    //     }
+    //     pomo.clear();
+    // }
 };
 
 namespace std{
 template<>
 struct hash<POMO> {
 	size_t operator() (const POMO &pomo) const {
+		// return hash<bool>()(true);
 		// return (hash<unsigned short>()(in.getTid()) ^ 
 		auto it = pomo.begin();
 		if (it == pomo.end()) {
-            PartialOrder po = PartialOrderWrapper::getEmptyPartialOrder(true);
+            PartialOrder& po = PartialOrderWrapper::getEmptyPartialOrder(true);
 			return hash<PartialOrder*>()(&po);
             // delete po;
         }
@@ -308,7 +309,7 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     unordered_map<POMO, ApDomain>::iterator begin();
 	unordered_map<POMO, ApDomain>::iterator end();
 
-	bool isFeasibleLocks (PartialOrder &curPartialOrder,
+	bool isFeasibleLocks (const PartialOrder &curPartialOrder,
                 const PartialOrder &interfPartialOrder);
 
     // void getVarOption (map<string, options> *varoptions, string varName,PartialOrderWrapper curPartialOrder,

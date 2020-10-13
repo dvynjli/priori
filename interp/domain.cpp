@@ -618,12 +618,13 @@ void EnvironmentPOMO::init(vector<string> &globalVars,
 void EnvironmentPOMO::initPOMO(vector<string> &globalVars, unordered_set<string> &locks, POMO &pomo){
     // fprintf(stderr, "decl pomo\n");
     // POMO pomo;
-    PartialOrder po = PartialOrderWrapper::getEmptyPartialOrder(true);
+    PartialOrder& po = PartialOrderWrapper::getEmptyPartialOrder(true);
     // fprintf(stderr, "assigning empty to pomo\n");
     for (auto it=globalVars.begin(); it!=globalVars.end(); ++it) {
         pomo.emplace((*it), po);
     }
-    PartialOrder polocks = PartialOrderWrapper::getEmptyPartialOrder(false);
+	// fprintf(stderr, "initing locks\n");
+    PartialOrder& polocks = PartialOrderWrapper::getEmptyPartialOrder(false);
     for (auto it=locks.begin(); it!=locks.end(); ++it) {
         pomo.emplace((*it), polocks);
     }
@@ -722,7 +723,7 @@ void EnvironmentPOMO::performReleaseLock(string &lockVar, InstNum unlockInst) {
         // last in PO for lockVar should be a lock instruction
         assert(lastInPO.size()==1 && "Last of PO for lockVar has to be a single inst");
 
-        PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, unlockInst);
+        PartialOrder& tmpPO = PartialOrderWrapper::append(searchLockVar->second, unlockInst);
         tmpPomo.emplace(lockVar, tmpPO);
         newEnv[tmpPomo] = it->second;
     }
@@ -741,7 +742,7 @@ void EnvironmentPOMO::performAcquireLock(string &lockVar, InstNum lockInst) {
 
         // fprintf(stderr, "calling toString\n");
         // fprintf(stderr, "PO before append: %s\n", searchLockVar->second.toString().c_str());
-        PartialOrder tmpPO = PartialOrderWrapper::append(searchLockVar->second, lockInst);
+        PartialOrder& tmpPO = PartialOrderWrapper::append(searchLockVar->second, lockInst);
         // fprintf(stderr, "PO after append: %s\n", tmpPO.toString().c_str());
 
         tmpPomo.emplace(lockVar, tmpPO);
@@ -763,7 +764,10 @@ void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string &destVarName) {
         // }
         auto searchDestVar = tmpPomo.find(destVarName);
         assert(searchDestVar != tmpPomo.end() && "variable does not exists in envrionment POMO");
-        PartialOrder tmpPO = PartialOrderWrapper::append(searchDestVar->second, storeInst);
+        PartialOrder& tmpPO = PartialOrderWrapper::append(searchDestVar->second, storeInst);
+		// fprintf(stderr, "PO after append from store inst:%p\n", &tmpPO);
+		// fprintf(stderr, "****%s****\n", tmpPO.toString().c_str());
+		// fprintf(stderr, "done\n");
         tmpPomo.emplace(searchDestVar->first, tmpPO);
         newEnv[tmpPomo] = it.second;
         // fprintf(stderr, "aftre emplace call in performStoreOp:\n");
@@ -837,7 +841,7 @@ void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
                     // join the two partial orders
                     // tmpPO.copy(varItr.second);
                     // fprintf (stderr, "Joining:%s and %s\n", varItr.second.toString().c_str(), searchOtherPomo->second.toString().c_str());
-                    PartialOrder tmpPO = PartialOrderWrapper::join(varItr.second, searchOtherPomo->second);
+                    PartialOrder& tmpPO = PartialOrderWrapper::join(varItr.second, searchOtherPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     // check what to do for each variable
                     getVarOption(&varoptions, varItr.first, tmpPO, searchOtherPomo->second);
@@ -989,7 +993,7 @@ void EnvironmentPOMO::applyInterference(
                     // join the two partial orders
                     // tmpPO.copy(varIt.second);
                     // fprintf (stderr, "Joining:%s and %s\n", varIt.second.toString().c_str(), searchInterfPomo->second.toString().c_str());
-                    PartialOrder tmpPO = PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
+                    PartialOrder& tmpPO = PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO.toString().c_str());
                     
                     // for interfVar, add the store intruction in the end
@@ -1172,7 +1176,7 @@ bool EnvironmentPOMO::isUnreachable() {
     return isUnreach;
 }
 
-bool EnvironmentPOMO::isFeasibleLocks(PartialOrder &curPartialOrder, 
+bool EnvironmentPOMO::isFeasibleLocks(const PartialOrder &curPartialOrder, 
 	const PartialOrder &interfPartialOrder
 ) {
 	// fprintf(stderr, "In isFeasibleLocks. curPartialOrder: %s\n", curPartialOrder.toString().c_str());
@@ -1253,7 +1257,7 @@ void EnvironmentPOMO::joinPOMO (const POMO &pomo1, const POMO &pomo2, POMO &join
             exit(0);
         }
         // join the two partial orders
-        PartialOrder tmpPO = PartialOrderWrapper::join(it.second, searchPomo2->second);
+        PartialOrder& tmpPO = PartialOrderWrapper::join(it.second, searchPomo2->second);
         joinedPOMO.emplace(it.first, tmpPO);
     }
 }
@@ -1272,7 +1276,7 @@ void EnvironmentPOMO::meetPOMO (const POMO &pomo1, const POMO &pomo2, POMO &meet
             exit(0);
         }
         // join the two partial orders
-        PartialOrder tmpPO = PartialOrderWrapper::meet(it.second, searchPomo2->second);
+        PartialOrder& tmpPO = PartialOrderWrapper::meet(it.second, searchPomo2->second);
         meetPOMO.emplace(it.first, tmpPO);
     }
 }
