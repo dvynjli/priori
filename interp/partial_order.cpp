@@ -198,43 +198,33 @@ bool PartialOrder::isConsRMWP2(const PartialOrder &other){
 }
 
 bool PartialOrder::isConsRMWP3(const PartialOrder &other){
-	// P3: cur should be less than other
-	// for (auto curFromIt=order.begin(); curFromIt!=order.end(); curFromIt++) {
-	// 	if (!isDeletableInst(curFromIt->first)) {	// need to check only for RMWs
-	// 		auto searchFromInstOther = other.order.find(curFromIt->first);
-	// 		if (searchFromInstOther == other.order.end()) {
-	// 			// inst not found in other. Not less than
-	// 			return false;
-	// 		}
-	// 		else {
-	// 			for (auto curToIt=curFromIt->second.begin(); curToIt!=curFromIt->second.end(); curToIt++) {
-	// 				auto searchToInst = searchFromInstOther->second.find(*curToIt);
-	// 				if (searchToInst == searchFromInstOther->second.end()) {
-	// 					return false;
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-	unordered_set<InstNum> otherLasts;
-	other.getLasts(otherLasts);
+	// unordered_set<InstNum> otherLasts;
+	// other.getLasts(otherLasts);
 	// fprintf(stderr, "checking cons P3\n");
 	for (auto otherFromIt=other.order.begin(); otherFromIt!=other.order.end(); otherFromIt++) {
 		if (!isDeletableInst(otherFromIt->first)) {
 			// fprintf(stderr, "from: %s -->", otherFromIt->first.toString().c_str());
 			auto searchFromCur = order.find(otherFromIt->first);
-			if (searchFromCur == order.end() && otherLasts.find(otherFromIt->first)==otherLasts.end() ) {
-				// fprintf(stderr, "from not found in cur and not last\n");
-				// inst from other not found in cur and not last in other
-				return false;
-			}
-			for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
-				// fprintf(stderr, "--> %s\n", otherToIt->toString().c_str());
-				auto searchToCur = searchFromCur->second.find(*otherToIt);
-				if (searchToCur==searchFromCur->second.end() && otherLasts.find(*otherToIt)==otherLasts.end()) {
-					// fprintf(stderr, "To not found in cur\n");
-					// ordering from other not found in cur and not last in other
-					return false;
+			// if (searchFromCur == order.end() && otherLasts.find(otherFromIt->first)==otherLasts.end() ) {
+			// 	// fprintf(stderr, "from not found in cur and not last\n");
+			// 	// inst from other not found in cur and not last in other
+			// 	return false;
+			// }
+			// for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
+			// 	// fprintf(stderr, "--> %s\n", otherToIt->toString().c_str());
+			// 	auto searchToCur = searchFromCur->second.find(*otherToIt);
+			// 	if (searchToCur==searchFromCur->second.end() && otherLasts.find(*otherToIt)==otherLasts.end()) {
+			// 		// fprintf(stderr, "To not found in cur\n");
+			// 		// ordering from other not found in cur and not last in other
+			// 		return false;
+			// 	}
+			// }
+			if (searchFromCur == order.end()) {
+				// if from inst of interf not found in cur
+				// no inst ordered after it in interf should be in cur
+				for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
+					auto searchToCur = order.find(*otherToIt);
+					if (searchToCur != order.end()) return false;
 				}
 			}
 		}
@@ -476,6 +466,9 @@ unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::end
 //////////////////////////////////////////
 
 unordered_set<PartialOrder*> PartialOrderWrapper::allPO;
+unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> PartialOrderWrapper::cachedJoin;
+unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> PartialOrderWrapper::cachedMeet;
+unordered_map<pair<const PartialOrder*, const InstNum*>, PartialOrder*> PartialOrderWrapper::cachedAppend;
 
 const PartialOrder& PartialOrderWrapper::addToSet(PartialOrder *po, bool &isAlreadyExist) {
 	// auto searchPO = allPO.find(*po);
@@ -502,6 +495,11 @@ PartialOrder PartialOrderWrapper::getEmptyPartialOrder(bool delOlder) {
 }
 
 PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
+	const pair<const PartialOrder*, const InstNum*> poInstNumPair = make_pair(&curPO, &inst);
+	auto searchInCached = cachedAppend.find(poInstNumPair);
+	if (searchInCached != cachedAppend.end()) {
+		return searchInCached->second;
+	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->append(inst);
@@ -511,6 +509,7 @@ PartialOrder PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &ins
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
+	cachedAppend[poInstNumPair] = &po;
 	return po;
 }
 
@@ -528,6 +527,11 @@ PartialOrder PartialOrderWrapper::addOrder(PartialOrder &curPO, InstNum &from, I
 }
 
 PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &other) {
+	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
+	auto searchInCached = cachedJoin.find(poPair);
+	if (searchInCached != cachedJoin.end()) {
+		return searchInCached->second;
+	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->join(other);
@@ -537,11 +541,17 @@ PartialOrder PartialOrderWrapper::join(PartialOrder &curPO, const PartialOrder &
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
+	cachedJoin[poPair] = &po;
 	return po;
 }
 
 PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &other) {
 	// fprintf(stderr, "taking meet of %s and %s\n",curPO.toString().c_str(), other.toString().c_str());
+	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
+	auto searchInCached = cachedMeet.find(poPair);
+	if (searchInCached != cachedMeet.end()) {
+		return searchInCached->second;
+	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
 	for (auto curIt=curPO.begin(); curIt!=curPO.end(); curIt++) {
 		for (auto otherIt=other.begin(); otherIt!=other.end(); otherIt++) {
@@ -606,6 +616,7 @@ PartialOrder PartialOrderWrapper::meet(PartialOrder &curPO, const PartialOrder &
 		delete tmpPO;
 	}
 	// fprintf(stderr, "meet is: %s\n",po.toString().c_str());
+	cachedMeet[poPair] = &po;
 	return po;
 }
 

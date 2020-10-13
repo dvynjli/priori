@@ -115,7 +115,29 @@ struct hash<PartialOrder*> {
 };
 }
 
+namespace std{
+template<> 
+struct hash<pair<const PartialOrder*, const PartialOrder*>> {
+	size_t operator () (pair<const PartialOrder*, const PartialOrder*> poPair) const {
+		string poref = "" + to_string((long int)poPair.first) + to_string((long int)poPair.second);
+		// fprintf(stderr, "poref: %s for pointers %ld and %ld", poref.c_str(), poPair.first, poPair.second);
+		return hash<string>()(poref);
+	}
+};
+template<>
+struct hash<pair<const PartialOrder*, const InstNum*>> {
+	size_t operator () (pair<const PartialOrder*, const InstNum*> poInstNumPair) const {
+		string str = "" + to_string((long int)poInstNumPair.first) + poInstNumPair.second->toString();
+		return hash<string>() (str);
+	}
+};
+}
+
 class PartialOrderWrapper {	
+	static unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> cachedJoin;
+	static unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> cachedMeet;
+	static unordered_map<pair<const PartialOrder*, const InstNum*>, PartialOrder*> cachedAppend;
+
 public:
 	static unordered_set<PartialOrder*> allPO;
 	static const PartialOrder& addToSet(PartialOrder *po, bool &isAlreadyExist);
