@@ -99,43 +99,44 @@ public:
 	string toString() const;
 };
 
+
+
 namespace std{
 template<>
 struct hash<PartialOrder*> {
 	size_t operator() (const PartialOrder *po) {
-		size_t curhash = hash<bool>{}(po->getDeleteOlder());
-		// auto it = po->begin();
-		// if (it == po->end())
-		// 	return hash<InstNum>()(InstNum(0,0));
-		// size_t curhash = hash<InstNum>()(it->first);
-		// it++;
-		for (auto it=po->begin(); it!=po->end(); it++) {
-			curhash = curhash ^ hash<InstNum>()(it->first);
-		}
-		// fprintf(stderr, "returning hash %lu\n",curhash);
-		return curhash;
+		return hash<string>() (po->toString());
+		// size_t curhash = hash<bool>{}(po->getDeleteOlder());
+		// // auto it = po->begin();
+		// // if (it == po->end())
+		// // 	return hash<InstNum>()(InstNum(0,0));
+		// // size_t curhash = hash<InstNum>()(it->first);
+		// // it++;
+		// for (auto it=po->begin(); it!=po->end(); it++) {
+		// 	curhash = curhash ^ hash<InstNum>()(it->first);
+		// }
+		// // fprintf(stderr, "returning hash %lu\n",curhash);
+		// return curhash;
 	}
 };
 }
 
-// namespace std{
-// template<>
 struct hashPOPointer {
 	size_t operator() (const PartialOrder *po) const {
-		size_t curhash = hash<bool>{}(po->getDeleteOlder());
-		// auto it = po->begin();
-		// if (it == po->end())
-		// 	return hash<InstNum>()(InstNum(0,0));
-		// size_t curhash = hash<InstNum>()(it->first);
-		// it++;
-		for (auto it=po->begin(); it!=po->end(); it++) {
-			curhash = curhash ^ hash<InstNum>()(it->first);
-		}
-		// fprintf(stderr, "returning hash %lu\n",curhash);
-		return curhash;
+		return hash<string>() (po->toString());
+		// size_t curhash = hash<bool>{}(po->getDeleteOlder());
+		// // auto it = po->begin();
+		// // if (it == po->end())
+		// // 	return hash<InstNum>()(InstNum(0,0));
+		// // size_t curhash = hash<InstNum>()(it->first);
+		// // it++;
+		// for (auto it=po->begin(); it!=po->end(); it++) {
+		// 	curhash = curhash ^ hash<InstNum>()(it->first);
+		// }
+		// // fprintf(stderr, "returning hash %lu\n",curhash);
+		// return curhash;
 	}
 };
-// }
 
 struct comparePOPointer {
 	bool operator() (const PartialOrder* p1, const PartialOrder* p2) const {
@@ -143,29 +144,82 @@ struct comparePOPointer {
 	}
 };
 
-namespace std{
-template<> 
-struct hash<pair<const PartialOrder*, const PartialOrder*>> {
-	size_t operator () (pair<const PartialOrder*, const PartialOrder*> poPair) const {
+struct hashPOPair {
+	size_t operator() (pair<const PartialOrder*, const PartialOrder*> poPair) const {
 		string poref = "" + to_string((long int)poPair.first) + to_string((long int)poPair.second);
-		// fprintf(stderr, "poref: %s for pointers %ld and %ld", poref.c_str(), poPair.first, poPair.second);
 		return hash<string>()(poref);
 	}
 };
-template<>
-struct hash<pair<const PartialOrder*, const InstNum*>> {
-	size_t operator () (pair<const PartialOrder*, const InstNum*> poInstNumPair) const {
-		string str = "" + to_string((long int)poInstNumPair.first) + poInstNumPair.second->toString();
-		return hash<string>() (str);
+
+struct comparePOPair {
+	bool operator() (
+		pair<const PartialOrder*, const PartialOrder*> pair1,
+		pair<const PartialOrder*, const PartialOrder*> pair2
+	) const {
+		return (*(pair1.first)==*(pair2.first) && 
+				*(pair1.second)==*(pair2.second));
 	}
 };
-}
+
+struct hashPOInstNumPair {
+	size_t operator() (
+		pair<const PartialOrder*, const InstNum*> poInstNumPair
+	) const {
+ 		string str = "" + 
+			to_string((long int)poInstNumPair.first) + 
+			poInstNumPair.second->toString();
+ 		return hash<string>() (str);
+	}
+};
+
+struct comparePOInstNumPair {
+	bool operator() (
+		pair<const PartialOrder*, const InstNum*> pair1, 
+		pair<const PartialOrder*, const InstNum*> pair2
+	) const {
+		return (*(pair1.first)==*(pair2.first) &&
+				pair1.second==pair2.second);
+	}
+};
+
+// namespace std{
+// template<> 
+// struct hash<pair<const PartialOrder*, const PartialOrder*>> {
+// 	size_t operator () (pair<const PartialOrder*, const PartialOrder*> poPair) const {
+// 		string poref = "" + to_string((long int)poPair.first) + to_string((long int)poPair.second);
+// 		// fprintf(stderr, "poref: %s for pointers %ld and %ld", poref.c_str(), poPair.first, poPair.second);
+// 		return hash<string>()(poref);
+// 	}
+// };
+
+// template<>
+// struct hash<pair<const PartialOrder*, const InstNum*>> {
+// 	size_t operator () (pair<const PartialOrder*, const InstNum*> poInstNumPair) const {
+// 		string str = "" + to_string((long int)poInstNumPair.first) + poInstNumPair.second->toString();
+// 		return hash<string>() (str);
+// 	}
+// };
+
 
 class PartialOrderWrapper {	
-	// static unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> cachedJoin;
-	// static unordered_map<pair<const PartialOrder*, const PartialOrder*>, PartialOrder*> cachedMeet;
-	// static unordered_map<pair<const PartialOrder*, const InstNum*>, PartialOrder*> cachedAppend;
-	// 
+	static unordered_map<
+		pair<const PartialOrder*, const PartialOrder*>, 
+		const PartialOrder*,
+		hashPOPair,
+		comparePOPair> cachedJoin;
+
+	static unordered_map<
+		pair<const PartialOrder*, const PartialOrder*>, 
+		const PartialOrder*,
+		hashPOPair,
+		comparePOPair> cachedMeet;
+
+	static unordered_map<
+		pair<const PartialOrder*, const InstNum*>, 
+		const PartialOrder*,
+		hashPOInstNumPair,
+		comparePOInstNumPair> cachedAppend;
+	
 	// static void printAppendCache () {
 	// 	for (auto it=cachedAppend.begin(); it!=cachedAppend.end(); it++) {
 	// 		fprintf(stderr, "(%p,%p)::::%p\n",it->first.first, it->first.second, it->second);
@@ -174,8 +228,10 @@ class PartialOrderWrapper {
 	// }
 
 public:
-	// static unordered_set<PartialOrder*, std::function<size_t(PartialOrder*)>, std::function<bool(PartialOrder*,PartialOrder*)>> allPO(hashPOPointer, comparePOPointer);
-	static unordered_set<PartialOrder*, hashPOPointer, comparePOPointer> allPO;
+	static unordered_set<
+		PartialOrder*, 
+		hashPOPointer, 
+		comparePOPointer> allPO;
 	static const PartialOrder& addToSet(PartialOrder *po, bool &isAlreadyExist);
 
 	// returns pair <true, ref of PO> if found, <false, null> if not found

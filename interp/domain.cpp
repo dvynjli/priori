@@ -1019,17 +1019,29 @@ void EnvironmentPOMO::applyInterference(
                 if (!tmpDomain.isUnreachable()) {
                 	auto searchPomo = newenvironment.find(newPomo);
                 	if (searchPomo != newenvironment.end()) {
+						// fprintf(stderr, "joined pomo already in new.joining absDomi\n");
                 	    tmpDomain.joinApDomain(searchPomo->second);
+						// fprintf(stderr, "ApDom after join:\n");
+						// tmpDomain.printApDomain();
                 	}
 					newenvironment[newPomo] = tmpDomain;
 					if (!isModified()) setModified();
 			    }
 			}
 			else {
-				newenvironment.insert(curIt); 
+				// newenvironment.insert(curIt); 
                 auto searchPomo = newenvironment.find(curIt.first);
                 if (searchPomo != newenvironment.end()) {
-                	curIt.second.joinApDomain(searchPomo->second);
+					// fprintf(stderr, "no interf applied, PO already found in new\n");
+					// fprintf(stderr, "before join:\n");
+					// curIt.first.printPOMO(); curIt.second.printApDomain(); 
+                	// ApDomain tmpDomain;
+	                // tmpDomain.copyApDomain(curIt.second);
+					searchPomo->second.joinApDomain(curIt.second);
+                	// tmpDomain.joinApDomain(searchPomo->second);
+					// newenvironment[curIt.first] = tmpDomain;
+					// fprintf(stderr, "PO after join\n");
+					// curIt.second.printApDomain();
                	}
                	else {
 					newenvironment.insert(curIt); 
