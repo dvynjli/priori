@@ -25,7 +25,7 @@ void* fun2(void * arg){
 
 int main () {
 	pthread_t t1,t2,t3,t4;
-    // x.store(2,REL);
+    x.store(0,REL);
     // y.store(2,REL);
 	pthread_create(&t1, NULL, fun1, NULL);
 	pthread_create(&t2, NULL, fun2, NULL);
