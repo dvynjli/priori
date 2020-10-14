@@ -105,36 +105,36 @@ namespace std{
 template<>
 struct hash<PartialOrder*> {
 	size_t operator() (const PartialOrder *po) {
-		return hash<string>() (po->toString());
-		// size_t curhash = hash<bool>{}(po->getDeleteOlder());
-		// // auto it = po->begin();
-		// // if (it == po->end())
-		// // 	return hash<InstNum>()(InstNum(0,0));
-		// // size_t curhash = hash<InstNum>()(it->first);
-		// // it++;
-		// for (auto it=po->begin(); it!=po->end(); it++) {
-		// 	curhash = curhash ^ hash<InstNum>()(it->first);
-		// }
-		// // fprintf(stderr, "returning hash %lu\n",curhash);
-		// return curhash;
+		// return hash<string>() (po->toString());
+		size_t curhash = hash<bool>{}(po->getDeleteOlder());
+		// auto it = po->begin();
+		// if (it == po->end())
+		// 	return hash<InstNum>()(InstNum(0,0));
+		// size_t curhash = hash<InstNum>()(it->first);
+		// it++;
+		for (auto it=po->begin(); it!=po->end(); it++) {
+			curhash = curhash ^ hash<InstNum>()(it->first);
+		}
+		// fprintf(stderr, "returning hash %lu\n",curhash);
+		return curhash;
 	}
 };
 }
 
 struct hashPOPointer {
 	size_t operator() (const PartialOrder *po) const {
-		return hash<string>() (po->toString());
-		// size_t curhash = hash<bool>{}(po->getDeleteOlder());
-		// // auto it = po->begin();
-		// // if (it == po->end())
-		// // 	return hash<InstNum>()(InstNum(0,0));
-		// // size_t curhash = hash<InstNum>()(it->first);
-		// // it++;
-		// for (auto it=po->begin(); it!=po->end(); it++) {
-		// 	curhash = curhash ^ hash<InstNum>()(it->first);
-		// }
-		// // fprintf(stderr, "returning hash %lu\n",curhash);
-		// return curhash;
+		// return hash<string>() (po->toString());
+		size_t curhash = hash<bool>{}(po->getDeleteOlder());
+		// auto it = po->begin();
+		// if (it == po->end())
+		// 	return hash<InstNum>()(InstNum(0,0));
+		// size_t curhash = hash<InstNum>()(it->first);
+		// it++;
+		for (auto it=po->begin(); it!=po->end(); it++) {
+			curhash = curhash ^ hash<InstNum>()(it->first);
+		}
+		// fprintf(stderr, "returning hash %lu\n",curhash);
+		return curhash;
 	}
 };
 
@@ -146,8 +146,12 @@ struct comparePOPointer {
 
 struct hashPOPair {
 	size_t operator() (pair<const PartialOrder*, const PartialOrder*> poPair) const {
-		string poref = "" + to_string((long int)poPair.first) + to_string((long int)poPair.second);
-		return hash<string>()(poref);
+		// string poref = "" + to_string((long int)poPair.first) + to_string((long int)poPair.second);
+		// return hash<string>()(poref);
+		size_t mask = 0xFFFFFFFF;
+		size_t tmp = ((uintptr_t) poPair.first) << (sizeof(uintptr_t)*8/2) 
+					| ((uintptr_t) poPair.second & mask);
+		return tmp;
 	}
 };
 
@@ -165,10 +169,14 @@ struct hashPOInstNumPair {
 	size_t operator() (
 		pair<const PartialOrder*, const InstNum*> poInstNumPair
 	) const {
- 		string str = "" + 
-			to_string((long int)poInstNumPair.first) + 
-			poInstNumPair.second->toString();
- 		return hash<string>() (str);
+ 		// string str = "" + 
+		// 	to_string((long int)poInstNumPair.first) + 
+		// 	poInstNumPair.second->toString();
+ 		// return hash<string>() (str);
+		size_t mask = 0xFFFFFFFF;
+		size_t tmp = ((uintptr_t) poInstNumPair.first) << (sizeof(uintptr_t)*8/2) 
+				| (hash<InstNum>()(*poInstNumPair.second) & mask);
+		return tmp;
 	}
 };
 
@@ -178,7 +186,7 @@ struct comparePOInstNumPair {
 		pair<const PartialOrder*, const InstNum*> pair2
 	) const {
 		return (*(pair1.first)==*(pair2.first) &&
-				pair1.second==pair2.second);
+				*(pair1.second)==*(pair2.second));
 	}
 };
 

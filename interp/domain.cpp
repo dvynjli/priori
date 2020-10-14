@@ -723,11 +723,18 @@ void EnvironmentPOMO::performReleaseLock(string &lockVar, InstNum unlockInst) {
         // last in PO for lockVar should be a lock instruction
         assert(lastInPO.size()==1 && "Last of PO for lockVar has to be a single inst");
 
+		// fprintf(stderr, "UNLOCK: PO before append:%s\n",searchLockVar->second.toString().c_str());
         PartialOrder& tmpPO = PartialOrderWrapper::append(searchLockVar->second, unlockInst);
+		// fprintf(stderr, "UNLOCK: PO after append:%s\n", tmpPO.toString().c_str());
         tmpPomo.emplace(lockVar, tmpPO);
         newEnv[tmpPomo] = it->second;
+		// fprintf(stderr, "UNLOCK: POMO after emplace:\n");
+		// tmpPomo.printPOMO();
     }
     environment = newEnv;
+	// fprintf(stderr, "UNLOCK: env after lock:\n");
+	// printEnvironment();
+
 }
 
 void EnvironmentPOMO::performAcquireLock(string &lockVar, InstNum lockInst) {

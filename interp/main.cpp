@@ -92,9 +92,9 @@ class VerifierPass : public ModulePass {
             analyzeProgram(M, feasibleInterfences);
         }
         else  {
-            map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
-            initThreadDetails(M, feasibleInterfences);
-            analyzeProgram(M, feasibleInterfences);
+            // map <Function*, vector< forward_list<const pair<Instruction*, Instruction*>*>>> feasibleInterfences;
+            // initThreadDetails(M, feasibleInterfences);
+            // analyzeProgram(M, feasibleInterfences);
             // countNumFeasibleInterf(feasibleInterfences);
             // printFeasibleInterf(feasibleInterfences);
         }
@@ -729,6 +729,7 @@ class VerifierPass : public ModulePass {
 
         while (!isFixedPointReached ) {
             // programState.clear();
+			// double itr_start_time = omp_get_wtime();
             programState = programStateCurItr;
             programStateCurItr.clear();
 
@@ -738,7 +739,7 @@ class VerifierPass : public ModulePass {
                 // printProgramState();
                 // errs() << "-------------------------------------------------\n";
             }
-            // errs() << "Iteration: " << iterations << "\n";
+            // errs() << "Iteration: " << iterations << "\n"; //**
             // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
             #pragma omp parallel num_threads(threads.size()) if (maxFeasibleInterfs > 200)
             #pragma omp single
@@ -802,6 +803,7 @@ class VerifierPass : public ModulePass {
             // TODO: fixed point is reached when no new interf for any func found and the init env has not changed
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
+			// fprintf(stderr, "time: %f\n", omp_get_wtime() - itr_start_time);
         }
         if (!noPrint) {
             errs() << "_________________________________________________\n";
@@ -996,7 +998,7 @@ class VerifierPass : public ModulePass {
                 // if (iterations >= 4) curEnv.printEnvironment();
             }
         	else if (isLockInst(&(*instItr))) {
-				// errs() << "Unlock: "; printValue(callInst);
+				// errs() << "Lock: "; printValue(callInst);
 				// errs() << "Before call:\n"; curEnv.printEnvironment();
 				if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(instItr)) {
                 	curEnv = checkAcquireLock(call, curEnv);
@@ -1005,7 +1007,7 @@ class VerifierPass : public ModulePass {
 				// errs() << "After call:\n"; curEnv.printEnvironment();
 				// return curEnv;
 			}
-            else checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
+            else curEnv = checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
 
 			// errs() << "After call:\n"; curEnv.printEnvironment();
             curFuncEnv[currentInst]= curEnv;
@@ -1811,8 +1813,10 @@ class VerifierPass : public ModulePass {
             Environment tmpEnv = curEnv;
             for (auto it=lockVarToUnlocks[lockName].begin(); it!=lockVarToUnlocks[lockName].end(); it++) {
 				if ((*it)->getFunction() == callInst->getFunction()) continue;
-            	// errs() << "interf from unlock: ";
-            	// printValue(*it);
+            	if (!noPrint) {
+					errs() << "interf from unlock: ";
+            		printValue(*it);
+				}
             	auto searchInterfFunc = programState.find((*it)->getFunction());
             	if (searchInterfFunc != programState.end()) {
             	    // errs() << "Interf env found\n";
@@ -3109,7 +3113,7 @@ class VerifierPass : public ModulePass {
         errs() << "\n\n-----------Printing inst to inst num-----------\n";
         for (auto it: instToNum) {
             // fprintf(stderr, "%s: ", it.second.toString());
-            errs() << it.second.toString() << ": ";
+            errs() << it.second.toString() << ": " << it.first << ": ";
             printValue(it.first);
             // errs() << "\t" << it.second.toString() << "\n";
         }

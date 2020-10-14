@@ -95,7 +95,7 @@ namespace std{
 template<>
 struct hash<InstNum> {
 	size_t operator() (const InstNum &in) const {
-		return ((hash<unsigned short>()(in.getTid()) << 16) || 
+		return ((hash<unsigned short>()(in.getTid()) << 16) | 
 			hash<unsigned short>()(in.getInstid()));
 	}
 };
