@@ -590,6 +590,11 @@ void ApDomain::joinVar(ApDomain &fromApDomain, ap_var_t &apVar) {
 }
 
 
+struct ApDomain::hashApDom{
+	size_t operator() (ApDomain apdom) const {
+		return ap_abstract1_hash(apdom.man, &apdom.absValue);
+	}
+};
 
 
 //////////////////////////////////////
@@ -651,64 +656,164 @@ void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO &copyFrom){
     // printEnvironment();
 }
 
+void EnvironmentPOMO::mergerOnSameValue() {
+	// fprintf(stderr, "mergerOnSameValue val called. Env before:\n");
+	// printEnvironment();
+	unordered_map<ApDomain, 
+		vector<POMO>, 
+		ApDomain::hashApDom> revEnv;
+	unordered_map<POMO, ApDomain> newEnv;
+
+	for (auto it=environment.begin(); it!=environment.end(); it++) {
+		revEnv[it->second].push_back(it->first);
+	}
+	// fprintf(stderr, "revenv created\n");
+
+	for (auto it=revEnv.begin(); it!=revEnv.end(); it++) {
+		auto itPOMO=it->second.begin();
+		POMO &meetedPOMO = *itPOMO; itPOMO++;
+		// delete itPOMO from env
+		// environment.erase(*itPOMO);
+		for (; itPOMO!=it->second.end(); itPOMO++) {
+			POMO tmpPomo;
+			// fprintf(stderr, "joining pomo\n");
+			meetPOMO(meetedPOMO, *itPOMO, tmpPomo);
+			// fprintf(stderr, "pomo joined\n");
+			meetedPOMO = tmpPomo;
+			// delete itPOMO from env
+			// environment.erase(*itPOMO);
+		}
+		// add the joined POMO back to env
+		auto searchJoinedPOMO = environment.find(meetedPOMO);
+		if (searchJoinedPOMO!=environment.end()) {
+			// joinedPOMO already exist. combine ApDom
+			ApDomain tmpApDomain = it->first;
+			tmpApDomain.joinApDomain(searchJoinedPOMO->second);
+			// insert in env
+			newEnv.insert(make_pair(meetedPOMO,tmpApDomain));
+		}
+		else {
+			newEnv.insert(make_pair(meetedPOMO, it->first));
+		}
+	}
+	environment = newEnv;
+	
+	// fprintf(stderr, "mergerOnSameValue val called. Env before:\n");
+	// printEnvironment();
+    // unordered_map <POMO, ApDomain> newEnv;
+	// 
+	// for (auto it1=environment.begin(); it1!=environment.end(); it1++) {
+	// 	// fprintf(stderr, "checking for dom:\n");
+	// 	// it1->second.printApDomain();
+	// 	// fprintf(stderr, "POMO:\n");
+	// 	// it1->first.printPOMO();
+	// 	POMO &tmpPomo = (POMO&) it1->first;
+	// 	ApDomain tmpDomain;
+	// 	tmpDomain.copyApDomain(it1->second);
+	// 	bool updated = false;
+	// 	for (auto it2=environment.begin(); it2!=environment.end(); it2++) {
+	// 		// fprintf(stderr, "It2:\n");
+	// 		// it2->first.printPOMO();
+	// 		// it2->second.printApDomain();
+	// 		if (it1 == it2) {
+	// 			// it2++; 
+	// 			continue;
+	// 		}
+	// 		if (it1->second == it2->second) {
+	// 			fprintf(stderr,"equal apdom:\n");
+	// 			it1->second.printApDomain();
+	// 			it2->second.printApDomain();
+	// 			fprintf(stderr, "POs are:\n");
+	// 			it1->first.printPOMO();
+	// 			it2->first.printPOMO();
+	// 			POMO joinedPOMO;
+	// 			joinPOMO(tmpPomo, it2->first, joinedPOMO);
+	// 			// environment[joinedPOMO] = it1->second;
+	// 			// it1 = environment.erase(it1);
+	// 			// it2 = environment.erase(it2);
+	// 			// updated = true;
+	// 			// break;
+	// 		}
+	// 		// else {it2++;}
+	// 	}
+	// 	// if (updated) continue;
+	// 	// else it1++;
+	// 	newEnv[tmpPomo] = tmpDomain;
+	// }
+	// environment = newEnv;
+	// fprintf(stderr, "at exit:\n");
+	// printEnvironment();
+	// fprintf(stderr, "exiting mergerOnSameValue()\n");
+}
+
 void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, string strOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performUnaryOp(oper, strTo, strOp);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performUnaryOp(operation oper, string strTo, int intOp) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performUnaryOp(oper, strTo, intOp);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, string &strOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, intOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, int &intOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, strOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, int &intOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, intOp1, intOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, string &strOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, intOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performCmpOp(operation oper, int &intOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, strOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performCmpOp(operation oper, int &intOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, intOp1, intOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, string &strOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
         it->second.performCmpOp(oper, strOp1, strOp2);
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performReleaseLock(string &lockVar, InstNum unlockInst) {
@@ -734,6 +839,7 @@ void EnvironmentPOMO::performReleaseLock(string &lockVar, InstNum unlockInst) {
     environment = newEnv;
 	// fprintf(stderr, "UNLOCK: env after lock:\n");
 	// printEnvironment();
+	if (mergeOnVal) mergerOnSameValue();
 
 }
 
@@ -756,6 +862,7 @@ void EnvironmentPOMO::performAcquireLock(string &lockVar, InstNum lockInst) {
         newEnv[tmpPomo] = it->second;
     }
     environment = newEnv;
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string &destVarName) {
@@ -781,6 +888,7 @@ void EnvironmentPOMO::performStoreOp(InstNum &storeInst, string &destVarName) {
         // tmpPomo.printPOMO();
     }
     environment = newEnv;
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::joinOnVars(EnvironmentPOMO &other, vector<string> &vars) {
@@ -927,6 +1035,7 @@ void EnvironmentPOMO::copyOnVars(EnvironmentPOMO &other, vector<string> &vars) {
     }
     environment = newenv;
     if (other.isModified() && !isModified()) setModified();
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::applyInterference(
@@ -1059,6 +1168,7 @@ void EnvironmentPOMO::applyInterference(
     environment = newenvironment;
     // fprintf(stderr, "env after apply interf\n");
     // printEnvironment();
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
@@ -1077,6 +1187,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
         else if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
         if (other.isModified() && !isModified()) setModified();
     }
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 // Used for logical intructions
@@ -1157,6 +1268,7 @@ void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
     if (other.isModified() && !isModified()) setModified();
     // fprintf(stderr, "Env after meet:\n");
     // printEnvironment();
+	if (mergeOnVal) mergerOnSameValue();
 }
 
 void EnvironmentPOMO::setVar(string &strVar) {

@@ -7,6 +7,9 @@ import os
 domain = 'interval' 	# options are interval, octagon
 num_tests = 33
 interfcomb = False
+mergeOnVal = True
+precision = 'P3' 
+
 # if the test should fail assertion, value of test_result is false]
 test_result = 	[False, True, 	False, 	True, 	True, 
 				True, 	False, 	True, 	True, 	True, 
@@ -23,9 +26,13 @@ num_missed_asserts = 0
 
 for test_id in range(1, num_tests+1):
 	command = ['/usr/bin/opt', '-load', 'build/interp/VerifierPass.so', '-verifier', '-'+domain, 
-				'-no-print', '-stop-on-fail', '-eager-pruning', 'tests/litmus/test' + str(test_id) + '.ll']
+				'-no-print', '-stop-on-fail', '-eager-pruning',
+                                '-'+precision,
+                                'tests/litmus/test' + str(test_id) + '.ll']
 	if not interfcomb:
 		command.append('-no-interf-comb')
+	if mergeOnVal:
+		command.append('-merge-on-val')
 	process = Popen(command, stdout=PIPE, stderr=PIPE)
 	out, err = process.communicate()
 	# print(err)

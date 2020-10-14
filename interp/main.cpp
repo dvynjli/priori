@@ -26,6 +26,7 @@ cl::opt<bool> noPrint   ("no-print", cl::desc("Do not print debug output"));
 cl::opt<bool> stopOnFail("stop-on-fail", cl::desc("Stop the analysis as soon as assertion is failed"));
 cl::opt<bool> eagerPruning("eager-pruning", cl::desc("Eagerly prune infeasible interference combinations"));
 cl::opt<bool> noInterfComb   ("no-interf-comb", cl::desc("Use analysis without interference combinations"));
+cl::opt<bool> mergeOnVal ("merge-on-val", cl::desc("merge executions when values are same"));
 
 
 

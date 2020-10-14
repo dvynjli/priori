@@ -26,6 +26,7 @@ enum options {UNKNOWN, DONOTHING, MERGE, COPY};
 // typedef unordered_map <string, PartialOrderWrapper> POMO;
 
 extern llvm::cl::opt<DomainTypes> AbsDomType;
+extern llvm::cl::opt<bool> mergeOnVal;
 
 class ApDomain {
     ap_manager_t *man;
@@ -88,6 +89,10 @@ public:
 
     void addVariable(string &varName);
     void printApDomain();
+
+
+	struct hashApDom;
+	// struct compareApDom;
 };
 
 
@@ -319,6 +324,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
                 const string &varName,
                 PartialOrder &curPartialOrder,
                 const PartialOrder &interfPartialOrder);
+
+	void mergerOnSameValue();
 
 public:
 	int size() {return environment.size();}
