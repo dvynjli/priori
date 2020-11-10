@@ -330,8 +330,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 	void mergerOnSameValue();
 
 public:
-	~EnvironmentPOMO() {fprintf(stderr, "destructor of envPOMO called\n");}
-	EnvironmentPOMO() {fprintf(stderr, "constructor of envPOMO called\n");}
+	// ~EnvironmentPOMO() {fprintf(stderr, "destructor of envPOMO called\n");}
+	// EnvironmentPOMO() {fprintf(stderr, "constructor of envPOMO called\n");}
 	int size() {return environment.size();}
     // void changeRelHeadToNull(string var, InstNum inst);
     // void changeRelHeadIfNull(string var, InstNum head);

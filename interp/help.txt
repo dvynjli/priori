@@ -100,7 +100,6 @@ Other functionality that might be added
         can be done at the time of interference feasiblility checking
     
 
-RA testcases: 16, 30, 31, 32, 33, 34, 35
 
 Possible Optimizations:
     LoadStore map

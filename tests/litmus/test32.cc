@@ -8,7 +8,8 @@ void* fun1(void * arg){
 		x.store(1, REL);
     int rx2 = x.load(ACQ);
     int rx3 = x.load(ACQ);
-    assume (rx1 !=1 && (rx2==1 && rx3==1));
+	// assert(rx1!=2 || rx2==1);
+    assume (rx1 !=2 || (rx2==1 && rx3==1));
 	// assume condition might be true
 	// Assertion should fail
 	assert(0);

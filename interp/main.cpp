@@ -767,7 +767,7 @@ class VerifierPass : public ModulePass {
         unordered_map <Function*, unordered_map<Instruction*, Environment*>> programStateCurItr;
         bool isFixedPointReached = false;
 
-        while (!isFixedPointReached && iterations <=4) {
+        while (!isFixedPointReached ) {
             programState.clear();
 			double itr_start_time = omp_get_wtime();
             programState = programStateCurItr;
@@ -823,7 +823,7 @@ class VerifierPass : public ModulePass {
 
                 // join newFuncEnv of all feasibleInterfs and replace old one in state
                 // programStateCurItr.erase(curFunc);
-                programStateCurItr.emplace(curFunc, newFuncEnv);
+                programStateCurItr[curFunc] = newFuncEnv;
             }
             }
             if (iterations == 0) {
@@ -952,6 +952,8 @@ class VerifierPass : public ModulePass {
                     basicBlockQ.push(succBB);
             }
         }
+		// errs () << "Env of Thread " << F->getName() << ":\n";
+		// printInstToEnvMap(curFuncEnv);
 
         return curFuncEnv;
     }
@@ -1050,18 +1052,16 @@ class VerifierPass : public ModulePass {
             else curEnv = checkNonInterfInsts(currentInst, curEnv, branchEnv, curFuncEnv);
 
 			// errs() << "After call:\n"; curEnv.printEnvironment();
-			errs() << "Assigning to map\n";
+			// errs() << "Assigning to map\n";
             curFuncEnv[currentInst]= curEnv;
-			errs() << "Assigned\n";
+			// errs() << "Assigned\n";
 			predEnv = curEnv;
 			if (!noPrint) {predEnv->printEnvironment();}
             // if (!noPrint) errs() << "size: " << predEnv.size() << "\n";
 			// printInstToEnvMap(curFuncEnv);
-            // if (PHINode *phi = dyn_cast<PHINode>(currentInst)) {
-            //     errs() << "Phi Inst: "; printValue(phi);
-            //     curEnv.printEnvironment();
-            // }
         }
+		// errs() << "Env of BB:\n"; printValue(B);
+		// printInstToEnvMap(curFuncEnv);
         
         // return curEnv;
     }
@@ -1140,7 +1140,7 @@ class VerifierPass : public ModulePass {
             //     }
             // }
             // errs() << "Debug: Analyzing phi node: "; printValue(phinode); 
-            return checkPhiNode(phinode, curEnv, branchEnv);
+            return checkPhiNode(phinode, curEnv, branchEnv, curFuncEnv);
         }
         else if (!curEnv->isModified()) {
             curEnv = programState[inst->getFunction()][inst];
@@ -1516,7 +1516,8 @@ class VerifierPass : public ModulePass {
     Environment* checkPhiNode (
         PHINode* phinode,
         Environment *curEnv,
-        map<Instruction*, pair<Environment*, Environment*>> &branchEnv
+        map<Instruction*, pair<Environment*, Environment*>> &branchEnv,
+		const unordered_map<Instruction*, Environment*> &curFuncEnv 
     ) {
         unsigned int numIncoming = phinode->getNumIncomingValues(); 
         // errs() << "Phi Node. #incoming edges: " << numIncoming << "\n";
@@ -1539,11 +1540,11 @@ class VerifierPass : public ModulePass {
                     }
                 }
                 else {
-                    phiEnv.copyEnvironment(*programState[phinode->getFunction()][branch]);
+                    phiEnv.copyEnvironment(*curFuncEnv.at(branch));
                 }
             }
             else {
-                phiEnv.copyEnvironment(*programState[phinode->getFunction()][termInst]);
+                phiEnv.copyEnvironment(*curFuncEnv.at(termInst));
             }
             // errs() << "Value of ith BB: "; printValue(phinode->getIncomingValue(i));
             // errs() << "Dest Var: " << destVarName << "\n";
@@ -1842,21 +1843,21 @@ class VerifierPass : public ModulePass {
 			// search env of calledFunc in programState of last itr
 			auto searchFuncEnv = programState.find(calledFunc);
 			if (searchFuncEnv == programState.end()) {
-				errs() << "Function not found in last iter Env. Nothing to join\n";
+				// errs() << "Function not found in last iter Env. Nothing to join\n";
 				return curEnv;
 			}
             for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
                 for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
                     if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
-                        errs() << "pthread join with (mod): ";
-                        printValue(retInst);
+                        // errs() << "pthread join with (mod): ";
+                        // printValue(retInst);
 						// search env of retInst in programState of last itr
 						auto searchRetEnv = searchFuncEnv->second.find(retInst);
 						if (searchRetEnv == searchFuncEnv->second.end()) {
-							errs() << "Ret inst env not found in last itr env. Nothing to join\n";
+							// errs() << "Ret inst env not found in last itr env. Nothing to join\n";
 							break;
 						}
-						searchRetEnv->second->printEnvironment();
+						// searchRetEnv->second->printEnvironment();
                         curEnv->joinOnVars(*searchRetEnv->second, globalVars);
 						break;
                     }
@@ -1868,14 +1869,14 @@ class VerifierPass : public ModulePass {
             for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
                 for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
                     if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
-                        errs() << "pthread join with (not mod): ";
-                        printValue(retInst);
-                        programState[calledFunc][retInst]->printEnvironment();
+                        // errs() << "pthread join with (not mod): ";
+                        // printValue(retInst);
+                        // programState[calledFunc][retInst]->printEnvironment();
                         if (programState[calledFunc][retInst]->isModified()) {
-                            errs() << "OlderEnv:\n"; olderEnv->printEnvironment();
+                            // errs() << "OlderEnv:\n"; olderEnv->printEnvironment();
                             olderEnv->joinOnVars(*programState[calledFunc][retInst], globalVars);
-                            errs() << "After join:\n";
-                            olderEnv->printEnvironment();
+                            // errs() << "After join:\n";
+                            // olderEnv->printEnvironment();
                         }
                     }
                 }
@@ -2227,7 +2228,9 @@ class VerifierPass : public ModulePass {
                 if (searchInterfEnv != searchInterfFunc->second.end()) {
                     // apply the interference
                     // errs() << "Before Interf:\n";
-                    // curEnv.printEnvironment();
+                    // curEnv->printEnvironment();
+					// errs() << "Interf Env:\n";
+					// searchInterfEnv->second->printEnvironment();
 
                     if (searchInterfEnv->second->isModified() || curEnv->isModified())
                         tmpEnv.applyInterference(varName, *searchInterfEnv->second, 
@@ -2849,10 +2852,10 @@ class VerifierPass : public ModulePass {
             for (auto it=it1->second.begin(); it!=it1->second.end(); ++it) {
                 if (CallInst *callInst = dyn_cast<CallInst>(it->first)) {
                     if (callInst->getCalledFunction()->getName() == "__assert_fail") {
-                        errs() << "*** found assert" << "\n";
-                        printValue(callInst);
+                        // errs() << "*** found assert" << "\n";
+                        // printValue(callInst);
                         Environment *curEnv = it->second;
-						curEnv->printEnvironment();
+						// curEnv->printEnvironment();
                         if (!curEnv->isUnreachable()) {
                             errs() << "Assertion failed:\n";
                             printValue(callInst);
@@ -2976,15 +2979,46 @@ class VerifierPass : public ModulePass {
         }
     }
 
+	bool isEqualFuncEnv(
+		unordered_map<Instruction*, Environment*> oldState, 
+		unordered_map<Instruction*, Environment*> newState
+	) {
+		for (auto it=newState.begin(); it!=newState.end(); it++) {
+			// errs() << "inst: "; printValue(it->first);
+			// errs() << "new state:\n";
+			// it->second->printEnvironment();
+			auto searchInstEnv = oldState.find(it->first);
+			if (searchInstEnv == oldState.end()) {
+				return false;
+			}
+			// errs() << "oldState:\n";
+			// searchInstEnv->second->printEnvironment();
+			if (!(*(it->second) == *(searchInstEnv->second))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
     bool isFixedPoint(unordered_map <Function*, unordered_map<Instruction*, Environment*>> newProgramState) {
         // if (iterations == 4) {
-             errs() << "checking fixed point...\n";
-             errs() << "old state:\n"; printProgramState(programState);
-             errs() << "new program state:\n"; printProgramState(newProgramState);    
+        //      errs() << "checking fixed point...\n";
+        //      errs() << "old state:\n"; printProgramState(programState);
+        //      errs() << "new program state:\n"; printProgramState(newProgramState);    
         // }
-        errs() << "Program state size: " << programState.size();
-        errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
-        return (newProgramState == programState);
+        // errs() << "Program state size: " << programState.size();
+        // errs() << "\nnew program state size: " << newProgramState.size()<<"\n";
+		for (auto it=newProgramState.begin(); it!=newProgramState.end(); it++) {
+			auto searchFunEnv = programState.find(it->first);
+			if (searchFunEnv == programState.end()) {
+				return false;
+			}
+			if (!isEqualFuncEnv(it->second, searchFunEnv->second))
+				return false;
+			// errs() << "****Env of thread " << it->first->getName() << " is same**\n";
+		}
+        // return (newProgramState == programState);
+		return true;
     }
 
 	void clearProgramState(unordered_map <Function*, unordered_map<Instruction*, Environment*>> &programState) {

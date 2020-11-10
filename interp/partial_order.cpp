@@ -113,7 +113,7 @@ void PartialOrder::append(const InstNum &newinst) {
 // If this is not possible (i.e. joining will result in cycle), 
 // returns false
 void PartialOrder::join(const PartialOrder &other) {
-	// fprintf(stderr, "joining\n");
+	// fprintf(stderr, "PO joining\n");
 	// fprintf(stderr, "%s\t and \t%s\n", toString().c_str(), other.toString().c_str());
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
 		// fprintf(stderr, "%p ",fromItr->first);
@@ -126,7 +126,7 @@ void PartialOrder::join(const PartialOrder &other) {
 		// if (isRMWInst(fromItr->first))
 		// 	rmws.insert(fromItr->first);
 	}
-	// fprintf(stderr, "after join %s\n", toString().c_str());
+	// fprintf(stderr, "PO after join %s\n", toString().c_str());
 	if (Precision>P0) rmws.insert(other.rmws.begin(), other.rmws.end());
 }
 
@@ -564,6 +564,7 @@ PartialOrder& PartialOrderWrapper::join(const PartialOrder &curPO, const Partial
 	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
 	auto searchInCached = cachedJoin.find(poPair);
 	if (searchInCached != cachedJoin.end()) {
+		// fprintf(stderr, "returning from cache\n");
 		return (PartialOrder&) *searchInCached->second;
 	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);

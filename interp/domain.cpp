@@ -1151,13 +1151,15 @@ void EnvironmentPOMO::applyInterference(
                     
                     // join the two partial orders
                     // tmpPO.copy(varIt.second);
-                    // fprintf (stderr, "Joining:%s and %s\n", varIt.second.toString().c_str(), searchInterfPomo->second.toString().c_str());
+                    // fprintf (stderr, "POMO Joining:%s and %s\n", varIt.second.toString().c_str(), searchInterfPomo->second.toString().c_str());
                     PartialOrder& tmpPO = PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
                     // fprintf(stderr, "POMO after join: %s\n", tmpPO.toString().c_str());
                     
                     // for interfVar, add the store intruction in the end
                     if (varIt.first == interfVar) {   
+						// fprintf(stderr, "appending %s\n",interfInst.toString().c_str());
                         tmpPO = PartialOrderWrapper::append(tmpPO, interfInst);
+						// fprintf(stderr, "after append: %s\n", tmpPO.toString().c_str());
                     }
 
                     // check what to do for each variable
