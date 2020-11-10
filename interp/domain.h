@@ -88,7 +88,7 @@ public:
     bool isUnreachable();
 
     void addVariable(string &varName);
-    void printApDomain();
+    void printApDomain() const;
 
 
 	struct hashApDom;
@@ -314,6 +314,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
     unordered_map<POMO, ApDomain>::iterator begin();
 	unordered_map<POMO, ApDomain>::iterator end();
 
+	bool canTakeMeet(const POMO &cur, const POMO &other);
+
 	bool isFeasibleLocks (const PartialOrder &curPartialOrder,
                 const PartialOrder &interfPartialOrder);
 
@@ -328,6 +330,8 @@ class EnvironmentPOMO : public EnvironmentBase<EnvironmentPOMO> {
 	void mergerOnSameValue();
 
 public:
+	~EnvironmentPOMO() {fprintf(stderr, "destructor of envPOMO called\n");}
+	EnvironmentPOMO() {fprintf(stderr, "constructor of envPOMO called\n");}
 	int size() {return environment.size();}
     // void changeRelHeadToNull(string var, InstNum inst);
     // void changeRelHeadIfNull(string var, InstNum head);
@@ -384,6 +388,7 @@ public:
     virtual bool isUnreachable();
 
     virtual void printEnvironment();
+	void compareEnv(EnvironmentPOMO &other);
 };
 
 #endif

@@ -374,8 +374,8 @@ void ApDomain::copyOnVars(ApDomain &other, vector<string> &vars) {
     }
 }
 
-void ApDomain::printApDomain() {
-    ap_abstract1_fprint(stderr, man,  &absValue);
+void ApDomain::printApDomain() const{
+    ap_abstract1_fprint(stderr, man, (ap_abstract1_t*) &absValue);
 }
 
 void ApDomain::applyInterference(string interfVar, ApDomain &fromApDomain, bool isPOMO, 
@@ -656,6 +656,39 @@ void EnvironmentPOMO::copyEnvironment(EnvironmentPOMO &copyFrom){
     // printEnvironment();
 }
 
+void EnvironmentPOMO::compareEnv(EnvironmentPOMO &other) {
+	unordered_map<ApDomain, 
+		pair<vector<POMO>,bool>, 
+		ApDomain::hashApDom> revEnv;
+
+	for (auto it=other.begin(); it!=other.end(); it++) {
+		revEnv[it->second].first.push_back(it->first);
+		revEnv[it->second].second = false;
+	}
+	for (auto it=environment.begin(); it!=environment.end(); it++) {
+		fprintf(stderr, "Merged ApDom:\n");
+		it->second.printApDomain();
+		fprintf(stderr, "POMO:\n");
+		it->first.printPOMO();
+		auto sApDom = revEnv.find(it->second);
+		if (sApDom == revEnv.end()) {
+			fprintf(stderr, "*** ERROR found: Ap dom not found in unmerged\n");
+		}
+		fprintf(stderr, "Unmerged:\n");
+		for (auto itPOMO=sApDom->second.first.begin(); itPOMO!=sApDom->second.first.end(); itPOMO++) {
+			itPOMO->printPOMO();
+		}
+		sApDom->second.second = true;
+	}
+	for (auto itRevEnv=revEnv.begin(); itRevEnv!=revEnv.end(); itRevEnv++) {
+		if (!itRevEnv->second.second) {
+			fprintf(stderr, "**** ERROR: no matching ApDom in merged:");
+			itRevEnv->first.printApDomain();
+			exit(0);
+		}
+	}
+}
+
 void EnvironmentPOMO::mergerOnSameValue() {
 	// fprintf(stderr, "mergerOnSameValue val called. Env before:\n");
 	// printEnvironment();
@@ -670,18 +703,28 @@ void EnvironmentPOMO::mergerOnSameValue() {
 	// fprintf(stderr, "revenv created\n");
 
 	for (auto it=revEnv.begin(); it!=revEnv.end(); it++) {
+		// fprintf(stderr, "for apDom:\n");
+		// it->first.printApDomain();
 		auto itPOMO=it->second.begin();
+		// fprintf(stderr, "POMO:\n");
+		// itPOMO->printPOMO();
 		POMO &meetedPOMO = *itPOMO; itPOMO++;
 		// delete itPOMO from env
 		// environment.erase(*itPOMO);
 		for (; itPOMO!=it->second.end(); itPOMO++) {
 			POMO tmpPomo;
-			// fprintf(stderr, "joining pomo\n");
-			meetPOMO(meetedPOMO, *itPOMO, tmpPomo);
-			// fprintf(stderr, "pomo joined\n");
-			meetedPOMO = tmpPomo;
-			// delete itPOMO from env
-			// environment.erase(*itPOMO);
+			// fprintf(stderr, "POMO:\n");
+			// itPOMO->printPOMO();
+			if (canTakeMeet(meetedPOMO, *itPOMO)) {
+				// fprintf(stderr, "combining pomo\n");
+				meetPOMO(meetedPOMO, *itPOMO, tmpPomo);
+				// fprintf(stderr, "pomo combined\n");
+				meetedPOMO = tmpPomo;
+			}
+			else {
+				// if meet is not possible, keep them both
+				newEnv.insert(make_pair(*itPOMO, it->first));
+			}
 		}
 		// add the joined POMO back to env
 		auto searchJoinedPOMO = environment.find(meetedPOMO);
@@ -1226,31 +1269,8 @@ void EnvironmentPOMO::meetEnvironment(EnvironmentPOMO &other) {
                 POMO newPomo;
 				// fprintf(stderr, "Taking meet POMO of:\n");
 				// curIt->first.printPOMO(); otherIt->first.printPOMO();
-				bool apply = true;
-				for (auto varIt:curIt->first) {
-	                auto searchInterfPomo = otherIt->first.find(varIt.first);
-	                if (searchInterfPomo == otherIt->first.end()) {
-	                    fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in applyinterf\n", varIt.first.c_str());
-	                    exit(0);
-	                }
-	                if (!varIt.second.isConsistent(searchInterfPomo->second)) {
-						// fprintf(stderr, "not consistent\n");
-	                    apply=false;
-	                    break;
-	                }
-	                if (!varIt.second.isConsistentRMW(searchInterfPomo->second)) {
-						// fprintf(stderr, "not consistent rmw\n");
-	                    apply=false;
-	                    break;
-	                }
-					auto searchIfLockVar = lockVars.find(varIt.first);
-					if (searchIfLockVar != lockVars.end() && !isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
-						apply = false;
-						break;
-					}
-	            }
 	
-				if (apply) {
+				if (canTakeMeet(curIt->first, otherIt->first)) {
                 	meetPOMO(curIt->first, otherIt->first, newPomo); // fprintf(stderr, "meet POMO is:\n");
 					// newPomo.printPOMO();
                 	// if curPomo alread exist join the newDomain with existing one
@@ -1305,6 +1325,33 @@ bool EnvironmentPOMO::isUnreachable() {
         else {it = environment.erase(it);}
     }
     return isUnreach;
+}
+
+bool EnvironmentPOMO::canTakeMeet(const POMO &cur, const POMO &other) {
+	bool apply = true;
+	for (auto varIt:cur) {
+	    auto searchInterfPomo = other.find(varIt.first);
+	    if (searchInterfPomo == other.end()) {
+	        fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in applyinterf\n", varIt.first.c_str());
+	        exit(0);
+	    }
+	    if (!varIt.second.isConsistent(searchInterfPomo->second)) {
+			// fprintf(stderr, "not consistent\n");
+	        apply=false;
+	        break;
+	    }
+	    if (!varIt.second.isConsistentRMW(searchInterfPomo->second)) {
+			// fprintf(stderr, "not consistent rmw\n");
+	        apply=false;
+	        break;
+	    }
+		auto searchIfLockVar = lockVars.find(varIt.first);
+		if (searchIfLockVar != lockVars.end() && !isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
+			apply = false;
+			break;
+		}
+	}
+	return apply;
 }
 
 bool EnvironmentPOMO::isFeasibleLocks(const PartialOrder &curPartialOrder, 
