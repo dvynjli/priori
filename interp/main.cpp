@@ -1017,12 +1017,12 @@ class VerifierPass : public ModulePass {
         for (auto instItr=B->begin(); instItr!=B->end(); ++instItr) {
             Instruction *currentInst = &(*instItr);
             Environment *curEnv=new Environment();
-			curEnv->copyEnvironment(*predEnv);
-        
             if (!noPrint) {
                 errs() << "DEBUG: Analyzing: ";
                 printValue(currentInst);
             }
+			curEnv->copyEnvironment(*predEnv);
+        
 
             // We need to check unaryInst (loads), callInst(thread create, join) and 
             // rmw inst even if current environmet's modified flag is unset becausee
@@ -1071,6 +1071,7 @@ class VerifierPass : public ModulePass {
         map<Instruction*, pair<Environment*, Environment*>> &branchEnv,
         unordered_map <Instruction*, Environment*> &curFuncEnv
     ) {
+		// errs() << "Non interf inst\n";
         if (CallInst *callInst = dyn_cast<CallInst>(inst)) {
             if (stopOnFail && callInst->getCalledFunction()->getName() == "__assert_fail") {
                 // errs() << "*** found assert" << "\n";
@@ -1142,13 +1143,13 @@ class VerifierPass : public ModulePass {
             // errs() << "Debug: Analyzing phi node: "; printValue(phinode); 
             return checkPhiNode(phinode, curEnv, branchEnv, curFuncEnv);
         }
-        else if (!curEnv->isModified()) {
-            curEnv = programState[inst->getFunction()][inst];
-            // errs() << "MOD: not analyzing further. Returning\n";
-            // programState[inst->getFunction()][inst].printEnvironment();
-            return curEnv;
-            // if(curEnv.isModified()) curEnv.setNotModified();
-        }
+        // else if (!curEnv->isModified()) {
+        //     curEnv = programState[inst->getFunction()][inst];
+        //     // errs() << "MOD: not analyzing further. Returning\n";
+        //     // programState[inst->getFunction()][inst].printEnvironment();
+        //     return curEnv;
+        //     // if(curEnv.isModified()) curEnv.setNotModified();
+        // }
         // All the instructions need to be re-analyzed if modification flag is set.
         else if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(inst)) {
             // auto searchName = valueToName.find(currentInst);
@@ -1174,15 +1175,15 @@ class VerifierPass : public ModulePass {
             return checkStoreInst(storeInst, curEnv);
         }
         else if (CmpInst *cmpInst = dyn_cast<CmpInst> (inst)) {
-            // errs() << "Env before cmp:\n";
+            errs() << "Env before cmp:\n";
             // curEnv.printEnvironment();
             Environment* env =  checkCmpInst(cmpInst, curEnv, branchEnv);
             // errs() << "\nCmp result:\n";
             // curEnv.printEnvironment();
             // errs() <<"True Branch:\n";
-            // branchEnv[cmpInst].first.printEnvironment();
+            // branchEnv[cmpInst].first->printEnvironment();
             // errs() <<"False Branch:\n";
-            // branchEnv[cmpInst].second.printEnvironment();
+            // branchEnv[cmpInst].second->printEnvironment();
             return env;
         }
         else if (BranchInst *branchInst = dyn_cast<BranchInst>(inst)) {
@@ -1213,15 +1214,22 @@ class VerifierPass : public ModulePass {
                 // errs() << "\nTrue Branch:\n";
                 // printValue(trueBranch);
                 // errs() << "True branch Env:\n";
-                // curFuncEnv[trueBranch].printEnvironment();
+                // curFuncEnv[trueBranch]->printEnvironment();
                 // errs() << "\nFalse Branch:\n";
                 // printValue(falseBranch);
                 // errs() << "False branch Env:\n";
-                // curFuncEnv[falseBranch].printEnvironment();
+                // curFuncEnv[falseBranch]->printEnvironment();
             }
             else {
                 Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
-                curFuncEnv[successors]->joinEnvironment(*curEnv);
+				// search succ env in curFuncEnv
+				auto searchSuccEnv = curFuncEnv.find(successors);
+				if (searchSuccEnv == curFuncEnv.end()) {
+					curFuncEnv.emplace(make_pair(successors, curEnv));
+				}
+				else {
+                	curFuncEnv[successors]->joinEnvironment(*curEnv);
+				}
             }
         } 
 		else if (SwitchInst *switchInst = dyn_cast<SwitchInst>(inst)) {
@@ -1230,8 +1238,8 @@ class VerifierPass : public ModulePass {
 			// errs() << "Codition: "; printValue(switchInst->getCondition());
 			string condVar = getNameFromValue(switchInst->getCondition());
 			// errs() << "Condition Var: " << condVar << "\n";
-			Environment tmpEnv;
-			tmpEnv.copyEnvironment(*curEnv);
+			// Environment tmpEnv;
+			// tmpEnv.copyEnvironment(*curEnv);
 			// errs() << "curEnv before switch:\n";
 			// curEnv.printEnvironment();
 			for (auto caseItr=switchInst->case_begin(); caseItr!=switchInst->case_end(); caseItr++) {
@@ -1239,14 +1247,25 @@ class VerifierPass : public ModulePass {
 				// printValue(caseItr->getCaseValue());
 				// printValue(caseItr->getCaseSuccessor());
             	int compConst= caseItr->getCaseValue()->getSExtValue();
-				curEnv->copyEnvironment(tmpEnv);
-				curEnv->performCmpOp(operation::EQ, condVar, compConst);
+				Environment *caseEnv = new Environment();
+				caseEnv->copyEnvironment(*curEnv);
+				caseEnv->performCmpOp(operation::EQ, condVar, compConst);
 				// errs() << "curEnv after cmp:\n"; 
 				// curEnv.printEnvironment();
 				Instruction *caseSuccessor = &(*(caseItr->getCaseSuccessor()->begin()));
 				// errs() << "Successor env before join: \n";
 				// curFuncEnv[caseSuccessor].printEnvironment();
-				curFuncEnv[caseSuccessor]->joinEnvironment(*curEnv);
+				// search case succ env
+				auto searchCaseEnv = curFuncEnv.find(caseSuccessor);
+				if (searchCaseEnv == curFuncEnv.end()) {
+					// assign the caseEnv
+					curFuncEnv.emplace(make_pair(caseSuccessor, caseEnv));
+				}
+				else {
+					// if it already exist, merge
+					curFuncEnv[caseSuccessor]->joinEnvironment(*caseEnv);
+					delete caseEnv;			
+				}
 				// errs() << "Successor env after join:\n";
 				// curFuncEnv[caseSuccessor].printEnvironment();
 			}
