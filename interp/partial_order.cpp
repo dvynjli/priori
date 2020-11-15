@@ -564,7 +564,7 @@ PartialOrder& PartialOrderWrapper::join(const PartialOrder &curPO, const Partial
 	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
 	auto searchInCached = cachedJoin.find(poPair);
 	if (searchInCached != cachedJoin.end()) {
-		// fprintf(stderr, "returning from cache\n");
+		// fprintf(stderr, "returning from cache %p\n",searchInCached->second);
 		return (PartialOrder&) *searchInCached->second;
 	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
@@ -577,6 +577,7 @@ PartialOrder& PartialOrderWrapper::join(const PartialOrder &curPO, const Partial
 		delete tmpPO;
 	}
 	cachedJoin[poPair] = &po;
+	// fprintf(stderr, "added to cache %p\n",&po);
 	return (PartialOrder&)po;
 }
 

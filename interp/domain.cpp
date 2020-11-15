@@ -1217,19 +1217,27 @@ void EnvironmentPOMO::applyInterference(
 }
 
 void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
+	// fprintf(stderr, "Joining curEnv:\n");
+	// printEnvironment();
+	// fprintf(stderr, "other:\n");
+	// other.printEnvironment();
     for (auto it=other.begin(); it!=other.end(); ++it) {
         POMO pomo = it->first;
         ApDomain newDomain;
-        newDomain.copyApDomain(it->second);
+        // newDomain.copyApDomain(it->second);
 
         // if the pomo already exist in the current enviornment,
         // join it with the existing one
         // else add it to the current environment
         auto searchPomo = environment.find(pomo);
         if (searchPomo != environment.end()) {
-            newDomain.joinApDomain(searchPomo->second);
+            it->second.joinApDomain(searchPomo->second);
+			// fprintf(stderr, "apDom after joining\n");
+			// it->second.printApDomain();
+			environment[pomo] = it->second;
+			// newDomain.printApDomain();
         }
-        else if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
+        // else if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
         if (other.isModified() && !isModified()) setModified();
     }
 	if (mergeOnVal) mergerOnSameValue();

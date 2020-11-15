@@ -769,7 +769,7 @@ class VerifierPass : public ModulePass {
 
         while (!isFixedPointReached ) {
             programState.clear();
-			double itr_start_time = omp_get_wtime();
+			// double itr_start_time = omp_get_wtime();
             programState = programStateCurItr;
             //programStateCurItr.clear();
 
@@ -779,7 +779,7 @@ class VerifierPass : public ModulePass {
                 // printProgramState();
                 // errs() << "-------------------------------------------------\n";
             }
-            errs() << "Iteration: " << iterations << "\n"; //**
+            // errs() << "Iteration: " << iterations << "\n"; //**
             // #pragma omp parallel for shared(feasibleInterfences,programStateCurItr) private(funcItr) num_threads(threads.size()) chuncksize(1)
             #pragma omp parallel num_threads(threads.size()) if (maxFeasibleInterfs > 200)
             #pragma omp single
@@ -844,7 +844,7 @@ class VerifierPass : public ModulePass {
             // TODO: fixed point is reached when no new interf for any func found and the init env has not changed
             isFixedPointReached = isFixedPoint(programStateCurItr);
             iterations++;
-			fprintf(stderr, "time: %f\n", omp_get_wtime() - itr_start_time);
+			// fprintf(stderr, "time: %f\n", omp_get_wtime() - itr_start_time);
         }
         if (!noPrint) {
             errs() << "_________________________________________________\n";
@@ -1174,8 +1174,11 @@ class VerifierPass : public ModulePass {
         else if (StoreInst *storeInst = dyn_cast<StoreInst>(inst)) {
             return checkStoreInst(storeInst, curEnv);
         }
+		else if (SelectInst *selInst = dyn_cast<SelectInst>(inst)) {
+			return checkSelectInst(selInst, curEnv, branchEnv);
+		}
         else if (CmpInst *cmpInst = dyn_cast<CmpInst> (inst)) {
-            errs() << "Env before cmp:\n";
+            // errs() << "Env before cmp:\n";
             // curEnv.printEnvironment();
             Environment* env =  checkCmpInst(cmpInst, curEnv, branchEnv);
             // errs() << "\nCmp result:\n";
@@ -1242,6 +1245,7 @@ class VerifierPass : public ModulePass {
 			// tmpEnv.copyEnvironment(*curEnv);
 			// errs() << "curEnv before switch:\n";
 			// curEnv.printEnvironment();
+			Environment *defaultEnv = new Environment();
 			for (auto caseItr=switchInst->case_begin(); caseItr!=switchInst->case_end(); caseItr++) {
 				// errs() << "Case " << caseItr->getCaseIndex() << ": "; 
 				// printValue(caseItr->getCaseValue());
@@ -1250,6 +1254,10 @@ class VerifierPass : public ModulePass {
 				Environment *caseEnv = new Environment();
 				caseEnv->copyEnvironment(*curEnv);
 				caseEnv->performCmpOp(operation::EQ, condVar, compConst);
+				Environment tmpEnv; 
+				tmpEnv.copyEnvironment(*curEnv);
+				tmpEnv.performCmpOp(operation::NE, condVar, compConst);
+				defaultEnv->joinEnvironment(tmpEnv);
 				// errs() << "curEnv after cmp:\n"; 
 				// curEnv.printEnvironment();
 				Instruction *caseSuccessor = &(*(caseItr->getCaseSuccessor()->begin()));
@@ -1266,9 +1274,22 @@ class VerifierPass : public ModulePass {
 					curFuncEnv[caseSuccessor]->joinEnvironment(*caseEnv);
 					delete caseEnv;			
 				}
-				// errs() << "Successor env after join:\n";
-				// curFuncEnv[caseSuccessor].printEnvironment();
+				// errs() << "Successor env after case:\n";
+				// curFuncEnv[caseSuccessor]->printEnvironment();
 			}
+			// set environment in default destination of switch-case
+			Instruction *defaultDest = &(*(switchInst->getDefaultDest()->begin()));
+			auto searchDefaultCaseEnv = curFuncEnv.find(defaultDest);
+			if (searchDefaultCaseEnv == curFuncEnv.end()) {
+				// assign the defaultEnv to defaultCase
+				curFuncEnv.emplace(make_pair(defaultDest, defaultEnv));
+			}
+			else {
+				// it already exist, merge
+				curFuncEnv[defaultDest]->joinEnvironment(*defaultEnv);
+				delete defaultEnv;
+			}
+			curFuncEnv[defaultDest] = defaultEnv;
 		}
         // CMPXCHG
         else {
@@ -1669,6 +1690,76 @@ class VerifierPass : public ModulePass {
 
         return curEnv;
     }
+
+	Environment* checkSelectInst(SelectInst *selInst, Environment *curEnv, 
+		map<Instruction*, pair<Environment*, Environment*>> &branchEnv
+	) {
+		Environment trueEnv, falseEnv;
+		string destVarName = getNameFromValue(selInst);
+		bool condEvaluated = false;
+		if (isa<BinaryOperator>(selInst->getCondition()) ||
+				isa<CmpInst>(selInst->getCondition())) {
+			// errs() << "BinOp or CmpInst. Getting from branch\n";
+			Instruction *condInst = dyn_cast<Instruction>(selInst->getCondition());
+			auto searchBranchEnv = branchEnv.find(condInst);
+			if (searchBranchEnv == branchEnv.end()) {
+				errs() << "Instructions not found in branchEnv: ";
+				printValue(selInst->getCondition());
+				exit(0);
+			}
+			trueEnv.copyEnvironment(*searchBranchEnv->second.first);
+			falseEnv.copyEnvironment(*searchBranchEnv->second.second);
+			condEvaluated = true;
+		}
+		else {
+			// errs() << "Not BinOp or CmpInst. Copying from curEvv\n";
+			trueEnv.copyEnvironment(*curEnv);
+			falseEnv.copyEnvironment(*curEnv);
+		}
+		int zero = 0;
+		string cond = getNameFromValue(selInst->getCondition());
+		// if select condition is false, destVar is set to false value
+		if (!condEvaluated) falseEnv.performCmpOp(operation::EQ, cond, zero);
+		// errs() << "Select Inst FalseEnv:\n";
+		// falseEnv.printEnvironment();
+		if (ConstantInt *constFalseVal = dyn_cast<ConstantInt>(selInst->getFalseValue())) {
+			// if the type of false value is integer
+			// errs() << "False value is int. assigning\n";
+			int constFalseIntVal = constFalseVal->getValue().getSExtValue();
+			falseEnv.performUnaryOp(STORE, destVarName, constFalseIntVal);
+			// errs() << "FalseEnv after assignment:\n";
+			// falseEnv.printEnvironment();
+		}
+		else {
+			// if the type is not int
+			falseEnv.performUnaryOp(STORE, destVarName, getNameFromValue(selInst->getFalseValue()));
+		}
+
+		// if select condition is true, destVar is set to true value
+		if (!condEvaluated) trueEnv.performCmpOp(operation::NE, cond, zero);
+		// errs() << "Select Inst TrueEnv:\n";
+		// trueEnv.printEnvironment();
+		if (ConstantInt *constTrueVal = dyn_cast<ConstantInt>(selInst->getTrueValue())) {
+			// if the type of true value is integer
+			// errs() << "True value is int. assigning\n";
+			int constTrueIntVal = constTrueVal->getValue().getSExtValue();
+			trueEnv.performUnaryOp(STORE, destVarName, constTrueIntVal);
+			// errs() << "TrueEnv after assignment:\n";
+			// trueEnv.printEnvironment();
+		}
+		else {
+			// if the type is not int
+			trueEnv.performUnaryOp(STORE, destVarName, getNameFromValue(selInst->getTrueValue()));
+		}
+		// the curEnv should be join of true and false Env
+		curEnv->copyEnvironment(falseEnv);
+		// errs() << "CurEnv after copying from false:\n";
+		// curEnv->printEnvironment();
+		curEnv->joinEnvironment(trueEnv);
+		// errs() << "CurEnv after joining true:\n";
+		// curEnv->printEnvironment();
+		return curEnv;
+	}
 
     Environment* checkStoreInst(StoreInst* storeInst, Environment *curEnv) {
         Value* destVar = storeInst->getPointerOperand();
