@@ -8,14 +8,14 @@ void* fun1(void * arg){
 }
 
 void* fun2(void * arg){
-	x.store(2, memory_order_release);
+	x.store(3, memory_order_release);
 	return NULL;
 }
 
 void* fun3(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = x.load(memory_order_acquire);
-	if (a==1 && b==2) {
+	if (a==1 && b==3) {
 		done1.store(1, memory_order_relaxed);
 	}
 	return NULL;
@@ -24,14 +24,14 @@ void* fun3(void * arg){
 void* fun4(void * arg){
 	int a = x.load(memory_order_acquire);
 	int b = x.load(memory_order_acquire);
-	if (a==2 && b==1) {
+	if (a==3 && b==1) {
 		done2.store(1, memory_order_relaxed);
 	}
 	return NULL;
 }
 
 int main () {
-	x.store(0, memory_order_release);
+	x.store(2, memory_order_release);
 	done1.store(0, memory_order_release);
 	done2.store(0, memory_order_release);
 

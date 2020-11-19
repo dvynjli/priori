@@ -1152,18 +1152,18 @@ void EnvironmentPOMO::applyInterference(
                     // join the two partial orders
                     // tmpPO.copy(varIt.second);
                     // fprintf (stderr, "POMO Joining:%s and %s\n", varIt.second.toString().c_str(), searchInterfPomo->second.toString().c_str());
-                    PartialOrder& tmpPO = PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
-                    // fprintf(stderr, "POMO after join: %s\n", tmpPO.toString().c_str());
+                    PartialOrder* tmpPO = &PartialOrderWrapper::join(varIt.second, searchInterfPomo->second);
+                    // fprintf(stderr, "POMO after join: %s\n", tmpPO->toString().c_str());
                     
                     // for interfVar, add the store intruction in the end
                     if (varIt.first == interfVar) {   
 						// fprintf(stderr, "appending %s\n",interfInst.toString().c_str());
-                        tmpPO = PartialOrderWrapper::append(tmpPO, interfInst);
+                        tmpPO = &PartialOrderWrapper::append(*tmpPO, interfInst);
 						// fprintf(stderr, "after append: %s\n", tmpPO.toString().c_str());
                     }
 
                     // check what to do for each variable
-                    getVarOption(&varoptions, varIt.first, tmpPO, searchInterfPomo->second);
+                    getVarOption(&varoptions, varIt.first, *tmpPO, searchInterfPomo->second);
 
                     newPomo.emplace(varIt.first, tmpPO);
                     // fprintf(stderr, "Pomo so far:\n");
@@ -1223,7 +1223,7 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
 	// other.printEnvironment();
     for (auto it=other.begin(); it!=other.end(); ++it) {
         POMO pomo = it->first;
-        ApDomain newDomain;
+        // ApDomain newDomain;
         // newDomain.copyApDomain(it->second);
 
         // if the pomo already exist in the current enviornment,
@@ -1231,13 +1231,10 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
         // else add it to the current environment
         auto searchPomo = environment.find(pomo);
         if (searchPomo != environment.end()) {
-            it->second.joinApDomain(searchPomo->second);
+			searchPomo->second.joinApDomain(it->second);
 			// fprintf(stderr, "apDom after joining\n");
-			// it->second.printApDomain();
-			environment[pomo] = it->second;
-			// newDomain.printApDomain();
         }
-        // else if (!newDomain.isUnreachable()) environment[pomo] = newDomain;
+        else if (!it->second.isUnreachable()) environment[pomo] = it->second;
         if (other.isModified() && !isModified()) setModified();
     }
 	if (mergeOnVal) mergerOnSameValue();

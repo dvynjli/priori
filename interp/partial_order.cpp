@@ -521,20 +521,20 @@ PartialOrder& PartialOrderWrapper::getEmptyPartialOrder(bool delOlder) {
 }
 
 PartialOrder& PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &inst) {
-	// fprintf(stderr, "appending: %s <| %s\n",curPO.toString().c_str(), inst.toString().c_str());
+	// fprintf(stderr, "appending: %s <| %p %s\n",curPO.toString().c_str(), inst, inst.toString().c_str());
 	// printAllPO();
 	// printAppendCache();
 	const pair<const PartialOrder*, const InstNum*> poInstNumPair = make_pair(&curPO, &inst);
 	auto searchInCached = cachedAppend.find(poInstNumPair);
 	if (searchInCached != cachedAppend.end()) {
-		// fprintf(stderr, "found in cache. Returning %p\n",searchInCached->second);
+		// fprintf(stderr, "found in cache. Returning %p %s\n",searchInCached->second, searchInCached->second->toString().c_str());
 		// fprintf(stderr, "value: %s\n", searchInCached->second->toString().c_str());
 		return (PartialOrder&) *searchInCached->second;
 	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->append(inst);
-    // fprintf(stderr, "after append: %s\n", tmpPO->toString().c_str());
+    // fprintf(stderr, "after append: %p %s\n", tmpPO, tmpPO->toString().c_str());
 	bool isAlreadyExist;
 	const PartialOrder& po = addToSet(tmpPO, isAlreadyExist);
     if (isAlreadyExist) {
@@ -548,6 +548,9 @@ PartialOrder& PartialOrderWrapper::append(const PartialOrder &curPO, InstNum &in
 }
 
 PartialOrder& PartialOrderWrapper::addOrder(const PartialOrder &curPO, InstNum &from, InstNum &to) {
+	// fprintf(stderr, "addOrder to %s adding %s -> %s\n", 
+	// 		curPO.toString().c_str(), from.toString().c_str(), 
+	// 		to.toString().c_str());
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);
     tmpPO->copy(curPO);
     tmpPO->addOrder(from, to);
@@ -557,14 +560,28 @@ PartialOrder& PartialOrderWrapper::addOrder(const PartialOrder &curPO, InstNum &
     if (isAlreadyExist) {
 		delete tmpPO;
 	}
+	// fprintf(stderr, "after addOrder %s\n", po.toString().c_str());
 	return (PartialOrder&)po;
+}
+
+void PartialOrderWrapper::printJoinCache() {
+	for (auto it=cachedJoin.begin(); it!=cachedJoin.end(); it++) {
+		fprintf(stderr, "%p %s join %p %s ==== %p %s\n", 
+				it->first.first,
+				it->first.first->toString().c_str(), 
+				it->first.second,
+				it->first.second->toString().c_str(),
+				it->second,
+				it->second->toString().c_str());
+	}
 }
 
 PartialOrder& PartialOrderWrapper::join(const PartialOrder &curPO, const PartialOrder &other) {
 	const pair<const PartialOrder*, const PartialOrder*> poPair = make_pair(&curPO, &other);
 	auto searchInCached = cachedJoin.find(poPair);
+	// printJoinCache();
 	if (searchInCached != cachedJoin.end()) {
-		// fprintf(stderr, "returning from cache %p\n",searchInCached->second);
+		// fprintf(stderr, "returning from cache %p %s\n",searchInCached->second, searchInCached->second->toString().c_str());
 		return (PartialOrder&) *searchInCached->second;
 	}
 	PartialOrder *tmpPO = new PartialOrder(curPO.deleteOlder);

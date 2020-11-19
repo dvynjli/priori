@@ -1194,25 +1194,30 @@ class VerifierPass : public ModulePass {
                 Instruction *branchCondition = dyn_cast<Instruction>(branchInst->getCondition());
                 Instruction *trueBranch = &(*(branchInst->getSuccessor(0)->begin()));
 				// search env of true branch in currently explred program state of this iteration
+				auto searchBranchEnv = branchEnv.find(branchCondition);
+				if (searchBranchEnv == branchEnv.end()) {
+					errs() << "ERROR: Branch Condition not found\n";
+					exit(0);
+				}
 				auto searchTrueEnv = curFuncEnv.find(trueBranch);
 				if (searchTrueEnv == curFuncEnv.end()) {
 					// assign from the branch env
-					curFuncEnv.emplace(make_pair(trueBranch, branchEnv[branchCondition].first));
+					curFuncEnv.emplace(make_pair(trueBranch, searchBranchEnv->second.first));
 				}
 				else {
 					// if it already exit, merge
-					searchTrueEnv->second->joinEnvironment(*branchEnv[branchCondition].first);
+					searchTrueEnv->second->joinEnvironment(*searchBranchEnv->second.first);
 				}
                 Instruction *falseBranch = &(*(branchInst->getSuccessor(1)->begin()));
 				// search env of false branch in currently explred program state of this iteration
 				auto searchFalseEnv = curFuncEnv.find(falseBranch);
 				if (searchFalseEnv == curFuncEnv.end()) {
 					// assign from the branch env
-					curFuncEnv.emplace(make_pair(falseBranch, branchEnv[branchCondition].second));
+					curFuncEnv.emplace(make_pair(falseBranch, searchBranchEnv->second.second));
 				}
 				else {
 					// if it already exit, merge
-					searchFalseEnv->second->joinEnvironment(*branchEnv[branchCondition].second);
+					searchFalseEnv->second->joinEnvironment(*searchBranchEnv->second.second);
 				}
                 // errs() << "\nTrue Branch:\n";
                 // printValue(trueBranch);
@@ -1414,7 +1419,7 @@ class VerifierPass : public ModulePass {
         trueBranchEnv->setVar(destVarName);
         falseBranchEnv->unsetVar(destVarName);
         
-        branchEnv[cmpInst] = make_pair(trueBranchEnv, falseBranchEnv);
+        branchEnv.emplace(make_pair(cmpInst, make_pair(trueBranchEnv, falseBranchEnv)));
         return curEnv;
     }
 
@@ -1428,22 +1433,30 @@ class VerifierPass : public ModulePass {
         Value* fromVar1 = logicalOp->getOperand(0);
         Value* fromVar2 = logicalOp->getOperand(1);
         
-        Environment *fromVar1TrueEnv;
-        Environment *fromVar1FalseEnv;
-        Environment *fromVar2TrueEnv;
-        Environment *fromVar2FalseEnv;
+        Environment fromVar1TrueEnv;
+        Environment fromVar1FalseEnv;
+        Environment fromVar2TrueEnv;
+        Environment fromVar2FalseEnv;
         
         if (CmpInst *op1 = dyn_cast<CmpInst>(fromVar1)) {
-            auto env = branchEnv[op1];
-            fromVar1TrueEnv = env.first;
-            fromVar1FalseEnv = env.second;
+			auto searchBranchEnv = branchEnv.find(op1);
+			if (searchBranchEnv == branchEnv.end()) {
+				errs() << "ERROR: op1 not found\n";
+				exit(0);
+			}
+            fromVar1TrueEnv = *searchBranchEnv->second.first;
+            fromVar1FalseEnv = *searchBranchEnv->second.second;
         }
         else if (BinaryOperator *op1 = dyn_cast<BinaryOperator>(fromVar1)) {
             auto oper = op1->getOpcode();
             if (oper == Instruction::And || oper == Instruction::Or) {
-                auto env = branchEnv[op1];
-                fromVar1TrueEnv = env.first;
-                fromVar1FalseEnv = env.second;
+				auto searchBranchEnv = branchEnv.find(op1);
+				if (searchBranchEnv == branchEnv.end()) {
+					errs() << "ERROR: op1 not found\n";
+					exit(0);
+				}
+                fromVar1TrueEnv = *searchBranchEnv->second.first;
+                fromVar1FalseEnv = *searchBranchEnv->second.second;
             }
         }
         else {
@@ -1452,9 +1465,13 @@ class VerifierPass : public ModulePass {
             exit(0);
         }
         if (CmpInst *op2 = dyn_cast<CmpInst>(fromVar2)) {
-            auto env = branchEnv[op2];
-            fromVar2TrueEnv = env.first;
-            fromVar2FalseEnv = env.second;
+			auto searchBranchEnv = branchEnv.find(op2);
+			if (searchBranchEnv == branchEnv.end()) {
+				errs() << "ERROR: op2 not found\n";
+				exit(0);
+			}
+            fromVar2TrueEnv = *searchBranchEnv->second.first;
+            fromVar2FalseEnv = *searchBranchEnv->second.second;
             // auto searchOp2Branches = branchEnv.find(op2);
             // if (searchOp2Branches == branchEnv.end()) {
             //     errs() << "!!!! Something went wrong !!!!\n";
@@ -1470,9 +1487,13 @@ class VerifierPass : public ModulePass {
         else if (BinaryOperator *op2 = dyn_cast<BinaryOperator>(fromVar2)) {
             auto oper = op2->getOpcode();
             if (oper == Instruction::And || oper == Instruction::Or) {
-                auto env = branchEnv[op2];
-                fromVar2TrueEnv = env.first;
-                fromVar2FalseEnv = env.second;
+				auto searchBranchEnv = branchEnv.find(op2);
+				if (searchBranchEnv == branchEnv.end()) {
+					errs() << "ERROR: op2 not found\n";
+					exit(0);
+				}
+                fromVar2TrueEnv = *searchBranchEnv->second.first;
+                fromVar2FalseEnv = *searchBranchEnv->second.second;
             }
         }
         else {
@@ -1488,15 +1509,15 @@ class VerifierPass : public ModulePass {
         auto oper = logicalOp->getOpcode();
         Environment *trueBranchEnv=new Environment();
         Environment *falseBranchEnv=new Environment();
-        trueBranchEnv->copyEnvironment(*fromVar1TrueEnv);
-        falseBranchEnv->copyEnvironment(*fromVar1FalseEnv);
+        trueBranchEnv->copyEnvironment(fromVar1TrueEnv);
+        falseBranchEnv->copyEnvironment(fromVar1FalseEnv);
         if (oper == Instruction::And) {
             // errs() << "taking meet of - trueBranch\n";
 			// trueBranchEnv.printEnvironment(); fromVar2TrueEnv.printEnvironment();
 			// errs() << "fromVar2True: \n";
-            trueBranchEnv->meetEnvironment(*fromVar2TrueEnv);
+            trueBranchEnv->meetEnvironment(fromVar2TrueEnv);
             // errs() << "taking join\n";
-            falseBranchEnv->joinEnvironment(*fromVar2FalseEnv);
+            falseBranchEnv->joinEnvironment(fromVar2FalseEnv);
 			// errs() << "join done\n";
         }
 
@@ -1507,7 +1528,7 @@ class VerifierPass : public ModulePass {
             // errs() << "T2:\n";
             // fromVar2TrueEnv.printEnvironment();
             // -//
-            trueBranchEnv->joinEnvironment(*fromVar2TrueEnv);
+            trueBranchEnv->joinEnvironment(fromVar2TrueEnv);
             // errs() << "T1 join T2:\n";
             // trueBranchEnv.printEnvironment();
 
@@ -1525,7 +1546,7 @@ class VerifierPass : public ModulePass {
             // errs() << "F2 meet F1:\n";
             // fromVar2FalseEnv.printEnvironment();
             //-//
-            falseBranchEnv->meetEnvironment(*fromVar2FalseEnv);
+            falseBranchEnv->meetEnvironment(fromVar2FalseEnv);
             // errs() << "F1 meet F2:\n";
             // falseBranchEnv.printEnvironment();
         }
@@ -1547,7 +1568,7 @@ class VerifierPass : public ModulePass {
         trueBranchEnv->setVar(destVarName);
         falseBranchEnv->unsetVar(destVarName);
 
-        branchEnv[logicalOp] = make_pair(trueBranchEnv, falseBranchEnv);
+        branchEnv.emplace(make_pair(logicalOp, make_pair(trueBranchEnv, falseBranchEnv)));
 		// curEnv.printEnvironment();
         return curEnv;
     }
@@ -1937,6 +1958,7 @@ class VerifierPass : public ModulePass {
         // Join the environments of joinee thread with this thread. 
         // Need to copy only globals, discard locals.
         bool modified = curEnv->isModified();
+		bool isRetReachable = false;
         Function *calledFunc = findFunctionFromPthreadJoin(callInst);
 		
         // Environment *olderEnv = programState[callInst->getFunction()][callInst];
@@ -1949,13 +1971,15 @@ class VerifierPass : public ModulePass {
 				olderEnv = searchOlderEnv->second;
 			}
 		}
+		auto searchFuncEnv = programState.find(calledFunc);
+		if (searchFuncEnv == programState.end()) {
+			// errs() << "Function not found in last iter Env. Nothing to join\n";
+			delete curEnv;
+			curEnv = new Environment();
+			return curEnv;
+		}
         if (modified || olderEnv==nullptr || olderEnv->isUnreachable()) {
 			// search env of calledFunc in programState of last itr
-			auto searchFuncEnv = programState.find(calledFunc);
-			if (searchFuncEnv == programState.end()) {
-				// errs() << "Function not found in last iter Env. Nothing to join\n";
-				return curEnv;
-			}
             for (auto bbItr=calledFunc->begin(); bbItr!=calledFunc->end(); ++bbItr) {
                 for (auto instItr=bbItr->begin(); instItr!=bbItr->end(); ++instItr) {
                     if (ReturnInst *retInst = dyn_cast<ReturnInst>(instItr)) {
@@ -1968,7 +1992,16 @@ class VerifierPass : public ModulePass {
 							break;
 						}
 						// searchRetEnv->second->printEnvironment();
-                        curEnv->joinOnVars(*searchRetEnv->second, globalVars);
+						if (!searchRetEnv->second->isUnreachable()) {
+							// errs() << "Before join:\n"; curEnv->printEnvironment();
+							// errs() << "Joining with:\n"; searchRetEnv->second->printEnvironment();
+                        	curEnv->joinOnVars(*searchRetEnv->second, globalVars);
+							// errs() << "Mod: setting isRetReach to true\n";
+							isRetReachable = true;
+							// errs() << "After join:\n"; curEnv->printEnvironment();
+						}
+						// a BB can have at most one return instructon. 
+						// So we can exit BB loop
 						break;
                     }
                 }
@@ -1982,17 +2015,38 @@ class VerifierPass : public ModulePass {
                         // errs() << "pthread join with (not mod): ";
                         // printValue(retInst);
                         // programState[calledFunc][retInst]->printEnvironment();
-                        if (programState[calledFunc][retInst]->isModified()) {
-                            // errs() << "OlderEnv:\n"; olderEnv->printEnvironment();
-                            olderEnv->joinOnVars(*programState[calledFunc][retInst], globalVars);
-                            // errs() << "After join:\n";
-                            // olderEnv->printEnvironment();
-                        }
+						auto searchRetEnv = searchFuncEnv->second.find(retInst);
+						if (searchRetEnv == searchFuncEnv->second.end()) {
+							// errs() << "Ret inst env not found in last itr env. Nothing to join\n";
+							break;
+						}
+						// searchRetEnv->second->printEnvironment();
+                        if (!searchRetEnv->second->isUnreachable()) {
+							if (searchRetEnv->second->isModified()) {
+                            	// errs() << "OlderEnv:\n"; olderEnv->printEnvironment();
+                            	olderEnv->joinOnVars(*searchRetEnv->second, globalVars);
+                            	// errs() << "After join:\n";
+                            	// olderEnv->printEnvironment();
+                        	}
+							// errs() << "not Mod: setting isRetReach to true\n";
+							isRetReachable = true;
+						}
+						// a BB can have at most one return instructon. 
+						// So we can exit BB loop
+						break;
                     }
                 }
             }
             curEnv->copyEnvironment(*olderEnv);
         }
+		// if no ret inst is reachable in joined thread
+		// the pthread join will wait forever
+		// set the curEnv to unreachable
+		if (!isRetReachable) {
+			// errs() << "No Reachable return instruction found\n";
+			delete curEnv;
+			curEnv = new Environment();
+		}
 		// TODO: check if we need to change the modified flag
         return curEnv;
     }
@@ -2349,7 +2403,11 @@ class VerifierPass : public ModulePass {
                         // errs() << "MOD: not applying interf\n";
                         tmpEnv.setNotModified();
                     }
+					// errs() << "after applying this interf:\n";
+					// tmpEnv.printEnvironment();
                     curEnv->joinEnvironment(tmpEnv);
+					// errs() << "after joining to curEnv:\n";
+					// curEnv->printEnvironment();
                 }
             }
         }

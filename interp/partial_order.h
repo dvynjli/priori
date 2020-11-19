@@ -234,6 +234,7 @@ class PartialOrderWrapper {
 	// 		fprintf(stderr, "(%s,%s)::::%s\n",it->first.first->toString().c_str(), it->first.second->toString().c_str(), it->second->toString().c_str());
 	// 	}
 	// }
+	static void printJoinCache();
 
 public:
 	static unordered_set<
