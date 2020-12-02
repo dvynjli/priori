@@ -21,6 +21,7 @@
 
 enum operation { ADD, SUB, MUL, DIV, MOD,       // Arithemetic opertions
                 EQ, NE, LE, GE, LT, GT,         // Cmp operations
+				UGT, UGE, ULT, ULE,				// Unsigned operations
                 LAND, LOR, LNOT, XOR,           // Logical operations
                 BAND, BOR,                      // Bit-wise operations
                 USUB,                           // Unary minus

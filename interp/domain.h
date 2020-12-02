@@ -43,6 +43,11 @@ class ApDomain {
     void setHasChanged(const string &var);
     void performNECmp(string &strOp1, int &intOp2);
     void performNECmp(string &strOp1, string &strOp2);
+	// bool performUGT(double strOpLow, double strOpHigh, int &intOp1);
+	pair<double, double> performUGT(double strOpLow, double strOpHigh, int intOp2);
+	pair<double, double> performULT(double strOpLow, double strOpHigh, int intOp2);
+	pair<double, double> performUGE(double strOpLow, double strOpHigh, int intOp2);
+	pair<double, double> performULE(double strOpLow, double strOpHigh, int intOp2);
     
     void performTrasfer(ap_manager_t *man, ap_environment_t *env, ap_abstract1_t &abs_val);
     // InstNum getRelHead(string var);
@@ -69,6 +74,7 @@ public:
     void performCmpOp(operation oper, int &intOp1,    string &strOp2);
     void performCmpOp(operation oper, int &intOp1,    int &intOp2);
     void performCmpOp(operation oper, string &strOp1, string &strOp2);
+	void performUnsignedCmpOp(operation oper, string &strOp1, int &intOp2);
     // Other Operations
     void performCmpXchgOp(string &strTo, string &strCmpVal, string &strNewVal);
     

@@ -359,6 +359,246 @@ void ApDomain::performCmpOp(operation oper, string &strOp1, string &strOp2) {
     // printApDomain();
 }
 
+void ApDomain::performUnsignedCmpOp(operation oper, string &strOp1, int &intOp2) {
+	if (AbsDomType == octagon) {
+		fprintf(stderr, "ERROR: unsigned comparision not supported in octagon domain\n");
+		exit(0);
+	}
+	// if (oper != UGT) {
+	// 	fprintf(stderr, "ERROR: only unsigned operation UGT is supposed for interval domain. Unkonwn operation\n");
+	// 	exit(0);
+	// }
+    ap_interval_t *strOpInterval = ap_abstract1_bound_variable(man, &absValue, (ap_var_t)strOp1.c_str());
+    ap_scalar_t *strOpLow, *strOpHigh;
+    strOpLow = strOpInterval->inf; 
+    strOpHigh = strOpInterval->sup;
+	// // fprintf(stderr, "type: %d, %d\n", strOpLow->discr, strOpLow->discr);
+	// bool isUGT = performUGT(strOpLow->val.dbl, strOpHigh->val.dbl, intOp2);
+	// fprintf(stderr, "%s:[%f, %f] isUGT %d: %d\n", strOp1.c_str(),strOpLow->val.dbl, strOpHigh->val.dbl, intOp2, isUGT);
+	
+	pair<double, double> resCmp;
+	switch(oper) {
+		case UGT:
+			resCmp = performUGT(strOpLow->val.dbl, strOpHigh->val.dbl, intOp2);
+			break;
+		case UGE:
+			resCmp = performUGE(strOpLow->val.dbl, strOpHigh->val.dbl, intOp2);
+			break;
+		case ULT:
+			resCmp = performULT(strOpLow->val.dbl, strOpHigh->val.dbl, intOp2);
+			break;
+		case ULE:
+			resCmp = performULE(strOpLow->val.dbl, strOpHigh->val.dbl, intOp2);
+			break;
+	}
+
+	// assign results of comparision (resCmp) to strOp
+    ap_linexpr1_t expr = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
+    ap_linexpr1_set_list(&expr, AP_CST_I_DOUBLE, resCmp.first, resCmp.second, AP_END);
+    ap_var_t var = (ap_var_t) strOp1.c_str();
+    absValue = ap_abstract1_assign_linexpr(man, true, &absValue, var, &expr, NULL);
+	// printApDomain();
+	
+	// fprintf(stderr, "%s:[%f, %f] isUGT %d: [%f, %f]\n", strOp1.c_str(),
+	// 				strOpLow->val.dbl, strOpHigh->val.dbl, intOp2,
+	// 				domGt.first, domGt.second);
+	// 
+	// domGt = performUGE(-3,4,2);
+	// fprintf(stderr, "-3, 4] isUGT 2: [%f, %f]\n", domGt.first, domGt.second);
+
+	// domGt = performUGE(-3,-1,2);
+	// fprintf(stderr, "-3, -1] isUGT 2: [%f, %f]\n", domGt.first, domGt.second);
+
+	// domGt = performUGE(1,4,2);
+	// fprintf(stderr, "1, 4] isUGT 2: [%f, %f]\n", domGt.first, domGt.second);
+
+	// domGt = performUGE(-4,-1,-3);
+	// fprintf(stderr, "-4, -1] isUGT -3: [%f, %f]\n", domGt.first, domGt.second);
+
+	// domGt = performUGE(-4,5,-3);
+	// fprintf(stderr, "-4, 5] isUGT -3: [%f, %f]\n", domGt.first, domGt.second);
+}
+
+// bool ApDomain::performUGT(double strOpLow, double strOpHigh, int &intOp2) {
+// 	// return only true or false
+// 	if (intOp2 >= 0) {
+// 		// all -ve numbers are greater than +ve numbers in unsigned
+// 		if (strOpHigh > intOp2 || strOpLow < 0) return true;
+// 		else return false;
+// 	}
+// 	else {
+// 		if (strOpLow < 0 && strOpLow > intOp2) return true;
+// 		else return false;
+// 	}
+// }
+
+void splitPosNeg(double inLow, double inHigh, 
+	double &outPosLow, double &outPosHigh, 
+	double &outNegLow, double &outNegHigh
+) {
+	if (inLow < 0) {
+		// the interval of strOp has -ve values. initialize -ve interval
+		outNegLow = inLow;
+		outNegHigh = (inHigh < -1 ? inHigh : -1);
+	}
+	// else the interval of strOp has no -ve values. NaN means bot
+	if (inHigh >=0) {
+		// the interval of strOp has +ve values. initalize +ve interval
+		outPosLow = (inLow > 0 ? inLow : 0);
+		outPosHigh = inHigh;
+	}
+	// else the interval of strOp has no +ve values. NaN means bot	
+}
+
+void joinPosNeg(double inPosLow, double inPosHigh, 
+	double inNegLow, double inNegHigh, 
+	double &outLow, double &outHigh
+){
+	// join the +ve and -ve range
+	if (!isnan(inNegLow)) {
+		outLow = inNegLow;
+	} else {
+		outLow = inPosLow;
+	}
+	if (!isnan(inPosHigh)) {
+		outHigh = inPosHigh;
+	}
+	else {
+		outHigh = inNegHigh;
+	}
+
+}
+
+pair<double, double> ApDomain::performUGT(double strOpLow, double strOpHigh, int intOp2) {
+    double strOpPosLow	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpPosHigh = std::numeric_limits<double>::quiet_NaN(),
+		   strOpNegLow 	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpNegHigh = std::numeric_limits<double>::quiet_NaN();
+	
+	splitPosNeg(strOpLow, strOpHigh, strOpPosLow, strOpPosHigh, strOpNegLow, strOpNegHigh);
+	// since intOp is int, no need to find it's pos and neg intervals
+	double resNegLow = NAN, resNegHigh = NAN,
+			resPosLow = NAN, resPosHigh = NAN;
+	if (intOp2 >= 0) {
+		// compute -ve ugt range
+		resNegLow = strOpNegLow; resNegHigh = strOpNegHigh;
+		// compte +ve ugt range
+		if (!isnan(strOpPosHigh) && intOp2+1 <= strOpPosHigh) {
+			resPosLow = (intOp2+1 > strOpPosLow ? intOp2+1 : strOpPosLow);
+			resPosHigh = strOpPosHigh;
+		}
+	}
+	else if (!isnan(strOpNegHigh) && intOp2+1 <= strOpNegHigh){
+		// compute -ve ugt range
+		resNegLow = (intOp2+1 > strOpNegLow ? intOp2+1 : strOpNegLow);
+		resNegHigh = strOpNegHigh;
+		// compute +ve ugt range : bot in this case
+	}
+	
+	double resLow = NAN, resHigh = NAN;
+	joinPosNeg(resPosLow, resPosHigh, resNegLow, resNegHigh, resLow, resHigh);
+	return make_pair(resLow, resHigh);
+}
+
+pair<double, double> ApDomain::performUGE(double strOpLow, double strOpHigh, int intOp2) {
+    double strOpPosLow	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpPosHigh = std::numeric_limits<double>::quiet_NaN(),
+		   strOpNegLow 	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpNegHigh = std::numeric_limits<double>::quiet_NaN();
+	
+	splitPosNeg(strOpLow, strOpHigh, strOpPosLow, strOpPosHigh, strOpNegLow, strOpNegHigh);
+	// since intOp is int, no need to find it's pos and neg intervals
+	double resNegLow = NAN, resNegHigh = NAN,
+			resPosLow = NAN, resPosHigh = NAN;
+	if (intOp2 >= 0) {
+		// compute -ve ugt range
+		resNegLow = strOpNegLow; resNegHigh = strOpNegHigh;
+		// compte +ve ugt range
+		if (!isnan(strOpPosHigh) && intOp2 <= strOpPosHigh) {
+			resPosLow = (intOp2 > strOpPosLow ? intOp2 : strOpPosLow);
+			resPosHigh = strOpPosHigh;
+		}
+	}
+	else if (!isnan(strOpNegHigh) && intOp2 <= strOpNegHigh){
+		// compute -ve ugt range
+		resNegLow = (intOp2 > strOpNegLow ? intOp2 : strOpNegLow);
+		resNegHigh = strOpNegHigh;
+		// compute +ve ugt range : bot in this case
+	}
+	
+	double resLow = NAN, resHigh = NAN;
+	joinPosNeg(resPosLow, resPosHigh, resNegLow, resNegHigh, resLow, resHigh);
+	return make_pair(resLow, resHigh);
+}
+
+pair<double, double> ApDomain::performULT(double strOpLow, double strOpHigh, int intOp2) {
+    double strOpPosLow	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpPosHigh = std::numeric_limits<double>::quiet_NaN(),
+		   strOpNegLow 	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpNegHigh = std::numeric_limits<double>::quiet_NaN();
+	
+	splitPosNeg(strOpLow, strOpHigh, strOpPosLow, strOpPosHigh, strOpNegLow, strOpNegHigh);
+	double resNegLow = NAN, resNegHigh = NAN,
+			resPosLow = NAN, resPosHigh = NAN;
+	if(intOp2 >= 0) {
+		// compute +ve range
+		if (!isnan(strOpPosLow) && intOp2 > strOpPosLow) {
+			resPosLow = strOpPosLow;
+			resPosHigh = (strOpPosHigh < intOp2-1 ? strOpPosHigh : intOp2-1);
+		}
+		// compute -ve range
+		// all -ve number are grater in unsigned. Leave NAN
+	}
+	else {
+		// compute +ve range 
+		// all +ve numbers are less
+		resPosLow = strOpPosLow;
+		resPosHigh = strOpPosHigh;
+		// compute -ve range
+		if (!isnan(strOpNegLow) && strOpNegLow < intOp2) {
+			resNegLow = strOpNegLow;
+			resNegHigh = (strOpNegHigh < intOp2-1 ? strOpNegHigh : intOp2-1);
+		}
+	}
+	double resLow = NAN, resHigh = NAN;
+	joinPosNeg(resPosLow, resPosHigh, resNegLow, resNegHigh, resLow, resHigh);
+	return make_pair(resLow, resHigh);
+}
+
+pair<double, double> ApDomain::performULE(double strOpLow, double strOpHigh, int intOp2) {
+    double strOpPosLow	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpPosHigh = std::numeric_limits<double>::quiet_NaN(),
+		   strOpNegLow 	= std::numeric_limits<double>::quiet_NaN(), 
+		   strOpNegHigh = std::numeric_limits<double>::quiet_NaN();
+	
+	splitPosNeg(strOpLow, strOpHigh, strOpPosLow, strOpPosHigh, strOpNegLow, strOpNegHigh);
+	double resNegLow = NAN, resNegHigh = NAN,
+			resPosLow = NAN, resPosHigh = NAN;
+	if(intOp2 >= 0) {
+		// compute +ve range
+		if (!isnan(strOpPosLow) && intOp2 >= strOpPosLow) {
+			resPosLow = strOpPosLow;
+			resPosHigh = (strOpPosHigh < intOp2 ? strOpPosHigh : intOp2);
+		}
+		// compute -ve range
+		// all -ve number are grater in unsigned. Leave NAN
+	}
+	else {
+		// compute +ve range 
+		// all +ve numbers are less
+		resPosLow = strOpPosLow;
+		resPosHigh = strOpPosHigh;
+		// compute -ve range
+		if (!isnan(strOpNegLow) && strOpNegLow <= intOp2) {
+			resNegLow = strOpNegLow;
+			resNegHigh = (strOpNegHigh < intOp2 ? strOpNegHigh : intOp2);
+		}
+	}
+	double resLow = NAN, resHigh = NAN;
+	joinPosNeg(resPosLow, resPosHigh, resNegLow, resNegHigh, resLow, resHigh);
+	return make_pair(resLow, resHigh);
+}
+
 // Perform join only for the list of variables passed in arg2
 void ApDomain::joinOnVars(ApDomain &other, vector<string> &vars) {
     for (auto var: vars) {
@@ -833,7 +1073,10 @@ void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, string &str
 
 void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, int &intOp2) {
     for (auto it=environment.begin(); it!=environment.end(); ++it) {
-        it->second.performCmpOp(oper, strOp1, intOp2);
+        if (oper == UGT || oper == UGE || oper == ULT || oper == ULE)
+			it->second.performUnsignedCmpOp(oper, strOp1, intOp2);
+		else 
+			it->second.performCmpOp(oper, strOp1, intOp2);
     }
 	if (mergeOnVal) mergerOnSameValue();
 }
