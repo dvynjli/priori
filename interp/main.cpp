@@ -1360,6 +1360,22 @@ class VerifierPass : public ModulePass {
                 operTrueBranch = LE;
                 operFalseBranch = GT;
                 break;
+			case CmpInst::Predicate::ICMP_UGT:
+				operTrueBranch = UGT;
+				operFalseBranch = ULE;
+				break;
+			case CmpInst::Predicate::ICMP_UGE:
+				operTrueBranch = UGE;
+				operFalseBranch = ULT;
+				break;
+			case CmpInst::Predicate::ICMP_ULT:
+				operTrueBranch = ULT;
+				operFalseBranch = UGE;
+				break;
+			case CmpInst::Predicate::ICMP_ULE:
+				operTrueBranch = ULE;
+				operFalseBranch = UGT;
+				break;
             default:
                 if (!noPrint) {
                     errs() << "WARNING: Unknown cmp instruction: ";
@@ -2396,16 +2412,18 @@ class VerifierPass : public ModulePass {
 					// errs() << "Interf Env:\n";
 					// searchInterfEnv->second->printEnvironment();
 
-                    if (searchInterfEnv->second->isModified() || curEnv->isModified())
+                    // if (searchInterfEnv->second->isModified() || curEnv->isModified()) {
                         tmpEnv.applyInterference(varName, *searchInterfEnv->second, 
                             getInstNumByInst(loadInst), getInstNumByInst(*interfInst));
-                    else {
+						// errs() << "after applying this interf:\n";
+						// tmpEnv.printEnvironment();
+                    	curEnv->joinEnvironment(tmpEnv);
+					// }
+                    // else {
                         // errs() << "MOD: not applying interf\n";
-                        tmpEnv.setNotModified();
-                    }
-					// errs() << "after applying this interf:\n";
-					// tmpEnv.printEnvironment();
-                    curEnv->joinEnvironment(tmpEnv);
+						// TODO: get it from prev itr, join with cur.
+                        // tmpEnv.setNotModified();
+                    // }
 					// errs() << "after joining to curEnv:\n";
 					// curEnv->printEnvironment();
                 }
