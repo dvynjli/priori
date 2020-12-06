@@ -1187,6 +1187,7 @@ class VerifierPass : public ModulePass {
             // branchEnv[cmpInst].first->printEnvironment();
             // errs() <<"False Branch:\n";
             // branchEnv[cmpInst].second->printEnvironment();
+			// errs() <<"Done\n";
             return env;
         }
         else if (BranchInst *branchInst = dyn_cast<BranchInst>(inst)) {
@@ -1202,7 +1203,9 @@ class VerifierPass : public ModulePass {
 				auto searchTrueEnv = curFuncEnv.find(trueBranch);
 				if (searchTrueEnv == curFuncEnv.end()) {
 					// assign from the branch env
-					curFuncEnv.emplace(make_pair(trueBranch, searchBranchEnv->second.first));
+					Environment *tmpEnv = new Environment();
+					tmpEnv->copyEnvironment(*searchBranchEnv->second.first);
+					curFuncEnv.emplace(make_pair(trueBranch, tmpEnv));
 				}
 				else {
 					// if it already exit, merge
@@ -1213,7 +1216,9 @@ class VerifierPass : public ModulePass {
 				auto searchFalseEnv = curFuncEnv.find(falseBranch);
 				if (searchFalseEnv == curFuncEnv.end()) {
 					// assign from the branch env
-					curFuncEnv.emplace(make_pair(falseBranch, searchBranchEnv->second.second));
+					Environment *tmpEnv = new Environment();
+					tmpEnv->copyEnvironment(*searchBranchEnv->second.second);
+					curFuncEnv.emplace(make_pair(falseBranch, tmpEnv));
 				}
 				else {
 					// if it already exit, merge
@@ -1227,6 +1232,7 @@ class VerifierPass : public ModulePass {
                 // printValue(falseBranch);
                 // errs() << "False branch Env:\n";
                 // curFuncEnv[falseBranch]->printEnvironment();
+				// errs() << "Done\n";
             }
             else {
                 Instruction *successors = &(*(branchInst->getSuccessor(0)->begin()));
@@ -1607,12 +1613,17 @@ class VerifierPass : public ModulePass {
             TerminatorInst *termInst = phinode->getIncomingBlock(i)->getTerminator();
             if (BranchInst *branch = dyn_cast<BranchInst>(termInst)) {
                 if (branch->isConditional()) {
+					// errs() << "conditional branch\n";
                     Instruction *branchCondition = dyn_cast<Instruction>(branch->getCondition());
                     if (branch->getSuccessor(0) == phinode->getParent()) {
+						// errs() << "copying from true branchEnv\n";
                         phiEnv.copyEnvironment(*branchEnv[branchCondition].first);
                     }
                     else {
                         assert(branch->getSuccessor(1) == phinode->getParent() && "We do not support branch with more than two successors");
+						// errs() << "copying from false branchEnv\n";
+						// errs() << "phiEnv before copying:\n"; phiEnv.printEnvironment();
+						// errs() << "Copying from:\n"; branchEnv[branchCondition].second->printEnvironment();
                         phiEnv.copyEnvironment(*branchEnv[branchCondition].second);
                     }
                 }
@@ -1651,9 +1662,9 @@ class VerifierPass : public ModulePass {
                         phiEnv.copyEnvironment(*branchEnv[binOp].first);
                         // errs() << "true env:\n";
                         // phiEnv.printEnvironment();
-                        // branchEnv[binOp].first.printEnvironment();
+                        // branchEnv[binOp].first->printEnvironment();
                         // errs() << "false env:\n";
-                        // branchEnv[binOp].second.printEnvironment();
+                        // branchEnv[binOp].second->printEnvironment();
                         phiEnv.joinEnvironment(*branchEnv[binOp].second);
                         // errs() << "true+false env:\n";
                         // phiEnv.printEnvironment();
@@ -1669,11 +1680,12 @@ class VerifierPass : public ModulePass {
             }
             if (i==0) curEnv->copyEnvironment(phiEnv);
             else {
-                // errs() << "Joining: "; curEnv.printEnvironment(); 
+                // errs() << "Joining: "; curEnv->printEnvironment(); 
                 // errs() << "with: "; phiEnv.printEnvironment();
                 curEnv->joinEnvironment(phiEnv);
+				// errs() << "Done\n";
             }
-            // curEnv.printEnvironment();
+            // curEnv->printEnvironment();
         }
         return curEnv;
     }
@@ -2411,6 +2423,7 @@ class VerifierPass : public ModulePass {
                     // curEnv->printEnvironment();
 					// errs() << "Interf Env:\n";
 					// searchInterfEnv->second->printEnvironment();
+					// errs() << "Applying Interf\n";
 
                     // if (searchInterfEnv->second->isModified() || curEnv->isModified()) {
                         tmpEnv.applyInterference(varName, *searchInterfEnv->second, 
