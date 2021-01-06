@@ -1371,7 +1371,7 @@ void EnvironmentPOMO::applyInterference(
             }
 
             if (apply) {
-                // fprintf(stderr, "Join curPOMO:\n");
+                // fprintf(stderr, "\nJoin curPOMO:\n");
 				// curPomo.printPOMO();
 				// fprintf(stderr, "interfPOMO:\n");
 				// interfpomo.printPOMO();

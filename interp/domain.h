@@ -246,6 +246,7 @@ public:
             fprintf(stderr, "%s: ", it->first.c_str());
             // if (it->second)
             fprintf(stderr, "%s\n", it->second.toString().c_str());
+			// fprintf(stderr, "%p\n", &it->second);
             // else fprintf(stderr, "NULL");
             // fprintf(stderr, "\n");
         }
