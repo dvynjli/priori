@@ -89,6 +89,7 @@ public:
     void meetApDomain(ApDomain &other);
 	void performReleaseLock(string &lockVar);
 	void performAcquireLock(string &lockVar);
+	void performNonDetInt(string &var, int lb, int ub);
     void setVar(string &strVar);
     void unsetVar(string &strVar);
     bool isUnreachable();
@@ -390,6 +391,7 @@ public:
     // virtual void appendInst(Z3Minimal &zHelper, llvm::StoreInst *storeInst, string var);
 	virtual void performReleaseLock(string &lockVar, InstNum unlockInst);
 	virtual void performAcquireLock(string &lockVar, InstNum unlockInst);
+	virtual void performNonDetInt(string &var, int lb, int ub);
     virtual void setVar(string &strVar);
     virtual void unsetVar(string &strVar);
     virtual bool isUnreachable();
