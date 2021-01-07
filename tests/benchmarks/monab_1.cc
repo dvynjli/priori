@@ -9,7 +9,67 @@ mutex m;
 
 atomic<int> s;
 
+void* thr0(void* arg)
+{
+  int l;
+  nondet_int(l, MIN, MAX);
+  l = 4;
+
+  m.lock();
+  s.store(l, REL);
+  int rs = s.load(ACQ);
+  assert (rs == l);
+  m.unlock();
+
+  return NULL;
+}
+
 void* thr1(void* arg)
+{
+  int l;
+  nondet_int(l, MIN, MAX);
+  l = 4;
+
+  m.lock();
+  s.store(l, REL);
+  int rs = s.load(ACQ);
+  assert (rs == l);
+  m.unlock();
+
+  return NULL;
+}
+
+void* thr2(void* arg)
+{
+  int l;
+  nondet_int(l, MIN, MAX);
+  l = 4;
+
+  m.lock();
+  s.store(l, REL);
+  int rs = s.load(ACQ);
+  assert (rs == l);
+  m.unlock();
+
+  return NULL;
+}
+
+void* thr3(void* arg)
+{
+  int l;
+  nondet_int(l, MIN, MAX);
+  l = 4;
+
+  m.lock();
+  s.store(l, REL);
+  int rs = s.load(ACQ);
+  assert (rs == l);
+  m.unlock();
+
+  return NULL;
+}
+
+void* thr4(void* arg)
 {
   int l;
   nondet_int(l, MIN, MAX);
@@ -31,11 +91,11 @@ int main()
   pthread_t t0, t1, t2, t3, t4;
 
   // Unfolded loop
-  pthread_create (&t0, NULL, thr1, NULL);
+  pthread_create (&t0, NULL, thr0, NULL);
   pthread_create (&t1, NULL, thr1, NULL);
-  pthread_create (&t2, NULL, thr1, NULL);
-  pthread_create (&t3, NULL, thr1, NULL);
-  pthread_create (&t4, NULL, thr1, NULL); 
+  pthread_create (&t2, NULL, thr2, NULL);
+  pthread_create (&t3, NULL, thr3, NULL);
+  pthread_create (&t4, NULL, thr4, NULL); 
 
    pthread_join (t0, NULL);
    pthread_join (t1, NULL);
