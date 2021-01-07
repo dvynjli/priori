@@ -253,6 +253,25 @@ void ApDomain::performBinaryOp(operation &oper, string &strTo, int &intOp1, int 
     // }
 }
 
+void ApDomain::performNonDetInt(string &var, int lb, int ub) {
+	// fprintf(stderr, "In apDom nondet_int\n");
+	// lb ramge
+    ap_lincons1_array_t consArray = ap_lincons1_array_make(env, 2);
+    ap_linexpr1_t exprGE = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
+    ap_lincons1_t consExprGE = ap_lincons1_make(getApConsType(GE), &exprGE, NULL);
+    ap_lincons1_set_list(&consExprGE, AP_COEFF_S_INT, 1, var.c_str(), AP_CST_S_INT, (-1)*lb, AP_END);
+    ap_lincons1_array_set(&consArray, 0, &consExprGE);
+
+    // ub range 
+    ap_linexpr1_t exprLE = ap_linexpr1_make(env, AP_LINEXPR_SPARSE, 1);
+	ap_lincons1_t consExprLE = ap_lincons1_make(getApConsType(GE), &exprLE, NULL);
+    ap_lincons1_set_list(&consExprLE, AP_COEFF_S_INT, -1, var.c_str(), AP_CST_S_INT, ub, AP_END);
+    ap_lincons1_array_set(&consArray, 1, &consExprLE);
+    // ap_lincons1_array_fprint(stderr, &consArray);
+    absValue = ap_abstract1_meet_lincons_array(man, true, &absValue, &consArray);
+    // printApDomain();
+}
+
 void ApDomain::performCmpOp(operation oper, string &strOp1, int &intOp2) {
     if (oper==LT) {
         // apron doesn't have LT cons operator. Need to change it to GT by swapping the operands.
@@ -1069,6 +1088,13 @@ void EnvironmentPOMO::performBinaryOp(operation oper, string &strTo, string &str
         it->second.performBinaryOp(oper, strTo, strOp1, strOp2);
     }
 	if (mergeOnVal) mergerOnSameValue();
+}
+
+void EnvironmentPOMO::performNonDetInt(string &var, int lb, int ub) {
+	// fprintf(stderr, "in EnvPOMO nondet_int\n");
+	for (auto it=environment.begin(); it!=environment.end(); ++it) {
+		it->second.performNonDetInt(var, lb, ub);
+	}
 }
 
 void EnvironmentPOMO::performCmpOp(operation oper, string &strOp1, int &intOp2) {

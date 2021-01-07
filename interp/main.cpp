@@ -1114,6 +1114,11 @@ class VerifierPass : public ModulePass {
                 // curEnv.printEnvironment();
 
             }
+			else if (callInst->getCalledFunction()->getName() == "_Z10nondet_intRSt6atomicIiEii" ||
+					 callInst->getCalledFunction()->getName() == "_Z10nondet_intRiii") {
+				// errs() << "nondet_int found\n";
+				return checkNonDetIntCall(callInst, curEnv);
+			}
             else if (callInst->getCalledFunction()->getName().find("unlock")!=llvm::StringRef::npos) {
                 // errs() << "Lock: "; printValue(callInst);
 				// errs() << "Before call:\n"; curEnv.printEnvironment();
@@ -1822,6 +1827,7 @@ class VerifierPass : public ModulePass {
         #endif
 
         string destVarName = getNameFromValue(destVar);
+		// errs() << "destVarName: " << destVarName << "\n";
 
         #ifdef NOTRA
         auto ord = storeInst->getOrdering();
@@ -1835,7 +1841,11 @@ class VerifierPass : public ModulePass {
         
         // if(useMOPO) {
             // errs() << "appending " << storeInst << " to " << destVarName << "\n";
-        curEnv->performStoreOp(getInstNumByInst(storeInst), destVarName);
+			// check if store is of some global variable
+			if (std::find(globalVars.begin(), globalVars.end(), destVarName) != globalVars.end()) {
+				// errs() << "destVar is atomic. appending the storeInst in PO\n";
+        		curEnv->performStoreOp(getInstNumByInst(storeInst), destVarName);
+			}
         // }
         
         #ifdef NOTRA
@@ -1848,7 +1858,9 @@ class VerifierPass : public ModulePass {
         Value* fromVar = storeInst->getValueOperand();
         
         if (ConstantInt *constFromVar = dyn_cast<ConstantInt>(fromVar)) {
+			// errs() << "storing const: ";
             int constFromIntVar = constFromVar->getValue().getSExtValue();
+			// errs() << constFromIntVar << "\n";
             curEnv->performUnaryOp(STORE, destVarName, constFromIntVar);
         }
         else if (Argument *argFromVar = dyn_cast<Argument>(fromVar)) {
@@ -2163,6 +2175,36 @@ class VerifierPass : public ModulePass {
         }
         return curEnv;
     }
+
+	Environment* checkNonDetIntCall(CallInst *callInst, Environment *curEnv) {
+		// errs() << "finding the atomic var to consider\n";
+		Value *atomicVarOper = callInst->getOperand(0);
+		// printValue(atomicVarOper);
+		string atomicVarName = getNameFromValue(atomicVarOper);
+		// errs() << "VarName: " << atomicVarName << "\n";
+		Value *lbOper = callInst->getOperand(1);
+		Value *ubOper = callInst->getOperand(2);
+		int lb, ub;
+		if (ConstantInt *lbcons = dyn_cast<ConstantInt> (lbOper)) {
+			lb = lbcons->getValue().getSExtValue();
+		}
+		else {
+			errs() << "ERROR: start range in nondet_int is not int. Function not supported\n";
+			exit(0);
+		}
+		if (ConstantInt *ubcons = dyn_cast<ConstantInt> (ubOper)) {
+			ub = ubcons->getValue().getSExtValue();
+		}
+		else {
+			errs() << "ERROR: start range in nondet_int is not int. Function not supported\n";
+			exit(0);
+		}
+		// errs() << "set to range [" << lb << "," << ub << "]\n";
+		curEnv->performNonDetInt(atomicVarName, lb, ub);
+		// errs() << "CurEnv after nondet_int:\n";
+		// curEnv->printEnvironment();
+		return curEnv;
+	}
 
     Environment* checkRMWInst(
         AtomicRMWInst *rmwInst, 
