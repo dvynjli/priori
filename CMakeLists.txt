@@ -10,5 +10,6 @@ include(AddLLVM)
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS} /usr/lib /usr/include)
+link_directories(/usr/local/lib)
 
 add_subdirectory(interp)
