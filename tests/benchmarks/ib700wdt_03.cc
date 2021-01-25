@@ -925,6 +925,607 @@ void *writer20(void *unused) {
   return NULL;
 }
 
+void *writer21(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer22(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer23(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer24(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer25(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer26(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer27(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer28(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer29(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer30(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer31(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer32(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer33(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer34(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer35(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer36(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer37(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer38(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer39(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+void *writer40(void *unused) {
+  // div: inlining the function calls
+  // ibwdt_write(0);
+  // div: the loop will run for only one iteration, removing.
+  // do {
+    if (0) {
+    	  int rnowayout = nowayout.load(ACQ);
+		  if (!rnowayout) { 
+        /* In case it was set long ago */ 
+        expect_close.store(0,REL); 
+        /* Markus: Originially, the buffer would be looped over here */ 
+        int wbuf = write_user_buf.load(ACQ);
+        if (wbuf == 'V') { 
+          expect_close.store(42, REL); 
+        } 
+      } 
+    } 
+    // div: inlining function call
+    // idwdt_ping(); 
+    // div: the loop will run for only one iteration, removing.
+    // do {
+      // div: inline
+      // outb_p(wd_margin, wdt_start_port);
+      int r_wd_margin = wd_margin.load(ACQ);
+      wdt_start_port.store(r_wd_margin, REL);
+    // } while (false)
+  // } while (false)
+  return NULL;
+}
+
+
 // markus: driver thread for the character device driver. 
 void *closer(void *unused) {
   // Tell the driver we expect to close it
@@ -999,7 +1600,11 @@ int main(int argc, char *argv[]) {
   pthread_t tw1, tw2, tw3, tw4, tw5,
   			tw6, tw7, tw8, tw9, tw10,
   			tw11, tw12, tw13, tw14, tw15, 
-  			tw16, tw17, tw18, tw19, tw20;
+  			tw16, tw17, tw18, tw19, tw20,
+  			tw21, tw22, tw23, tw24, tw25, 
+  			tw26, tw27, tw28, tw29, tw30, 
+  			tw31, tw32, tw33, tw34, tw35, 
+  			tw36, tw37, tw38, tw39, tw40;
   pthread_t t2;
   pthread_create(&tw1, NULL, writer1, NULL);
   pthread_create(&tw2, NULL, writer2, NULL);
@@ -1021,6 +1626,26 @@ int main(int argc, char *argv[]) {
   pthread_create(&tw18, NULL, writer18, NULL);
   pthread_create(&tw19, NULL, writer19, NULL);
   pthread_create(&tw20, NULL, writer20, NULL);
+  pthread_create(&tw21, NULL, writer21, NULL);
+  pthread_create(&tw22, NULL, writer22, NULL);
+  pthread_create(&tw23, NULL, writer23, NULL);
+  pthread_create(&tw24, NULL, writer24, NULL);
+  pthread_create(&tw25, NULL, writer25, NULL);
+  pthread_create(&tw26, NULL, writer26, NULL);
+  pthread_create(&tw27, NULL, writer27, NULL);
+  pthread_create(&tw28, NULL, writer28, NULL);
+  pthread_create(&tw29, NULL, writer29, NULL);
+  pthread_create(&tw30, NULL, writer30, NULL);
+  pthread_create(&tw31, NULL, writer31, NULL);
+  pthread_create(&tw32, NULL, writer32, NULL);
+  pthread_create(&tw33, NULL, writer33, NULL);
+  pthread_create(&tw34, NULL, writer34, NULL);
+  pthread_create(&tw35, NULL, writer35, NULL);
+  pthread_create(&tw36, NULL, writer36, NULL);
+  pthread_create(&tw37, NULL, writer37, NULL);
+  pthread_create(&tw38, NULL, writer38, NULL);
+  pthread_create(&tw39, NULL, writer39, NULL);
+  pthread_create(&tw40, NULL, writer40, NULL);
   pthread_create(&t2, NULL, closer, NULL);
   pthread_join(tw1, NULL);
   pthread_join(tw2, NULL);

@@ -5,6 +5,9 @@ Benchmark tpoll:
 	with <=30 opt-bisect-limit, has br i1 true
 	with no opt-bisect-limit, has phi i32* nodes
 
+Benchmark pgsql:
+	false positive since i) latch is not initialized, ii) we don't know that latch should be 1 to exit the if statement with ok=1
+
 
 __________________________________________
 szymanski.cc: 
