@@ -1,0 +1,2 @@
+Running stack true:
+clang -O1  -S -emit-llvm stack_true.cc -mllvm -opt-bisect-limit=20
