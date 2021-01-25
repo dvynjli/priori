@@ -129,6 +129,7 @@ int main()
 	passed0.store(0, memory_order_release);
 	passed1.store(0, memory_order_release);
 	k.store(0, memory_order_release);
+	__fence_var.store(0, memory_order_release);
 	
   	pthread_t ts0, ts1;
 	  
