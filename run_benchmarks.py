@@ -21,7 +21,8 @@ non_buggy = ['CO-2+2W_5', 'CO-2+2W_10', 'CO-2+2W_15', 'fibonacci',
 			#'peterson3_fen',
                         'redundant_co' , 
                         #'gcd', 
-                        'pthread_demo', 'exponential_bug_6',
+                        #'pthread_demo', 
+                        'exponential_bug_6',
 			'exponential_bug_7', 'exponential_bug_8','exponential_bug_9']
 #if len(sys.argv) == 1 or sys.argv[1] == '-all' or sys.argv[1] == '-a':
 #		benchmarks = buggy + non_buggy
