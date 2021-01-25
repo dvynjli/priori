@@ -121,6 +121,7 @@ class VerifierPass : public ModulePass {
             // countNumFeasibleInterf(feasibleInterfences);
 			//errs() << "with merging on val\n";
 			//mergeOnVal = true;
+			// errs() << "analyzing\n";
             analyzeProgram(M, feasibleInterfences);
 			//mergeProgramState = programState;
 			//programState.clear();
@@ -321,7 +322,7 @@ class VerifierPass : public ModulePass {
                 BasicBlock* BB = basicBlockQ.front();
                 basicBlockQ.pop();
 
-                // errs() << "checking BB: "; printValue(BB);
+                // errs() << "checking if BB is ready for preprocessing: "; printValue(BB);
 
                 bool doAnalyze = true;
                 for (auto predBB: predecessors(BB)) {
@@ -341,7 +342,7 @@ class VerifierPass : public ModulePass {
                     continue;
                 }
 
-                // errs() << "\nchecking basic block ";
+                // errs() << "\npreprocessing basic block ";
                 // BB->print(errs());
 
                 Instruction *lastGlobalInst=nullptr;
@@ -639,7 +640,7 @@ class VerifierPass : public ModulePass {
         //     }
         // }
 
-        // errs() << "getting feasible\n";
+        // errs() << "computing feasible interferences\n";
         getFeasibleInterferences(allLoads, allStores, funcToTCreate, funcToTJoin, feasibleInterfences);
 		// errs() << "feasible interfs found\n";
     }
