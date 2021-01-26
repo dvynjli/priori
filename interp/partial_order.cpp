@@ -132,9 +132,13 @@ void PartialOrder::join(const PartialOrder &other) {
 
 // checks if (inst1, inst2) \in order
 bool PartialOrder::isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const {
+	// fprintf(stderr, "checking isOrdBefore %s, %s: ", inst1.toString().c_str(), inst2.toString().c_str());
 	// if (!isExists(inst1)) return false;
-	if (inst1==inst2) return true;
-	// if (inst1.isSeqBefore(inst2)) return true;
+	if (inst1==inst2) {
+		// fprintf(stderr, "1\n"); 
+		return true;
+	}
+	if (inst1.isSeqBefore(inst2)) return true;
 	auto searchInst1 = order.find(inst1);
 	if (searchInst1 == order.end()) {
 		// search if some inst seqeunces after inst1 is in order
@@ -145,11 +149,20 @@ bool PartialOrder::isOrderedBefore(const InstNum &inst1, const InstNum &inst2) c
 			}
 		}
 		// no such inst found, hence inst1 or any inst sequenced after inst1 is not in order
-		if (searchInst1 == order.end()) return false;
+		if (searchInst1 == order.end()) {
+			// fprintf(stderr, "0"); 
+			return false;
+		}
 	}
 	auto searchInst2 = searchInst1->second.find(inst2);
-	if (searchInst2 == searchInst1->second.end()) return false;
-	else return true;
+	if (searchInst2 == searchInst1->second.end()) {
+		// fprintf(stderr, "0"); 
+		return false;
+	}
+	else {
+		// fprintf(stderr, "1"); 
+		return true;
+	}
 }
 
 // checks if inst is a part of this partial order

@@ -1410,6 +1410,7 @@ void EnvironmentPOMO::applyInterference(
 
                 // #pragma omp parallel for shared (newPomo, interfpomo, zHelper) num_threads(omp_get_num_procs()*2)
                 for (auto varIt: curPomo) {
+					// fprintf(stderr, "\nvar: %s", varIt.first.c_str());
                     // PartialOrderWrapper tmpPO = PartialOrderWrapper(PartialOrder());
                     auto searchInterfPomo = interfpomo.find(varIt.first);
                     // don't need this search again
@@ -1446,6 +1447,8 @@ void EnvironmentPOMO::applyInterference(
                 tmpDomain.applyInterference(interfVar, interfIt.second, true, &varoptions);
 				// fprintf(stderr, "after join:\n");
 				// newPomo.printPOMO();
+				// fprintf(stderr, "tmpdom after join:\n");
+				// tmpDomain.printApDomain();
                 if (!tmpDomain.isUnreachable()) {
                 	auto searchPomo = newenvironment.find(newPomo);
                 	if (searchPomo != newenvironment.end()) {
