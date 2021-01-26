@@ -139,9 +139,14 @@ export CPLUS_INCLUDE_PATH=/home/divyanjali/apron/include/
 export LD_LIBRARY_PATH=/home/divyanjali/apron/lib/
 export LIBRARY_PATH=/home/divyanjali/apron/lib/
  
-for lab system
+for lab system (old)
 export LIBRARY_PATH=/usr/local/lib/
 export LD_LIBRARY_PATH=/usr/local/lib/
+
+for lab system (new)
+export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/usr/lib/llvm-9/include/openmp/
+export LD_LIBRARY_PATH=/usr/lib/llvm-9/lib/
+export LIBRARY_PATH=/usr/lib/llvm-9/lib/
 
 
 Running ASAN:
