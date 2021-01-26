@@ -1625,9 +1625,12 @@ bool EnvironmentPOMO::canTakeMeet(const POMO &cur, const POMO &other) {
 	        break;
 	    }
 		auto searchIfLockVar = lockVars.find(varIt.first);
-		if (searchIfLockVar != lockVars.end() && !isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
-			apply = false;
-			break;
+		if (searchIfLockVar != lockVars.end()) {
+			// fprintf(stderr, "calling isFeasibleLocks for %s\n", varIt.first.c_str());
+			if (!isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
+				apply = false;
+				break;
+			}
 		}
 	}
 	return apply;
@@ -1640,9 +1643,9 @@ bool EnvironmentPOMO::isFeasibleLocks(const PartialOrder &curPartialOrder,
 	// fprintf(stderr, "interfPartialOrder: %s\n", interfPartialOrder.toString().c_str());
 	unordered_set<InstNum> curPOLasts, interfPOLasts;
 	curPartialOrder.getLasts(curPOLasts);
-	assert (curPOLasts.size() <= 1 && "cur Lock PO should have only one last element. isFeasibleLocks() called on non-lock variable");
+	// assert (curPOLasts.size() <= 1 && "cur Lock PO should have only one last element. isFeasibleLocks() called on non-lock variable");
 	interfPartialOrder.getLasts(interfPOLasts);
-	assert (interfPOLasts.size() <= 1 && "interf Lock PO should have only one last element. isFeasibleLocks() called on non-lock variable");
+	// assert (interfPOLasts.size() <= 1 && "interf Lock PO should have only one last element. isFeasibleLocks() called on non-lock variable");
 	// if either of POs are empty, the interf is feasible
 	if (curPOLasts.size() == 0 || interfPOLasts.size() == 0) return true;
 	InstNum curPOLock = *curPOLasts.begin();
