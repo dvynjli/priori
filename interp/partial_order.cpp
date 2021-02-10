@@ -7,7 +7,7 @@
 void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 	//fprintf(stderr, "addOrder %p --> %p\n", from, to);
 	
-	if (isOrderedBefore(from, to)) return;
+	if (isDeletableInst(from) && isOrderedBefore(from, to)) return;
 	// if (isOrderedBefore(to, from)) return false;
 	// if (isOrderedBefore(to, from)) {
 	// 	fprintf(stderr, "CurPO: %s\n", toString().c_str());
@@ -116,7 +116,7 @@ void PartialOrder::join(const PartialOrder &other) {
 	// fprintf(stderr, "PO joining\n");
 	// fprintf(stderr, "%s\t and \t%s\n", toString().c_str(), other.toString().c_str());
 	for (auto fromItr=other.begin(); fromItr!=other.end(); ++fromItr) {
-		// fprintf(stderr, "%p ",fromItr->first);
+		// fprintf(stderr, "%s ",fromItr->first.toString().c_str());
 		if (fromItr->second.empty() && order.find(fromItr->first) == order.end()){
 			addInst(fromItr->first);
 		}
