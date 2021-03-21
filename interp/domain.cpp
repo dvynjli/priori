@@ -975,10 +975,14 @@ void EnvironmentPOMO::mergerOnSameValue() {
 			// fprintf(stderr, "POMO:\n");
 			// itPOMO->printPOMO();
 			if (canTakeMeet(meetedPOMO, *itPOMO)) {
-				// fprintf(stderr, "combining pomo\n");
+				// fprintf(stderr, "combining pomos:\n");
+				// meetedPOMO.printPOMO();
+				// fprintf(stderr, "with\n");
+				// itPOMO->printPOMO();
 				meetPOMO(meetedPOMO, *itPOMO, tmpPomo);
 				// fprintf(stderr, "pomo combined\n");
 				meetedPOMO = tmpPomo;
+				// meetedPOMO.printPOMO();
 			}
 			else {
 				// if meet is not possible, keep them both
@@ -1364,10 +1368,15 @@ void EnvironmentPOMO::applyInterference(
         for (auto interfIt:interfEnv) {
             POMO curPomo = curIt.first;
             POMO interfpomo = interfIt.first;
+            // fprintf(stderr, "\nJoin curPOMO:\n");
+			// curPomo.printPOMO();
+			// fprintf(stderr, "interfPOMO:\n");
+			// interfpomo.printPOMO();
             
             // check if POMO are conssistent for all variables
             bool apply = true;
             for (auto varIt:curPomo) {
+				// fprintf(stderr, "var: %s", varIt.first.c_str());
                 auto searchInterfPomo = interfpomo.find(varIt.first);
                 if (searchInterfPomo == interfpomo.end()) {
                     fprintf(stderr, "ERROR: Variable %s mismatch in POMOs in applyinterf\n", varIt.first.c_str());
@@ -1391,6 +1400,7 @@ void EnvironmentPOMO::applyInterference(
                 }
 				auto searchIfLockVar = lockVars.find(varIt.first);
 				if (searchIfLockVar != lockVars.end() && !isFeasibleLocks(varIt.second, searchInterfPomo->second)) {
+					// fprintf(stderr, "not feasible lock\n");
 					apply = false;
 					break;
 				}
@@ -1401,6 +1411,7 @@ void EnvironmentPOMO::applyInterference(
 				// curPomo.printPOMO();
 				// fprintf(stderr, "interfPOMO:\n");
 				// interfpomo.printPOMO();
+				// fprintf(stderr, "applying\n");
                 
                 // merge the two partial orders
                 POMO newPomo;
@@ -1447,6 +1458,7 @@ void EnvironmentPOMO::applyInterference(
                 tmpDomain.applyInterference(interfVar, interfIt.second, true, &varoptions);
 				// fprintf(stderr, "after join:\n");
 				// newPomo.printPOMO();
+				// fprintf(stderr, "\n");
 				// fprintf(stderr, "tmpdom after join:\n");
 				// tmpDomain.printApDomain();
                 if (!tmpDomain.isUnreachable()) {
