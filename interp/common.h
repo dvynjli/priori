@@ -100,7 +100,21 @@ struct hash<InstNum> {
 			hash<unsigned short>()(in.getInstid()));
 	}
 };
+
+template<>
+struct hash<pair<InstNum,InstNum>> {
+	size_t operator() (const pair<InstNum,InstNum> &pair) const {
+		return (((hash<unsigned short>()(pair.first.getTid()) << 16) | 
+			hash<unsigned short>()(pair.first.getInstid())) ^ 
+			((hash<unsigned short>()(pair.second.getTid()) << 16) | 
+			hash<unsigned short>()(pair.second.getInstid())
+
+				)
+			);
+	}
+};
 }
+
 
 // typedef pair<unsigned short int, unsigned short int> INST;
 

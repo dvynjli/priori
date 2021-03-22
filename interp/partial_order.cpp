@@ -99,10 +99,13 @@ void PartialOrder::append(const InstNum &newinst) {
 			// add newinst at in 'to' of it
 			// fprintf(stderr,"not seq before new inst. appending\n");
 			it->second.insert(newinst);
+			// update the ordered pair set hashset
+			hashset.insert(make_pair(it->first, newinst));
 			it++;
 		}
 	}
 	order.emplace(newinst, unordered_set<InstNum>());
+	hashset.insert(make_pair(newinst, InstNum(0,0)));
 	if(Precision>P0 && (isRMWInst(newinst) || isLockInst(newinst) || isUnlockInst(newinst))) {
 		rmws.insert(newinst);
 	}
@@ -291,6 +294,8 @@ void PartialOrder::remove(const InstNum &inst) {
 	if (Precision >= P3 && !isDeletableInst(inst)) return ;
 	for (auto it=order.begin(); it!=order.end(); ++it) {
 		it->second.erase(inst);
+		// remove the pair from hashset
+		hashset.erase(make_pair(it->first,inst));
 	}
 	order[inst].clear();
 	order.erase(inst);
@@ -337,6 +342,8 @@ void PartialOrder::makeTransitiveOrdering (const InstNum &from, const InstNum &t
 		// add all the elements ordered with 'to' to 'from'
 		for (auto it=toItr->second.begin(); it!=toItr->second.end(); ++it) {
 			order[from].insert(*it);
+			// add into hashset as ordered pair
+			hashset.insert(make_pair(from, *it));
 		}
 	}
 
@@ -371,6 +378,8 @@ void PartialOrder::addInst(const InstNum &inst) {
 	if (findInst == order.end()) {
 		unordered_set<InstNum> emptyset {};
 		order[inst] = emptyset;
+		// add the inst with inst dummy inst (0,0) ordered after it into hashset
+		hashset.insert(make_pair(inst, InstNum(0,0)));
 	}
 	if (Precision>P0 && (isRMWInst(inst) || isLockInst(inst) || isUnlockInst(inst)))
 		rmws.insert(inst);
@@ -415,16 +424,19 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 string PartialOrder::toString() const {
 	std::stringstream ss;
 	// fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
-	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
-	// 	fprintf(stderr, "in outer for\n");
-	// 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
-		ss << itFrom->first.toString() << " ---> " ;
-	 	for (auto itTo: itFrom->second) {
-	 		// fprintf(stderr, "in inner for\n");
-	 		ss << itTo.toString() << ", ";
-	 	}
-	 	ss << ";\t";
-	 }
+	// for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
+	// // 	fprintf(stderr, "in outer for\n");
+	// // 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
+	// 	ss << itFrom->first.toString() << " ---> " ;
+	//  	for (auto itTo: itFrom->second) {
+	//  		// fprintf(stderr, "in inner for\n");
+	//  		ss << itTo.toString() << ", ";
+	//  	}
+	//  	ss << ";\t";
+	//  }
+	for (auto it=hashset.begin(); it!=hashset.end(); it++) {
+		ss << "(" <<  it->first.toString() <<  "," << it->second.toString() <<  ") ";
+	}
 	ss << "del: " << deleteOlder;
 	// ss << "\tRMWs: ";
 	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
@@ -457,11 +469,13 @@ void PartialOrder::copy (const PartialOrder &copyFrom) {
 	order = copyFrom.order;
 	rmws = copyFrom.rmws;
 	deleteOlder = copyFrom.deleteOlder;
+	hashset = copyFrom.hashset;
 }
 
 void PartialOrder::clear() {
 	order.clear();
 	rmws.clear();
+	hashset.clear();
 }
 
 unordered_map<InstNum, unordered_set<InstNum>>::const_iterator PartialOrder::begin() const {

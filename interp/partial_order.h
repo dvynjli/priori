@@ -16,6 +16,7 @@ class PartialOrder {
 	// set and ~E x. inst \in order[x]
 	unordered_map<InstNum, unordered_set<InstNum>> order;
 	unordered_set<InstNum> rmws;
+	// hashset is set of ordered pair in partial order to compute the hash
 	bool deleteOlder;
 
 	PartialOrder(bool delOlder) :
@@ -71,6 +72,7 @@ public:
 	// 	rmws(unordered_set<InstNum>()), deleteOlder(true) {order.clear(); 
 	// 	// fprintf(stderr, "PO cons called\n");
 	// 	}
+	unordered_set<pair<InstNum,InstNum>> hashset;
 
 	// checks if the partial order other is consistent with this partial order
 	// Two parial orders are consistent only if Va.Vb (a,b) \in order
@@ -103,25 +105,23 @@ public:
 
 namespace std{
 template<>
+// struct hash<PartialOrder*> {
+// 	size_t operator() (const PartialOrder *po) {
+// 		// return hash<string>() (po->toString());
+// 		size_t curhash = hash<bool>{}(po->getDeleteOlder());
+// 		// auto it = po->begin();
+// 		// if (it == po->end())
+// 		// 	return hash<InstNum>()(InstNum(0,0));
+// 		// size_t curhash = hash<InstNum>()(it->first);
+// 		// it++;
+// 		for (auto it=po->begin(); it!=po->end(); it++) {
+// 			curhash = curhash ^ hash<InstNum>()(it->first);
+// 		}
+// 		// fprintf(stderr, "returning hash %lu\n",curhash);
+// 		return curhash;
+// 	}
+// };
 struct hash<PartialOrder*> {
-	size_t operator() (const PartialOrder *po) {
-		// return hash<string>() (po->toString());
-		size_t curhash = hash<bool>{}(po->getDeleteOlder());
-		// auto it = po->begin();
-		// if (it == po->end())
-		// 	return hash<InstNum>()(InstNum(0,0));
-		// size_t curhash = hash<InstNum>()(it->first);
-		// it++;
-		for (auto it=po->begin(); it!=po->end(); it++) {
-			curhash = curhash ^ hash<InstNum>()(it->first);
-		}
-		// fprintf(stderr, "returning hash %lu\n",curhash);
-		return curhash;
-	}
-};
-}
-
-struct hashPOPointer {
 	size_t operator() (const PartialOrder *po) const {
 		// return hash<string>() (po->toString());
 		size_t curhash = hash<bool>{}(po->getDeleteOlder());
@@ -130,8 +130,40 @@ struct hashPOPointer {
 		// 	return hash<InstNum>()(InstNum(0,0));
 		// size_t curhash = hash<InstNum>()(it->first);
 		// it++;
-		for (auto it=po->begin(); it!=po->end(); it++) {
-			curhash = curhash ^ hash<InstNum>()(it->first);
+		for (auto it=po->hashset.begin(); it!=po->hashset.end(); it++) {
+			curhash = curhash ^ hash<pair<InstNum,InstNum>>()(*it);
+		}
+		// fprintf(stderr, "returning hash %lu\n",curhash);
+		return curhash;
+	}
+};
+}
+
+struct hashPOPointer {
+	// size_t operator() (const PartialOrder *po) const {
+	// 	// return hash<string>() (po->toString());
+	// 	size_t curhash = hash<bool>{}(po->getDeleteOlder());
+	// 	// auto it = po->begin();
+	// 	// if (it == po->end())
+	// 	// 	return hash<InstNum>()(InstNum(0,0));
+	// 	// size_t curhash = hash<InstNum>()(it->first);
+	// 	// it++;
+	// 	for (auto it=po->begin(); it!=po->end(); it++) {
+	// 		curhash = curhash ^ hash<InstNum>()(it->first);
+	// 	}
+	// 	// fprintf(stderr, "returning hash %lu\n",curhash);
+	// 	return curhash;
+	// }
+	size_t operator() (const PartialOrder *po) const {
+		// return hash<string>() (po->toString());
+		size_t curhash = hash<bool>{}(po->getDeleteOlder());
+		// auto it = po->begin();
+		// if (it == po->end())
+		// 	return hash<InstNum>()(InstNum(0,0));
+		// size_t curhash = hash<InstNum>()(it->first);
+		// it++;
+		for (auto it=po->hashset.begin(); it!=po->hashset.end(); it++) {
+			curhash = curhash ^ hash<pair<InstNum,InstNum>>()(*it);
 		}
 		// fprintf(stderr, "returning hash %lu\n",curhash);
 		return curhash;
