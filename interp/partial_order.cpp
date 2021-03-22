@@ -7,7 +7,22 @@
 void PartialOrder::addOrder(const InstNum &from, const InstNum &to) {
 	//fprintf(stderr, "addOrder %p --> %p\n", from, to);
 	
-	if (isDeletableInst(from) && isOrderedBefore(from, to)) return;
+	// if \from ----> \to exists, either \from --sb--> \to or they are ordered in PO
+	// if \from --sb--> \to, if \from is deletable insturction  
+	// 		if \to is already in PO, \from must be removed earlier. 
+	// 			\from is already in PO. nothing to be done
+	//		if \to is not in PO already, must add \to and make transitive orderings.
+	// if \from is not deletable instruction, 
+	// 		if both \from and \to is already in PO, all the transitive relations should 
+	// 			be there already along with a direct sb edge.
+	// 			nothing to be done
+	// 		if \from is not in PO, something is wrong since, all sequenced before 
+	// 			non-deletable instructions should be present PO.
+	// 		if \to in not in PO, add \to to PO and make transistive ordering.
+	// if they are already ordered in PO, nothing to be done
+	if (isOrderedBefore(from,to) && 
+			(!from.isSeqBefore(to) || 
+			 	(isDeletableInst(from) && isExists(to)))) return;
 	// if (isOrderedBefore(to, from)) return false;
 	// if (isOrderedBefore(to, from)) {
 	// 	fprintf(stderr, "CurPO: %s\n", toString().c_str());
@@ -135,74 +150,74 @@ void PartialOrder::join(const PartialOrder &other) {
 
 // checks if (inst1, inst2) \in order
 bool PartialOrder::isOrderedBefore(const InstNum &inst1, const InstNum &inst2) const {
-	// fprintf(stderr, "checking isOrdBefore %s, %s: ", inst1.toString().c_str(), inst2.toString().c_str());
-	// if (!isExists(inst1)) return false;
-	if (inst1==inst2) {
-		// fprintf(stderr, "1\n"); 
-		return true;
+// fprintf(stderr, "checking isOrdBefore %s, %s: ", inst1.toString().c_str(), inst2.toString().c_str());
+// if (!isExists(inst1)) return false;
+if (inst1==inst2) {
+	// fprintf(stderr, "1\n"); 
+	return true;
+}
+if (inst1.isSeqBefore(inst2)) return true;
+auto searchInst1 = order.find(inst1);
+if (searchInst1 == order.end()) {
+	// search if some inst seqeunces after inst1 is in order
+	for (auto it=order.begin(); it!=order.end(); it++) {
+		if (inst1.isSeqBefore(it->first)) {
+			searchInst1 = it;
+			break;
+		}
 	}
-	if (inst1.isSeqBefore(inst2)) return true;
-	auto searchInst1 = order.find(inst1);
+	// no such inst found, hence inst1 or any inst sequenced after inst1 is not in order
 	if (searchInst1 == order.end()) {
-		// search if some inst seqeunces after inst1 is in order
-		for (auto it=order.begin(); it!=order.end(); it++) {
-			if (inst1.isSeqBefore(it->first)) {
-				searchInst1 = it;
-				break;
-			}
-		}
-		// no such inst found, hence inst1 or any inst sequenced after inst1 is not in order
-		if (searchInst1 == order.end()) {
-			// fprintf(stderr, "0"); 
-			return false;
-		}
-	}
-	auto searchInst2 = searchInst1->second.find(inst2);
-	if (searchInst2 == searchInst1->second.end()) {
 		// fprintf(stderr, "0"); 
 		return false;
 	}
-	else {
-		// fprintf(stderr, "1"); 
-		return true;
-	}
+}
+auto searchInst2 = searchInst1->second.find(inst2);
+if (searchInst2 == searchInst1->second.end()) {
+	// fprintf(stderr, "0"); 
+	return false;
+}
+else {
+	// fprintf(stderr, "1"); 
+	return true;
+}
 }
 
 // checks if inst is a part of this partial order
 bool PartialOrder::isExists(const InstNum &inst) const {
-	auto search = order.find(inst);
-	if (search == order.end()) return false;
-	else return true;
+auto search = order.find(inst);
+if (search == order.end()) return false;
+else return true;
 }
 
 // checks if the partial order other is consistent with this partial order
 // Two parial orders are consistent only if  Va.Vb (a,b) \in order 
 // (c,d) \notin other.order such that b--sb-->c and d--sb-->a
 bool PartialOrder::isConsistent(const PartialOrder &other) const {
-	for (auto itFrom=order.begin(); itFrom!=order.end(); itFrom++) {	// a
-		for (auto itTo=itFrom->second.begin(); itTo!=itFrom->second.end(); itTo++) { // b
-			for (auto itOtherFrom=other.begin(); itOtherFrom!=other.end(); itOtherFrom++) { // c
-				if (itTo->isSeqBefore(itOtherFrom->first)) {
-					// we found (a,b) \in p1, (c,-) \in p2 such that b--sb-->c
-					for (auto itOtherTo=itOtherFrom->second.begin(); itOtherTo!=itOtherFrom->second.end(); itOtherTo++) 	// d
-						if (itOtherTo->isSeqBefore(itFrom->first)) return false;
-				}
-			} 
-		}
+for (auto itFrom=order.begin(); itFrom!=order.end(); itFrom++) {	// a
+	for (auto itTo=itFrom->second.begin(); itTo!=itFrom->second.end(); itTo++) { // b
+		for (auto itOtherFrom=other.begin(); itOtherFrom!=other.end(); itOtherFrom++) { // c
+			if (itTo->isSeqBefore(itOtherFrom->first)) {
+				// we found (a,b) \in p1, (c,-) \in p2 such that b--sb-->c
+				for (auto itOtherTo=itOtherFrom->second.begin(); itOtherTo!=itOtherFrom->second.end(); itOtherTo++) 	// d
+					if (itOtherTo->isSeqBefore(itFrom->first)) return false;
+			}
+		} 
 	}
-	return true;
+}
+return true;
 }
 
 bool PartialOrder::isConsRMWP2(const PartialOrder &other) const {
-	for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
-		for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
-			if (itCur == itOther) continue;
-			if (!(isExists(*itOther) || other.isExists(*itCur))) {
-				// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
-					// itOther,isExists(itOther),itCur,other.isExists(itCur));
-				return false;
-			}
-			else if (!(isOrderedBefore(*itCur, *itOther) || 
+for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
+	for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
+		if (itCur == itOther) continue;
+		if (!(isExists(*itOther) || other.isExists(*itCur))) {
+			// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
+				// itOther,isExists(itOther),itCur,other.isExists(itCur));
+			return false;
+		}
+		else if (!(isOrderedBefore(*itCur, *itOther) || 
 				isOrderedBefore(*itOther, *itCur) ||
 				other.isOrderedBefore(*itCur, *itOther) ||
 				other.isOrderedBefore(*itOther, *itCur)))
@@ -423,20 +438,20 @@ bool PartialOrder::lessThan(const PartialOrder &other) const {
 
 string PartialOrder::toString() const {
 	std::stringstream ss;
-	// fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
-	// for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
-	// // 	fprintf(stderr, "in outer for\n");
-	// // 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
-	// 	ss << itFrom->first.toString() << " ---> " ;
-	//  	for (auto itTo: itFrom->second) {
-	//  		// fprintf(stderr, "in inner for\n");
-	//  		ss << itTo.toString() << ", ";
-	//  	}
-	//  	ss << ";\t";
-	//  }
-	for (auto it=hashset.begin(); it!=hashset.end(); it++) {
-		ss << "(" <<  it->first.toString() <<  "," << it->second.toString() <<  ") ";
-	}
+	fprintf(stderr, "deleteOlder: %d\n",deleteOlder);
+	for (auto itFrom=order.begin(); itFrom!=order.end(); ++itFrom) {
+	// 	fprintf(stderr, "in outer for\n");
+	// 	fprintf(stderr, "size of second %lu\n", itFrom->second.size());
+		ss << itFrom->first.toString() << " ---> " ;
+	 	for (auto itTo: itFrom->second) {
+	 		// fprintf(stderr, "in inner for\n");
+	 		ss << itTo.toString() << ", ";
+	 	}
+	 	ss << ";\t";
+	 }
+	// for (auto it=hashset.begin(); it!=hashset.end(); it++) {
+	// 	ss << "(" <<  it->first.toString() <<  "," << it->second.toString() <<  ") ";
+	// }
 	ss << "del: " << deleteOlder;
 	// ss << "\tRMWs: ";
 	// for (auto it=rmws.begin(); it!=rmws.end(); it++) {
