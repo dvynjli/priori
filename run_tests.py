@@ -5,7 +5,7 @@ import subprocess
 import os
 
 domain = 'interval' 	# options are interval, octagon
-num_tests = 33
+num_tests = 39
 interfcomb = False
 mergeOnVal = True
 precision = 'P3' 
@@ -17,7 +17,8 @@ test_result = 	[False, True, 	False, 	True, 	True,
 				True, 	False, 	True, 	True, 	False,
 				True, 	False,	True, 	True,	True,
 				True, 	True, 	True,	True,	True,
-				True, 	False,	True]
+				True, 	False,	True,	True,	True,
+				True, 	True, 	True, 	True]
 num_correct = 0
 num_false_positive = 0
 num_missed_asserts = 0

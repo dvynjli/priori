@@ -1,0 +1,17 @@
+# Not sure
+- test38
+
+# False Positives:
+- test16, 18, 24: Value abstractions 
+- test39: rmw are not treated as atomic in mo
+
+# Can't analyze:
+- test19: bitwise Or
+- test29: array
+
+# No assert statement
+- test34
+- test37: made for switch-cases
+
+
+
