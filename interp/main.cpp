@@ -1057,7 +1057,7 @@ class VerifierPass : public ModulePass {
             curFuncEnv[currentInst]= curEnv;
 			// errs() << "Assigned\n";
 			predEnv = curEnv;
-			if (!noPrint) {predEnv->printEnvironment();}
+			if (!noPrint) {errs() << "env after: \n"; predEnv->printEnvironment();}
             // if (!noPrint) errs() << "size: " << predEnv.size() << "\n";
 			// printInstToEnvMap(curFuncEnv);
         }

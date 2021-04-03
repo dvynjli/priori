@@ -960,6 +960,13 @@ void EnvironmentPOMO::mergerOnSameValue() {
 		revEnv[it->second].push_back(it->first);
 	}
 	// fprintf(stderr, "revenv created\n");
+	// for (auto it=revEnv.begin(); it!=revEnv.end(); it++) {
+	// 	fprintf(stderr, "Dom: "); it->first.printApDomain();
+	// 	for (auto it1=it->second.begin(); it1!=it->second.end(); it1++) {
+	// 		fprintf(stderr, "PO: "); it1->printPOMO();
+	// 	}
+	// 	fprintf(stderr, "done\n");
+	// }
 
 	for (auto it=revEnv.begin(); it!=revEnv.end(); it++) {
 		// fprintf(stderr, "for apDom:\n");
@@ -990,19 +997,30 @@ void EnvironmentPOMO::mergerOnSameValue() {
 			}
 		}
 		// add the joined POMO back to env
-		auto searchJoinedPOMO = environment.find(meetedPOMO);
-		if (searchJoinedPOMO!=environment.end()) {
+		auto searchJoinedPOMO = newEnv.find(meetedPOMO);
+		if (searchJoinedPOMO!=newEnv.end()) {
 			// joinedPOMO already exist. combine ApDom
 			ApDomain tmpApDomain = it->first;
+			// fprintf(stderr, "meetPOMO already found:\n");
+			// meetedPOMO.printPOMO();
+			// fprintf(stderr,"Joining apDom:\n");
+			// tmpApDomain.printApDomain();
+			// fprintf(stderr, "with:\n");
+			// searchJoinedPOMO->second.printApDomain();
 			tmpApDomain.joinApDomain(searchJoinedPOMO->second);
-			// insert in env
-			newEnv.insert(make_pair(meetedPOMO,tmpApDomain));
+			// fprintf(stderr, "after join:\n");
+			// tmpApDomain.printApDomain();
+			// update in env
+			newEnv[meetedPOMO] = tmpApDomain;
 		}
 		else {
 			newEnv.insert(make_pair(meetedPOMO, it->first));
 		}
 	}
 	environment = newEnv;
+	// fprintf(stderr, "after merging:\n");
+	// printEnvironment();
+	// fprintf(stderr, "merge done\n");
 	
 	// fprintf(stderr, "mergerOnSameValue val called. Env before:\n");
 	// printEnvironment();
@@ -1495,7 +1513,7 @@ void EnvironmentPOMO::applyInterference(
         }
     }
     environment = newenvironment;
-    // fprintf(stderr, "env after apply interf\n");
+    // fprintf(stderr, "env after apply interf before merge:\n");
     // printEnvironment();
 	if (mergeOnVal) mergerOnSameValue();
 }
@@ -1521,7 +1539,11 @@ void EnvironmentPOMO::joinEnvironment(EnvironmentPOMO &other) {
         else if (!it->second.isUnreachable()) environment[pomo] = it->second;
         if (other.isModified() && !isModified()) setModified();
     }
+	// fprintf(stderr, "before merging:\n");
+	// printEnvironment();
 	if (mergeOnVal) mergerOnSameValue();
+	// fprintf(stderr, "after join:\n");
+	// printEnvironment();
 }
 
 // Used for logical intructions
