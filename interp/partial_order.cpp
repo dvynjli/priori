@@ -209,24 +209,58 @@ return true;
 }
 
 bool PartialOrder::isConsRMWP2(const PartialOrder &other) const {
-for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
-	for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
-		if (itCur == itOther) continue;
-		if (!(isExists(*itOther) || other.isExists(*itCur))) {
-			// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
-				// itOther,isExists(itOther),itCur,other.isExists(itCur));
-			return false;
-		}
-		else if (!(isOrderedBefore(*itCur, *itOther) || 
-				isOrderedBefore(*itOther, *itCur) ||
-				other.isOrderedBefore(*itCur, *itOther) ||
-				other.isOrderedBefore(*itOther, *itCur)))
+	// V u \in cur, w \in other, w,u are ordered in cur U other
+	for (auto itCurRMW=rmws.begin(); itCurRMW!=rmws.end(); itCurRMW++) {
+		for (auto itOtherAll=other.begin(); itOtherAll!=other.end(); itOtherAll++) {
+			if ((*itCurRMW)==itOtherAll->first) continue;
+			else if (!(isExists(itOtherAll->first) || other.isExists(*itCurRMW))) return false;
+			else if (!(isOrderedBefore(*itCurRMW, itOtherAll->first) ||
+					   isOrderedBefore(itOtherAll->first, *itCurRMW) ||
+					   other.isOrderedBefore(*itCurRMW, itOtherAll->first) ||
+					   other.isOrderedBefore(itOtherAll->first, *itCurRMW))) {
 				return false;
+			}
 		}
 	}
-	// fprintf(stderr, "consistent\n");
+	// V u \in other, w \in cur, w,u are ordered in cur U other
+	for (auto itOtherRMW=other.rmws.begin(); itOtherRMW!=other.rmws.end(); itOtherRMW++) {
+		for (auto itCurAll=begin(); itCurAll!=end(); itCurAll++) {
+			if ((*itOtherRMW)==itCurAll->first) continue;
+			else if (!(isExists(itCurAll->first) || other.isExists(*itOtherRMW))) return false;
+			else if (!(isOrderedBefore(*itOtherRMW, itCurAll->first) ||
+					   isOrderedBefore(itCurAll->first, *itOtherRMW) ||
+					   other.isOrderedBefore(*itOtherRMW, itCurAll->first) ||
+					   other.isOrderedBefore(itCurAll->first, *itOtherRMW))) {
+				return false;
+			}
+		}
+	}
 	return true;
 }
+
+// bool PartialOrder::isConsRMWP2(const PartialOrder &other) const {
+// for (auto itCur=rmws.begin(); itCur!=rmws.end(); itCur++) {
+// 	for (auto itOther=other.rmws.begin(); itOther!=other.rmws.end(); itOther++) {
+// 		if (itCur == itOther) continue;
+// 		if (!(isExists(*itOther) || other.isExists(*itCur))) {
+// 			// fprintf(stderr, "not consistent, isExists(%p)=%d, other.isExists(%p)=%d\n",
+// 				// itOther,isExists(itOther),itCur,other.isExists(itCur));
+// 			return false;
+// 		}
+// 		else if (!(isOrderedBefore(*itCur, *itOther) || 
+// 				isOrderedBefore(*itOther, *itCur) ||
+// 				other.isOrderedBefore(*itCur, *itOther) ||
+// 				other.isOrderedBefore(*itOther, *itCur)))
+// 				return false;
+// 		}
+// 	}
+// 	// fprintf(stderr, "consistent\n");
+// 	return true;
+// }
+
+// bool PartialOrder::isConsRMWP3(const PartialOrder &other) const {
+// 	for (auto itOtherRMW=other.rmws.begin(); )
+// }
 
 bool PartialOrder::isConsRMWP3(const PartialOrder &other) const {
 	// unordered_set<InstNum> otherLasts;
