@@ -258,57 +258,85 @@ bool PartialOrder::isConsRMWP2(const PartialOrder &other) const {
 // 	return true;
 // }
 
-// bool PartialOrder::isConsRMWP3(const PartialOrder &other) const {
-// 	for (auto itOtherRMW=other.rmws.begin(); )
-// }
-
 bool PartialOrder::isConsRMWP3(const PartialOrder &other) const {
-	// unordered_set<InstNum> otherLasts;
-	// other.getLasts(otherLasts);
-	// fprintf(stderr, "checking cons P3\n");
-	for (auto otherFromIt=other.order.begin(); otherFromIt!=other.order.end(); otherFromIt++) {
-		if (!isDeletableInst(otherFromIt->first)) {
-			// fprintf(stderr, "from: %s -->", otherFromIt->first.toString().c_str());
-			auto searchFromCur = order.find(otherFromIt->first);
-			// if (searchFromCur == order.end() && otherLasts.find(otherFromIt->first)==otherLasts.end() ) {
-			// 	// fprintf(stderr, "from not found in cur and not last\n");
-			// 	// inst from other not found in cur and not last in other
-			// 	return false;
-			// }
-			// for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
-			// 	// fprintf(stderr, "--> %s\n", otherToIt->toString().c_str());
-			// 	auto searchToCur = searchFromCur->second.find(*otherToIt);
-			// 	if (searchToCur==searchFromCur->second.end() && otherLasts.find(*otherToIt)==otherLasts.end()) {
-			// 		// fprintf(stderr, "To not found in cur\n");
-			// 		// ordering from other not found in cur and not last in other
-			// 		return false;
-			// 	}
-			// }
-			if (searchFromCur == order.end()) {
-				// if from inst of interf not found in cur
-				// no inst ordered after it in interf should be in cur
-				for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
-					auto searchToCur = order.find(*otherToIt);
-					if (searchToCur != order.end()) return false;
-				}
-			}
+	// V u \in other.rmws if u \notin cur, then notE w \in other  
+	// (u, w) \in other such that w \in cur
+	// i.e., if u in not in cur, then nothing ordered after u exist in cur
+	for (auto itOther=other.begin(); itOther!=other.end(); itOther++) {
+		// need to check this only for rmws
+		if (isDeletableInst(itOther->first)) continue;
+		auto searchRMWinCur = rmws.find(itOther->first);
+		if (searchRMWinCur != rmws.end()) continue;
+		// everything ordered after itOtherRMW in other should not exist in cur
+		for (auto itOtherTo=itOther->second.begin(); itOtherTo!=itOther->second.end(); itOtherTo++) {
+			auto searchOtherToInCur = order.find(*itOtherTo);
+			if(searchOtherToInCur != order.end()) return false;
 		}
 	}
-	for (auto curFromIt=order.begin(); curFromIt!=order.end(); curFromIt++) {
-	 	if (!isDeletableInst(curFromIt->first)) {	// need to check only for RMWs
-			auto searchFromOther = other.order.find(curFromIt->first);
-			if (searchFromOther == order.end()) {
+	// V rmw \in cur, rmw \in other, and
+	// V (u,s) \in cur => (u,s) \in other and V (s,u) \in cur => (s,u) \in other
+	for (auto itCurFrom=begin(); itCurFrom!=end(); itCurFrom++) {
+		// if itCurFrom is rmw, it must exist in other
+		if (!(isDeletableInst(itCurFrom->first) || other.isExists(itCurFrom->first))) 
+			return false;
+		for (auto itCurTo=itCurFrom->second.begin(); itCurTo!=itCurFrom->second.end(); itCurTo++) {
+			// if either itCurFrom or itCurTo are rmw, (itCurFrom, itCurTo) must exist in other
+			if ((!isDeletableInst(itCurFrom->first) || 
+					!isDeletableInst(*itCurTo)) &&
+					!other.isOrderedBefore(itCurFrom->first, *itCurTo) )
 				return false;
-			}
-			for (auto curToIt=curFromIt->second.begin(); curToIt!=curFromIt->second.end(); curToIt++) {
-				auto searchToOther = searchFromOther->second.find(*curToIt);
-				if (searchToOther==searchFromOther->second.end())
-					return false;
-			}
-		}			
-	}	
+		} 
+	}
 	return true;
 }
+
+// bool PartialOrder::isConsRMWP3(const PartialOrder &other) const {
+// 	// unordered_set<InstNum> otherLasts;
+// 	// other.getLasts(otherLasts);
+// 	// fprintf(stderr, "checking cons P3\n");
+// 	for (auto otherFromIt=other.order.begin(); otherFromIt!=other.order.end(); otherFromIt++) {
+// 		if (!isDeletableInst(otherFromIt->first)) {
+// 			// fprintf(stderr, "from: %s -->", otherFromIt->first.toString().c_str());
+// 			auto searchFromCur = order.find(otherFromIt->first);
+// 			// if (searchFromCur == order.end() && otherLasts.find(otherFromIt->first)==otherLasts.end() ) {
+// 			// 	// fprintf(stderr, "from not found in cur and not last\n");
+// 			// 	// inst from other not found in cur and not last in other
+// 			// 	return false;
+// 			// }
+// 			// for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
+// 			// 	// fprintf(stderr, "--> %s\n", otherToIt->toString().c_str());
+// 			// 	auto searchToCur = searchFromCur->second.find(*otherToIt);
+// 			// 	if (searchToCur==searchFromCur->second.end() && otherLasts.find(*otherToIt)==otherLasts.end()) {
+// 			// 		// fprintf(stderr, "To not found in cur\n");
+// 			// 		// ordering from other not found in cur and not last in other
+// 			// 		return false;
+// 			// 	}
+// 			// }
+// 			if (searchFromCur == order.end()) {
+// 				// if from inst of interf not found in cur
+// 				// no inst ordered after it in interf should be in cur
+// 				for (auto otherToIt=otherFromIt->second.begin(); otherToIt!=otherFromIt->second.end(); otherToIt++) {
+// 					auto searchToCur = order.find(*otherToIt);
+// 					if (searchToCur != order.end()) return false;
+// 				}
+// 			}
+// 		}
+// 	}
+// 	for (auto curFromIt=order.begin(); curFromIt!=order.end(); curFromIt++) {
+// 	 	if (!isDeletableInst(curFromIt->first)) {	// need to check only for RMWs
+// 			auto searchFromOther = other.order.find(curFromIt->first);
+// 			if (searchFromOther == order.end()) {
+// 				return false;
+// 			}
+// 			for (auto curToIt=curFromIt->second.begin(); curToIt!=curFromIt->second.end(); curToIt++) {
+// 				auto searchToOther = searchFromOther->second.find(*curToIt);
+// 				if (searchToOther==searchFromOther->second.end())
+// 					return false;
+// 			}
+// 		}			
+// 	}	
+// 	return true;
+// }
 
 bool PartialOrder::isConsistentRMW(const PartialOrder &other) const {
 	if (Precision == P0) {return true;}

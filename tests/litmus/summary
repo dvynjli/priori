@@ -3,7 +3,7 @@
 
 # False Positives:
 - test16, 18, 24: Value abstractions 
-- test39: rmw are not treated as atomic in mo
+// - test39: rmw are not treated as atomic in mo: removed
 
 # Can't analyze:
 - test19: bitwise Or
