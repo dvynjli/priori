@@ -1,7 +1,0 @@
-Name,Time
-CO-2+2W_2 , 0.002744
-CO-2+2W_3 , 0.002957
-CO-2+2W_5 , 0.003754
-fibonacci , 3.702818
-szymanski , 61.937414
-dijkstra_1 , benchmarks/dijkstra_1.ll: error: Could not open input file: No such file or directory

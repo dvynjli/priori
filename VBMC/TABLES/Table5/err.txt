@@ -1,2 +1,0 @@
-file compiled/_cs_szymanski_7_fenced.c line 290 function __cs_safe_malloc: function `malloc' is not declared
-file compiled/_cs_szymanski_7_fenced.c line 1094 function t0_0: function `assert' is not declared

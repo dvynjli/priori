@@ -1,2 +1,0 @@
-file compiled/_cs_peterson_8_fenced.c line 482 function __cs_safe_malloc: function `malloc' is not declared
-file compiled/_cs_peterson_8_fenced.c line 2501 function t0_0: function `assert' is not declared
