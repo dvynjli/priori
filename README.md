@@ -1,4 +1,4 @@
-# abs_interp
+# PRIORI
 C++ based Abstract Interpreter for C++11 programs. An LLVM pass that verifies properties of LLVM IR.
 
 # Dependencies
