@@ -40,8 +40,8 @@ Other supported options
 Sample Command
 /usr/bin/opt -load build/interp/VerifierPass.so -verifier -interval -stop-on-fail -P3 -no-print -merge-on-val -no-interf-comb tests/litmus/test1.ll
 
-# Compile a source file
-Compile with -O1
+# Generate LLVM IR of a source file
+Use -O1
 ```
 clang -S -emit-llvm -std=c++11 -O1 test1.cc
 ```
